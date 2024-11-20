@@ -47,10 +47,11 @@ class Engine:
                 logging.debug(f"{rule}:perms: {perms}")
                 # insert to the dag
                 for e in perms:
-                    self.__insert(dag, DagNode(rule, e))
+                    self.__insert(dag, DagNode(rule, e, facts))
                 logging.debug(dag)
-                for exp in dag:
-                    exp.execute()
+            
+            for node in dag:
+                node.execute()
         
         # Get combinations
 
