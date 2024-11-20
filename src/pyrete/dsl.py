@@ -5,5 +5,6 @@ def assign(ctx, **kwargs):
     return True
 
 def insert(ctx, fact):
-    ctx.facts.append(fact)
     # TODO this will need lot more work
+    ctx._changes.append((fact, 'insert'))
+    

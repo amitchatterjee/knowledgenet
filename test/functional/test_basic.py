@@ -41,9 +41,9 @@ def test_one_rule_execution():
     m1 = C1(2)
     m2 = C2(3)
     facts = [C1(1), m1, C2(1), C2(2), m2]
-    engine.run(facts)
+    resulting_facts = engine.run(facts)
     results = []
-    for fact in facts:
+    for fact in resulting_facts:
         if fact.__class__ == R1:
             results.append(fact)
     assert 1==len(results)

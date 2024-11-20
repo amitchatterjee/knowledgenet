@@ -3,8 +3,7 @@ import logging
 from collections import deque
 
 from pyrete.perms import permutations
-from pyrete.dag_node import DagNode
-
+from pyrete.graph import Node
 
 class Engine:
     def __init__(self, rules):
@@ -21,14 +20,12 @@ class Engine:
 
     def run(self, facts):
         # Eliminate duplicates
-        facts_space = set(facts)
+        facts_set = set(facts)
 
         # Create a {class:[fact]}
         class_to_facts = {}
-        for fact in facts_space:
-            facts_list = class_to_facts[fact.__class__] if fact.__class__ in class_to_facts else []
-            facts_list.append(fact)
-            class_to_facts[fact.__class__] = facts_list
+        for fact in facts_set:
+            self.__add_to_class_facts_dict(class_to_facts, fact)
 
         dag = deque()
         for rule in self.rules:
@@ -47,14 +44,15 @@ class Engine:
                 logging.debug(f"{rule}:perms: {perms}")
                 # insert to the dag
                 for e in perms:
-                    self.__insert(dag, DagNode(rule, e, facts))
+                    self.__insert(dag, Node(rule, e, facts_set))
                 logging.debug(dag)
             
             for node in dag:
                 node.execute()
-        
-        # Get combinations
 
-        # TODO evaluate expressions
+        return facts_set
 
-        return facts_space
+    def __add_to_class_facts_dict(self, class_to_facts, fact):
+        facts_list = class_to_facts[fact.__class__] if fact.__class__ in class_to_facts else []
+        facts_list.append(fact)
+        class_to_facts[fact.__class__] = facts_list
