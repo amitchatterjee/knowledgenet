@@ -5,7 +5,7 @@ import logging
 
 from pyrete.rule import Rule,When
 from pyrete.engine import Engine
-from pyrete.dsl import assign, insert
+from pyrete.dsl import assign, insert, forClass, expression, Then
 
 class C1:
     def __init__(self, val):
@@ -30,20 +30,40 @@ class R1:
         return f"R1(vals: {self.vals})"
     def __repr__(self):
         return self.__str__()
-    
-def test_one_rule_execution():
-    rule_1 = Rule('test-rule-1',[
-            When(C1, lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1),
-            When(C2, lambda ctx: assign(ctx, c2=ctx.this) and ctx.this.val != ctx.c1.val and ctx.this.val > 1)
-        ],
-        lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2)))
-    engine = Engine([rule_1])
+
+def test_one_rule_single_when_then():
+    rule = Rule('test_one_rule_single_when_then', 
+                When(forClass(C1), expression(lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1)),
+                Then(lambda ctx: insert(ctx, R1(ctx.c1,None))))
+
+    engine = Engine([rule])
+    m1 = C1(2)
+    facts = [C1(1), m1]
+    result_facts = engine.run(facts)
+    results = []
+    for fact in result_facts:
+        if fact.__class__ == R1:
+            results.append(fact)
+    assert 1==len(results)
+    assert 2 ==len(results[0].vals)
+    assert (m1,None) == results[0].vals
+
+def test_one_rule_multiple_when_thens():
+    rule = Rule('test_one_rule_multiple_when_thens', [
+                When(forClass(C1), expression(lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1)),
+                When(forClass(C2), expression(lambda ctx: assign(ctx, c2=ctx.this) and ctx.this.val != ctx.c1.val and ctx.this.val > 1))
+                ],
+                Then([
+                    lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
+                    lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2))]))
+
+    engine = Engine([rule])
     m1 = C1(2)
     m2 = C2(3)
     facts = [C1(1), m1, C2(1), C2(2), m2]
-    resulting_facts = engine.run(facts)
+    result_facts = engine.run(facts)
     results = []
-    for fact in resulting_facts:
+    for fact in result_facts:
         if fact.__class__ == R1:
             results.append(fact)
     assert 1==len(results)

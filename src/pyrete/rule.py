@@ -1,9 +1,9 @@
 class Rule:
-    def __init__(self, name, whens, then, rank=0, **kwargs):
+    def __init__(self, name, whens, thens, rank=0, **kwargs):
         self.name = name
         self.rank = rank
         self.whens = whens
-        self.then = then
+        self.thens = thens
         for key, value in kwargs.items():
             setattr(self, key, value)
         # TODO add validations
@@ -18,7 +18,7 @@ class Rule:
         return self.name == other.name
 
 class When:
-    def __init__(self, clazz, exp):
-        self.clazz = clazz
+    def __init__(self, onclass, exp):
+        self.onclass = onclass
         self.exp = exp
         # TODO add validation

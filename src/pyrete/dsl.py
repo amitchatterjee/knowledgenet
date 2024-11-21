@@ -1,3 +1,11 @@
+def forClass(cls):
+    return cls
+
+def expression(exp):
+    return exp
+
+def Then(exp):
+    return exp
 
 def assign(ctx, **kwargs):
     for key, value in kwargs.items():
@@ -5,6 +13,5 @@ def assign(ctx, **kwargs):
     return True
 
 def insert(ctx, fact):
-    # TODO this will need lot more work
     ctx._changes.append((fact, 'insert'))
     
