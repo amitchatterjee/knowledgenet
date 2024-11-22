@@ -5,7 +5,7 @@ import logging
 
 from pyrete.rule import Rule,When
 from pyrete.engine import Engine
-from pyrete.dsl import assign, insert, forClass, expression, Then
+from pyrete.dsl import assign, insert, update, forClass, expression, Then
 
 class C1:
     def __init__(self, val):
@@ -49,7 +49,7 @@ class Ch1:
         return self.__str__()
 
 def test_one_rule_single_when_then():
-    rule = Rule('test_one_rule_single_when_then', 
+    rule = Rule('r1', 
                 When(forClass(C1), expression(lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1)),
                 Then(lambda ctx: insert(ctx, R1(ctx.c1,None))))
 
@@ -66,7 +66,7 @@ def test_one_rule_single_when_then():
     assert (m1,None) == results[0].vals
 
 def test_one_rule_multiple_when_thens():
-    rule = Rule('test_one_rule_multiple_when_thens', [
+    rule = Rule('r1', [
                 When(forClass(C1), expression(lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1)),
                 When(forClass(C2), expression(lambda ctx: assign(ctx, c2=ctx.this) and ctx.this.val != ctx.c1.val and ctx.this.val > 1))
                 ],
@@ -87,13 +87,14 @@ def test_one_rule_multiple_when_thens():
     assert 2 ==len(results[0].vals)
     assert (m1,m2) == results[0].vals
 
-def test_simple_rule_chanining():
-    rule_1 = Rule('test_simple_rule_chaining_create_child',
+def test_simple_rule_chanining_with_insert():
+    rule_1 = Rule('r1',
                 When(forClass(P1), expression(lambda ctx: ctx.this.val > 0)),
                 Then(lambda ctx: insert(ctx, Ch1(ctx.this, 20))))
-    rule_2 = Rule('test_simple_rule_chaining_child_linking',
+    rule_2 = Rule('r2',
                 When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0)),
                 Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.this))))
+    
     engine = Engine([rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
@@ -107,11 +108,11 @@ def test_simple_rule_chanining():
     assert m1 == results[0].vals[0]
     assert Ch1 == type(results[0].vals[1])
 
-def test_rule_chanining_with_matching():
-    rule_1 = Rule('test_simple_rule_chaining_with_matching',
+def test_rule_chanining_with_insert_and_matching():
+    rule_1 = Rule('r1',
                 When(forClass(P1), expression(lambda ctx: ctx.this.val > 0)),
                 Then(lambda ctx: insert(ctx, Ch1(ctx.this, 20))))
-    rule_2 = Rule('test_simple_rule_chaining_child_matching', [
+    rule_2 = Rule('r2', [
                     When(forClass(P1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,parent=ctx.this))),
                     When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,child=ctx.this) and ctx.child.parent == ctx.parent))
                 ],
@@ -128,3 +129,26 @@ def test_rule_chanining_with_matching():
     assert 2 ==len(results[0].vals)
     assert m1 == results[0].vals[0]
     assert Ch1 == type(results[0].vals[1])
+
+def test_simple_rule_chanining_with_update():
+    def zero_out(ctx):
+        ctx.c1.val = 0
+        update(ctx, ctx.c1)
+    rule_1 = Rule('r1',
+                When(forClass(C1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx, c1=ctx.this))),
+                Then(zero_out))
+    rule_2 = Rule('r2',
+                When(forClass(C1), expression(lambda ctx: ctx.this.val <= 0 and assign(ctx, c2=ctx.this))),
+                Then(lambda ctx: insert(ctx, R1(ctx.c2))))
+    
+    engine = Engine([rule_1, rule_2])
+    m1 = C1(20)
+    facts = [m1]
+    result_facts = engine.run(facts)
+    results = []
+    for fact in result_facts:
+        if fact.__class__ == R1:
+            results.append(fact)
+    assert 1==len(results)
+    assert 1 ==len(results[0].vals)
+    assert m1 == results[0].vals[0]

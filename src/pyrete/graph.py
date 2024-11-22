@@ -24,9 +24,20 @@ class Node:
         self.when_objs = when_objs
 
         # Create when expression execution context
-        self.when_executions = []
+        self.leaves = []
         for i, when in enumerate(to_list(rule.whens)):
-            self.when_executions.append(Leaf(rule, i))
+            self.leaves.append(Leaf(rule, i))
+
+    def invalidate_leaves(self, updated_facts):
+        for i,leaf in enumerate(self.when_objs):
+            if leaf in updated_facts:
+                # clear cache from the leaves for the leaf + everything after it
+                for j in range(i, len(self.when_objs)):
+                    leaf = self.leaves[j]
+                    leaf.executed = False
+                    leaf.result = None
+                return True
+        return False
 
     def execute(self, facts_set):
         # Create an empty context for when expressions to populate stuff with
@@ -37,11 +48,11 @@ class Node:
         context._rule = self.rule
         all_cached = True
         # Evaluate all when clauses
-        for i, when in enumerate(self.when_executions):
+        for i, when in enumerate(self.leaves):
             # Add a "this" to the context
             context.this = self.when_objs[i]
             cached, result = when.execute(context)
-            logging.debug(f"Executed exp: {self.rule}[{i}]: {cached}:{result}")
+            logging.debug(f"Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
             all_cached = all_cached and cached
             if not result:
                 return None
@@ -51,8 +62,7 @@ class Node:
             return None
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug(f"Rule: {self.rule} with context:{context} when clauses satisfied, going to execute the then clause")
-
+        logging.debug(f"Node: {self} with context:{context} all when clauses satisfied, going to execute the then clauses")
         for then in to_list(self.rule.thens):
             # Execute each function/lambda included in the rule
             then(context)
@@ -61,6 +71,7 @@ class Node:
         # Report changes to the facts introduced by the execution of the above functions
         for change in context._changes:
             result[change[1]].append(change[0])
+        logging.debug(f"Result from node: {self} execution, result: {result}")
         return result
 
     def __str__(self):
