@@ -1,13 +1,12 @@
-from types import SimpleNamespace
 import logging
 
 from pyrete.utils import to_list
+from types import SimpleNamespace
 
 class Leaf:
-    def __init__(self, rule, when_index, all_facts):
+    def __init__(self, rule, when_index):
         self.rule = rule
         self.when_index = when_index
-        self.all_facts = all_facts
         self.executed = False
 
     def execute(self, context):
@@ -20,27 +19,28 @@ class Leaf:
         return False, self.result
 
 class Node:
-    def __init__(self, rule, when_objs, all_facts):
+    def __init__(self, rule, when_objs):
         self.rule = rule
         self.when_objs = when_objs
-
-        # Create an empty context for when expressions to populate stuff with
-        # Add all "facts" to this context. This will be used by accumulator and other DSL methods
-        self.context = SimpleNamespace(_facts=all_facts, _rule=rule)
 
         # Create when expression execution context
         self.when_executions = []
         for i, when in enumerate(to_list(rule.whens)):
-            self.when_executions.append(Leaf(rule, i, all_facts))
+            self.when_executions.append(Leaf(rule, i))
 
-    def execute(self):
-        self.context._changes = []
+    def execute(self, facts_set):
+        # Create an empty context for when expressions to populate stuff with
+        # Add all "facts" to this context. This will be used by accumulator and other DSL methods
+        context = SimpleNamespace(_facts=facts_set)
+
+        context._changes = []
+        context._rule = self.rule
         all_cached = True
         # Evaluate all when clauses
         for i, when in enumerate(self.when_executions):
             # Add a "this" to the context
-            self.context.this = self.when_objs[i]
-            cached, result = when.execute(self.context)
+            context.this = self.when_objs[i]
+            cached, result = when.execute(context)
             logging.debug(f"Executed exp: {self.rule}[{i}]: {cached}:{result}")
             all_cached = all_cached and cached
             if not result:
@@ -51,15 +51,15 @@ class Node:
             return None
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug(f"Rule: {self.rule} with context:{self.context} when clauses satisfied, going to execute the then clause")
+        logging.debug(f"Rule: {self.rule} with context:{context} when clauses satisfied, going to execute the then clause")
 
         for then in to_list(self.rule.thens):
             # Execute each function/lambda included in the rule
-            then(self.context)
+            then(context)
 
         result = {'insert': [], 'update': [], 'delete': []}
         # Report changes to the facts introduced by the execution of the above functions
-        for change in self.context._changes:
+        for change in context._changes:
             result[change[1]].append(change[0])
         return result
 

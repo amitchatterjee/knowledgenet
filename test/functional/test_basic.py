@@ -30,6 +30,23 @@ class R1:
         return f"R1(vals: {self.vals})"
     def __repr__(self):
         return self.__str__()
+    
+class P1:
+    def __init__(self, val):
+        self.val = val
+    def __str__(self):
+        return f"P1(val: {self.val})"
+    def __repr__(self):
+        return self.__str__()
+    
+class Ch1:
+    def __init__(self, parent, val):
+        self.parent = parent
+        self.val = val
+    def __str__(self):
+        return f"Ch1(val: {self.val})"
+    def __repr__(self):
+        return self.__str__()
 
 def test_one_rule_single_when_then():
     rule = Rule('test_one_rule_single_when_then', 
@@ -69,4 +86,45 @@ def test_one_rule_multiple_when_thens():
     assert 1==len(results)
     assert 2 ==len(results[0].vals)
     assert (m1,m2) == results[0].vals
-    
+
+def test_simple_rule_chanining():
+    rule_1 = Rule('test_simple_rule_chaining_create_child',
+                When(forClass(P1), expression(lambda ctx: ctx.this.val > 0)),
+                Then(lambda ctx: insert(ctx, Ch1(ctx.this, 20))))
+    rule_2 = Rule('test_simple_rule_chaining_child_linking',
+                When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0)),
+                Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.this))))
+    engine = Engine([rule_1, rule_2])
+    m1 = P1(20)
+    facts = [m1]
+    result_facts = engine.run(facts)
+    results = []
+    for fact in result_facts:
+        if fact.__class__ == R1:
+            results.append(fact)
+    assert 1==len(results)
+    assert 2 ==len(results[0].vals)
+    assert m1 == results[0].vals[0]
+    assert Ch1 == type(results[0].vals[1])
+
+def test_rule_chanining_with_matching():
+    rule_1 = Rule('test_simple_rule_chaining_with_matching',
+                When(forClass(P1), expression(lambda ctx: ctx.this.val > 0)),
+                Then(lambda ctx: insert(ctx, Ch1(ctx.this, 20))))
+    rule_2 = Rule('test_simple_rule_chaining_child_matching', [
+                    When(forClass(P1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,parent=ctx.this))),
+                    When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,child=ctx.this) and ctx.child.parent == ctx.parent))
+                ],
+                Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.child))))
+    engine = Engine([rule_1, rule_2])
+    m1 = P1(20)
+    facts = [m1]
+    result_facts = engine.run(facts)
+    results = []
+    for fact in result_facts:
+        if fact.__class__ == R1:
+            results.append(fact)
+    assert 1==len(results)
+    assert 2 ==len(results[0].vals)
+    assert m1 == results[0].vals[0]
+    assert Ch1 == type(results[0].vals[1])

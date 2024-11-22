@@ -1,5 +1,4 @@
 import logging
-
 from collections import deque
 
 from pyrete.perms import permutations
@@ -28,35 +27,38 @@ class Engine:
         for fact in facts_set:
             self.__add_to_class_facts_dict(class_to_facts, fact)
 
-        self.create_dag(facts_set, class_to_facts)
-        self.execute_dag(facts_set)
+        dag = deque()
+        self.update_dag(dag, [], class_to_facts)
+        self.execute_dag(dag, facts_set, class_to_facts)
         return facts_set
 
-    def execute_dag(self, facts_set):
+    def execute_dag(self, dag, facts_set, class_to_facts):
         changes = False
-        for node in self.dag:
-            result = node.execute()
+        for node in dag:
+            result = node.execute(facts_set)
             if result:
                 # If all conditions were satisfied and the thens were executed
                 if len(result['insert']):
-                    self.insert_to_dag(self.dag, facts_set, result['insert'])
-                    changes = True
+                    facts_set.update(result['insert'])
+                    for insert in result['insert']:
+                        self.__add_to_class_facts_dict(class_to_facts, insert)
+                    logging.debug(f"Inserted facts: {result['insert']}")
+                    count = self.update_dag(dag, result['insert'], class_to_facts)
+                    if count:
+                        changes = True
             
                 # TODO add update, delete handling
-    
+
                 if changes:
                     # If there were inserts updates or deletes, stop the current dag execution
                     break
         if changes:
             # re-execute the dag
-            self.execute_dag(facts_set)
-
-    def insert_to_dag(self, dag, facts_set, inserts):
-        # TODO Lot more to happen here
-        facts_set.update(inserts)
+            self.execute_dag(dag, facts_set, class_to_facts)
         
-    def create_dag(self, facts_set, class_to_facts):
-        self.dag = deque()
+        
+    def update_dag(self, dag, include_only, class_to_facts):
+        node_count = 0
         for rule in self.rules:
             satisfies = True
             when_objs = []
@@ -69,13 +71,15 @@ class Engine:
 
             if satisfies:
                 # Get all the permutations associated with the objects
-                perms = permutations(when_objs)                
+                perms = permutations(when_objs, include_only)                
                 logging.debug(f"{rule}:perms: {perms}")
                 # insert to the dag
                 for e in perms:
                     logging.debug(f"Adding node: {rule}{e}")
-                    self.__insert(self.dag, Node(rule, e, facts_set))
-        logging.debug(f"Dag: {self.dag}")
+                    self.__insert(dag, Node(rule, e))
+                    node_count = node_count+1
+        logging.debug(f"Dag: {dag}")
+        return node_count
 
     def __add_to_class_facts_dict(self, class_to_facts, fact):
         facts_list = class_to_facts[fact.__class__] if fact.__class__ in class_to_facts else []
