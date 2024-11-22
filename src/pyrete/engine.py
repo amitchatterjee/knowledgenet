@@ -40,8 +40,7 @@ class Engine:
                 # If all conditions were satisfied and the thens were executed
                 if len(result['insert']):
                     self.insert_to_dag(self.dag, facts_set, result['insert'])
-                    # TODO change to True when the insert/update/delete logic is implemented
-                    changes = False
+                    changes = True
             
                 # TODO add update, delete handling
     

@@ -13,11 +13,11 @@ class Leaf:
     def execute(self, context):
         if self.executed:
             # Return the previous result
-            return self.result
+            return True, self.result
         # Else, evaluate the expression
         self.result = to_list(self.rule.whens)[self.when_index].exp(context)
         self.executed = True
-        return self.result
+        return False, self.result
 
 class Node:
     def __init__(self, rule, when_objs, all_facts):
@@ -35,15 +35,21 @@ class Node:
 
     def execute(self):
         self.context._changes = []
+        all_cached = True
         # Evaluate all when clauses
         for i, when in enumerate(self.when_executions):
             # Add a "this" to the context
             self.context.this = self.when_objs[i]
-
-            result = when.execute(self.context)
-            logging.debug(f"Executed exp: {self.rule}[{i}]: {result}")
+            cached, result = when.execute(self.context)
+            logging.debug(f"Executed exp: {self.rule}[{i}]: {cached}:{result}")
+            all_cached = all_cached and cached
             if not result:
                 return None
+
+        # If all the executions were cached, there is no need to execute the then
+        if all_cached:
+            return None
+        
         # If we are here, it means all the when conditions were satisfied, execute the then expression
         logging.debug(f"Rule: {self.rule} with context:{self.context} when clauses satisfied, going to execute the then clause")
 
