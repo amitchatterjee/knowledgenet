@@ -3,6 +3,12 @@ class Factset:
         self.facts_set = set()
         self.class_to_facts = {}
 
+    def __str__(self):
+        return f"Factset({self.facts_set})"
+    
+    def __repr__(self):
+        return self.__str__()
+
     def add_facts(self, facts):
         diff = set(facts) - self.facts_set
         self.facts_set.update(diff)

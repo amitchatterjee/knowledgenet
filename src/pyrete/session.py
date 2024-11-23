@@ -7,15 +7,21 @@ from pyrete.utils import to_list
 from pyrete.factset import Factset
 
 class Session:
-    def __init__(self, ruleset, globals=[]):
+    def __init__(self, ruleset, facts, globals=[]):
         self.ruleset = ruleset
         self.rules = ruleset.rules
         self.globals = globals
         self.factset = Factset()
         self.dag = deque()
-
-    def run(self, facts):
         self.__add_to_dag(facts)
+
+    def __str__(self):
+        return f"Session(ruleset: {self.ruleset}, facts:{self.factset})"
+    
+    def __repr__(self):
+        return self.__str__()
+
+    def execute(self):
         self.__execute_dag()
         return self.factset.facts_set
 

@@ -75,7 +75,7 @@ class Node:
         return result
 
     def __str__(self):
-        return f"DagNode(rule:{self.rule}, whens:{self.when_objs})"
+        return f"Node(rule:{self.rule}, whens:{self.when_objs})"
 
     def __repr__(self):
         return self.__str__()
