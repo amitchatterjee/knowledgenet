@@ -6,7 +6,7 @@ import logging
 from pyrete.rule import Rule,When
 from pyrete.ruleset import Ruleset
 from pyrete.session import Session
-from pyrete.dsl import assign, insert, update, forClass, expression, Then
+from pyrete.dsl import assign, insert, update, delete, forClass, expression, Then
 
 class C1:
     def __init__(self, val):
@@ -141,3 +141,19 @@ def test_simple_rule_chanining_with_update():
     assert 1==len(matching)
     assert 1 ==len(matching[0].vals)
     assert m1 == matching[0].vals[0]
+
+def test_rule_chanining_with_delete_and_matching():
+    rule_1 = Rule('r1',
+                When(forClass(P1), expression(lambda ctx: ctx.this.val > 0)),
+                Then(lambda ctx: delete(ctx, ctx.this)))
+    rule_2 = Rule('r2', [
+                    When(forClass(P1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,parent=ctx.this))),
+                    When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,child=ctx.this) and ctx.child.parent == ctx.parent))
+                ],
+                Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.child))), rank=1)
+    ruleset = Ruleset('rs1', [rule_1, rule_2])
+    m1 = P1(20)
+    facts = [m1, Ch1(m1, 20)]
+    result_facts = Session(ruleset).run(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 0 == len(matching)

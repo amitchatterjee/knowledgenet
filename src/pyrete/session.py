@@ -21,8 +21,8 @@ class Session:
 
     def __insert(self, node):
         # TODO check for dups - needed when inserting/updating facts from rules
-        for i, item in enumerate(self.dag):
-            if item.rule.rank > node.rule.rank:
+        for i, each in enumerate(self.dag):
+            if each.rule.rank > node.rule.rank:
                 self.dag.insert(i, node)
                 return
         self.dag.append(node)
@@ -44,7 +44,10 @@ class Session:
                     counts = counts + self.__update_dag(updated_facts)
                     logging.debug(f"Updated facts: {updated_facts}")
 
-                # TODO add delete handling
+                if len(result['delete']):
+                   deleted_facts = result['delete']
+                   counts = counts + self.__delete_nodes(deleted_facts)
+                   logging.debug(f"Deleted facts: {deleted_facts}")
 
                 if counts:
                     # If there were inserts updates or deletes, stop the current dag execution and re-execute the dag
@@ -52,6 +55,17 @@ class Session:
                     break
         logging.debug(f"Executed pass: {recursion_count}")        
     
+    def __delete_nodes(self, deleted_facts):
+        to_delete = []
+        for i, node in enumerate(self.dag):
+            for obj in node.when_objs:
+                if obj in deleted_facts:
+                    to_delete.append(i)
+                    break
+        for index in reversed(to_delete):
+            del self.dag[index]
+        return len(to_delete)
+
     def __update_dag(self, updated_facts):
         count = 0
         for node in self.dag:
@@ -80,8 +94,9 @@ class Session:
                 logging.debug(f"{rule}, object permuation: {perms}")
                 # insert to the dag
                 for e in perms:
-                    logging.debug(f"Adding node: {rule}{e}")
-                    self.__insert(Node(rule, self.rules, self.globals, e))
+                    node = Node(rule, self.rules, self.globals, e)
+                    logging.debug(f"Adding node: {node}")
+                    self.__insert(node)
                     node_count = node_count+1
-        logging.debug(f"Updated dag: {self.dag}, new nodes count: {node_count}")
+        logging.debug(f"Updated dag: {self.dag}, dag size: {len(self.dag)}, new nodes count: {node_count}")
         return node_count
