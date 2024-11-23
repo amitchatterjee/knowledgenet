@@ -4,7 +4,7 @@ import os
 import logging
 
 from pyrete.rule import Rule,When
-from pyrete.engine import Engine
+from pyrete.ruleset import Ruleset
 from pyrete.dsl import assign, insert, update, forClass, expression, Then
 
 class C1:
@@ -48,22 +48,22 @@ class Ch1:
     def __repr__(self):
         return self.__str__()
 
+def find_result_of_type(cls, results):
+    return [result for result in results if result.__class__ == cls]
+
 def test_one_rule_single_when_then():
     rule = Rule('r1', 
                 When(forClass(C1), expression(lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1)),
-                Then(lambda ctx: insert(ctx, R1(ctx.c1,None))))
+                Then(lambda ctx: insert(ctx, R1(ctx.c1))))
 
-    engine = Engine([rule])
+    ruleset = Ruleset([rule])
     m1 = C1(2)
     facts = [C1(1), m1]
-    result_facts = engine.run(facts)
-    results = []
-    for fact in result_facts:
-        if fact.__class__ == R1:
-            results.append(fact)
-    assert 1==len(results)
-    assert 2 ==len(results[0].vals)
-    assert (m1,None) == results[0].vals
+    result_facts = ruleset.run(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1== len(matching)
+    assert 1 == len(matching[0].vals)
+    assert m1 == matching[0].vals[0]
 
 def test_one_rule_multiple_when_thens():
     rule = Rule('r1', [
@@ -74,18 +74,15 @@ def test_one_rule_multiple_when_thens():
                     lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
                     lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2))]))
 
-    engine = Engine([rule])
+    ruleset = Ruleset([rule])
     m1 = C1(2)
     m2 = C2(3)
     facts = [C1(1), m1, C2(1), C2(2), m2]
-    result_facts = engine.run(facts)
-    results = []
-    for fact in result_facts:
-        if fact.__class__ == R1:
-            results.append(fact)
-    assert 1==len(results)
-    assert 2 ==len(results[0].vals)
-    assert (m1,m2) == results[0].vals
+    result_facts = ruleset.run(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1==len(matching)
+    assert 2 ==len(matching[0].vals)
+    assert (m1,m2) == matching[0].vals
 
 def test_simple_rule_chanining_with_insert():
     rule_1 = Rule('r1',
@@ -95,18 +92,15 @@ def test_simple_rule_chanining_with_insert():
                 When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0)),
                 Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.this))))
     
-    engine = Engine([rule_1, rule_2])
+    ruleset = Ruleset([rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
-    result_facts = engine.run(facts)
-    results = []
-    for fact in result_facts:
-        if fact.__class__ == R1:
-            results.append(fact)
-    assert 1==len(results)
-    assert 2 ==len(results[0].vals)
-    assert m1 == results[0].vals[0]
-    assert Ch1 == type(results[0].vals[1])
+    result_facts = ruleset.run(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1==len(matching)
+    assert 2 ==len(matching[0].vals)
+    assert m1 == matching[0].vals[0]
+    assert Ch1 == type(matching[0].vals[1])
 
 def test_rule_chanining_with_insert_and_matching():
     rule_1 = Rule('r1',
@@ -117,18 +111,15 @@ def test_rule_chanining_with_insert_and_matching():
                     When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,child=ctx.this) and ctx.child.parent == ctx.parent))
                 ],
                 Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.child))))
-    engine = Engine([rule_1, rule_2])
+    ruleset = Ruleset([rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
-    result_facts = engine.run(facts)
-    results = []
-    for fact in result_facts:
-        if fact.__class__ == R1:
-            results.append(fact)
-    assert 1==len(results)
-    assert 2 ==len(results[0].vals)
-    assert m1 == results[0].vals[0]
-    assert Ch1 == type(results[0].vals[1])
+    result_facts = ruleset.run(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1==len(matching)
+    assert 2 ==len(matching[0].vals)
+    assert m1 == matching[0].vals[0]
+    assert Ch1 == type(matching[0].vals[1])
 
 def test_simple_rule_chanining_with_update():
     def zero_out(ctx):
@@ -141,14 +132,11 @@ def test_simple_rule_chanining_with_update():
                 When(forClass(C1), expression(lambda ctx: ctx.this.val <= 0 and assign(ctx, c2=ctx.this))),
                 Then(lambda ctx: insert(ctx, R1(ctx.c2))))
     
-    engine = Engine([rule_1, rule_2])
+    ruleset = Ruleset([rule_1, rule_2])
     m1 = C1(20)
     facts = [m1]
-    result_facts = engine.run(facts)
-    results = []
-    for fact in result_facts:
-        if fact.__class__ == R1:
-            results.append(fact)
-    assert 1==len(results)
-    assert 1 ==len(results[0].vals)
-    assert m1 == results[0].vals[0]
+    result_facts = ruleset.run(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1==len(matching)
+    assert 1 ==len(matching[0].vals)
+    assert m1 == matching[0].vals[0]

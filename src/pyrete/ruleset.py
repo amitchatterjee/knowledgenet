@@ -5,35 +5,33 @@ from pyrete.perms import permutations
 from pyrete.graph import Node
 from pyrete.utils import to_list
 
-class Engine:
+class Ruleset:
     def __init__(self, rules):
         # TODO add validations
         self.rules = rules
 
-    def __insert(self, dq, node):
+    def __insert(self, dag, node):
         # TODO check for dups - needed when inserting/updating facts from rules
-        for i, item in enumerate(dq):
+        for i, item in enumerate(dag):
             if item.rule.rank > node.rule.rank:
-                dq.insert(i,node)
+                dag.insert(i,node)
                 return
-        dq.append(node)
+        dag.append(node)
 
     def run(self, facts):
-        # Eliminate duplicates
-        facts_set = set(facts)
+        # Create an empty facts_set that contains all facts
+        facts_set = set()
 
-        # Create a {class:[fact]}
+        # Create a dictionary: {class:[fact]}
         class_to_facts = {}
-        self.__update_class_to_facts(facts_set, class_to_facts)
 
+        # Create an empty dag
         dag = deque()
-        self.__add_to_dag(dag, [], class_to_facts)
+
+        self.__add_to_dag(dag, facts_set, facts, class_to_facts)
+
         self.__execute_dag(dag, facts_set, class_to_facts)
         return facts_set
-
-    def __update_class_to_facts(self, facts, class_to_facts):
-        for fact in facts:
-            self.__add_to_class_facts_dict(class_to_facts, fact)
 
     def __execute_dag(self, dag, facts_set, class_to_facts, recursion_count = 0):
         logging.debug(f"Executing pass: {recursion_count}")
@@ -44,10 +42,8 @@ class Engine:
                 # If all conditions were satisfied and the thens were executed
                 if len(result['insert']):
                     new_facts = result['insert']
-                    facts_set.update(new_facts)
-                    self.__update_class_to_facts(new_facts, class_to_facts)
+                    counts = counts + self.__add_to_dag(dag, facts_set, new_facts, class_to_facts)
                     logging.debug(f"Inserted facts: {new_facts}")
-                    counts = counts + self.__add_to_dag(dag, new_facts, class_to_facts)
             
                 if len(result['update']):
                     updated_facts = result['update']
@@ -68,7 +64,11 @@ class Engine:
             count = count + node.invalidate_leaves(updated_facts)
         return count
 
-    def __add_to_dag(self, dag, new_facts, class_to_facts):
+    def __add_to_dag(self, dag, facts_set, new_facts, class_to_facts):
+        facts_set.update(new_facts)
+        for fact in new_facts:
+            self.__add_to_class_facts_dict(class_to_facts, fact)
+
         logging.debug(f"Adding to dag: all facts: {class_to_facts.values()}, new: {new_facts}")
         node_count = 0
         for rule in self.rules:
