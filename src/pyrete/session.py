@@ -5,8 +5,10 @@ from pyrete.perms import permutations
 from pyrete.graph import Node
 from pyrete.utils import to_list
 
-class Dag:
-    def __init__(self):
+class Session:
+    def __init__(self, rules):
+        self.rules = rules
+
          # Create an empty facts_set that contains all facts
         self.facts_set = set()
 
@@ -15,8 +17,9 @@ class Dag:
 
         self.dag = deque()
 
-    def execute(self):
-        self.execute_dag()
+    def run(self, facts):
+        self.__add_to_dag(facts)
+        self.__execute_dag()
         return self.facts_set
 
     def __insert(self, node):
@@ -44,7 +47,7 @@ class Dag:
                     counts = counts + self.__update_dag(updated_facts)
                     logging.debug(f"Updated facts: {updated_facts}")
 
-                # TODO add update, delete handling
+                # TODO add delete handling
 
                 if counts:
                     # If there were inserts updates or deletes, stop the current dag execution and re-execute the dag
@@ -61,7 +64,7 @@ class Dag:
     def __add_to_dag(self, new_facts):
         self.facts_set.update(new_facts)
         for fact in new_facts:
-            self.__add_to_class_facts_dict(self.class_to_facts, fact)
+            self.__add_to_class_facts_dict(fact)
 
         logging.debug(f"Adding to dag: all facts: {self.class_to_facts.values()}, new: {new_facts}")
         node_count = 0
@@ -78,11 +81,11 @@ class Dag:
             if satisfies:
                 # Get all the permutations associated with the objects
                 perms = permutations(when_objs, new_facts)                
-                logging.debug(f"{rule}, object combination: {perms}")
+                logging.debug(f"{rule}, object permuation: {perms}")
                 # insert to the dag
                 for e in perms:
                     logging.debug(f"Adding node: {rule}{e}")
-                    self.__insert(self.dag, Node(rule, e))
+                    self.__insert(Node(rule, e))
                     node_count = node_count+1
         logging.debug(f"Updated dag: {self.dag}, new nodes count: {node_count}")
         return node_count

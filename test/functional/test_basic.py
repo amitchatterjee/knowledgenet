@@ -56,7 +56,7 @@ def test_one_rule_single_when_then():
                 When(forClass(C1), expression(lambda ctx: assign(ctx, c1=ctx.this) and ctx.this.val > 1)),
                 Then(lambda ctx: insert(ctx, R1(ctx.c1))))
 
-    ruleset = Ruleset([rule])
+    ruleset = Ruleset('rs1', [rule])
     m1 = C1(2)
     facts = [C1(1), m1]
     result_facts = ruleset.run(facts)
@@ -74,7 +74,7 @@ def test_one_rule_multiple_when_thens():
                     lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
                     lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2))]))
 
-    ruleset = Ruleset([rule])
+    ruleset = Ruleset('rs1', [rule])
     m1 = C1(2)
     m2 = C2(3)
     facts = [C1(1), m1, C2(1), C2(2), m2]
@@ -92,7 +92,7 @@ def test_simple_rule_chanining_with_insert():
                 When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0)),
                 Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.this))))
     
-    ruleset = Ruleset([rule_1, rule_2])
+    ruleset = Ruleset('rs1', [rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
     result_facts = ruleset.run(facts)
@@ -111,7 +111,7 @@ def test_rule_chanining_with_insert_and_matching():
                     When(forClass(Ch1), expression(lambda ctx: ctx.this.val > 0 and assign(ctx,child=ctx.this) and ctx.child.parent == ctx.parent))
                 ],
                 Then(lambda ctx: insert(ctx, R1(ctx.this.parent, ctx.child))))
-    ruleset = Ruleset([rule_1, rule_2])
+    ruleset = Ruleset('rs1', [rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
     result_facts = ruleset.run(facts)
@@ -132,7 +132,7 @@ def test_simple_rule_chanining_with_update():
                 When(forClass(C1), expression(lambda ctx: ctx.this.val <= 0 and assign(ctx, c2=ctx.this))),
                 Then(lambda ctx: insert(ctx, R1(ctx.c2))))
     
-    ruleset = Ruleset([rule_1, rule_2])
+    ruleset = Ruleset('rs1', [rule_1, rule_2])
     m1 = C1(20)
     facts = [m1]
     result_facts = ruleset.run(facts)
