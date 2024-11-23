@@ -5,6 +5,7 @@ import logging
 
 from pyrete.rule import Rule,When
 from pyrete.ruleset import Ruleset
+from pyrete.session import Session
 from pyrete.dsl import assign, insert, update, forClass, expression, Then
 
 class C1:
@@ -59,7 +60,7 @@ def test_one_rule_single_when_then():
     ruleset = Ruleset('rs1', [rule])
     m1 = C1(2)
     facts = [C1(1), m1]
-    result_facts = ruleset.run(facts)
+    result_facts = Session(ruleset).run(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1== len(matching)
     assert 1 == len(matching[0].vals)
@@ -78,7 +79,7 @@ def test_one_rule_multiple_when_thens():
     m1 = C1(2)
     m2 = C2(3)
     facts = [C1(1), m1, C2(1), C2(2), m2]
-    result_facts = ruleset.run(facts)
+    result_facts = Session(ruleset).run(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
@@ -95,7 +96,7 @@ def test_simple_rule_chanining_with_insert():
     ruleset = Ruleset('rs1', [rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
-    result_facts = ruleset.run(facts)
+    result_facts = Session(ruleset).run(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
@@ -114,7 +115,7 @@ def test_rule_chanining_with_insert_and_matching():
     ruleset = Ruleset('rs1', [rule_1, rule_2])
     m1 = P1(20)
     facts = [m1]
-    result_facts = ruleset.run(facts)
+    result_facts = Session(ruleset).run(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
@@ -135,7 +136,7 @@ def test_simple_rule_chanining_with_update():
     ruleset = Ruleset('rs1', [rule_1, rule_2])
     m1 = C1(20)
     facts = [m1]
-    result_facts = ruleset.run(facts)
+    result_facts = Session(ruleset).run(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 1 ==len(matching[0].vals)

@@ -6,8 +6,10 @@ from pyrete.graph import Node
 from pyrete.utils import to_list
 
 class Session:
-    def __init__(self, rules):
-        self.rules = rules
+    def __init__(self, ruleset, globals=[]):
+        self.ruleset = ruleset
+        self.rules = ruleset.rules
+        self.globals = globals
 
          # Create an empty facts_set that contains all facts
         self.facts_set = set()
@@ -85,7 +87,7 @@ class Session:
                 # insert to the dag
                 for e in perms:
                     logging.debug(f"Adding node: {rule}{e}")
-                    self.__insert(Node(rule, e))
+                    self.__insert(Node(rule, self.rules, self.globals, e))
                     node_count = node_count+1
         logging.debug(f"Updated dag: {self.dag}, new nodes count: {node_count}")
         return node_count
