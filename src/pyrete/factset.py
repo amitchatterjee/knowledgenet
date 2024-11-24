@@ -21,5 +21,5 @@ class Factset:
         facts_list.append(fact)
         self.__class_to_facts[fact.__class__] = facts_list
 
-    def get_facts_of_type(self, cls):
+    def facts_of_type(self, cls):
         return self.__class_to_facts[cls] if cls in self.__class_to_facts else None

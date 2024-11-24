@@ -88,7 +88,7 @@ class Session:
             when_objs = []
             # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
             for when in rule.whens:
-                objs = self.factset.get_facts_of_type(when.onclass)
+                objs = self.factset.facts_of_type(when.onclass)
                 if not objs:
                     satisfies = False
                     break

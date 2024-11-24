@@ -1,8 +1,8 @@
 from pyrete.session import Session
 
 class Service:
-    def __init__(self, name, rulesets, globals=[]):
-        self.name = name
+    def __init__(self, id, rulesets, globals=[]):
+        self.id = id
         self.rulesets = rulesets
         self.globals = globals
 

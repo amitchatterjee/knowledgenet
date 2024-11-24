@@ -54,15 +54,12 @@ def test_one_rule_single_when_then():
     rule = Rule('r1', 
                 When(forType(C1), expression(lambda ctx, this: assign(ctx, c1=this) and this.val > 1)),
                 Then(lambda ctx: insert(ctx, R1(ctx.c1))))
-
-    ruleset = Ruleset('rs1', [rule])
-    m1 = C1(2)
-    facts = [C1(1), m1]
-    result_facts = Service('ts1', [ruleset]).execute(facts)
+    facts = [C1(1), C1(2)]
+    result_facts = Service('ts1', [Ruleset('rs1', [rule])]).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1== len(matching)
     assert 1 == len(matching[0].vals)
-    assert m1 == matching[0].vals[0]
+    assert facts[1] == matching[0].vals[0]
 
 def test_one_rule_multiple_when_thens():
     rule = Rule('r1', [
@@ -73,15 +70,12 @@ def test_one_rule_multiple_when_thens():
                     lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
                     lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2))]))
 
-    ruleset = Ruleset('rs1', [rule])
-    m1 = C1(2)
-    m2 = C2(3)
-    facts = [C1(1), m1, C2(1), C2(2), m2]
-    result_facts = Service('ts1', [ruleset]).execute(facts)
+    facts = [C1(1), C1(2), C2(1), C2(2), C2(3)]
+    result_facts = Service('ts1', [Ruleset('rs1', [rule])]).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
-    assert (m1,m2) == matching[0].vals
+    assert (facts[1],facts[4]) == matching[0].vals
 
 def test_simple_rule_chanining_with_insert():
     rule_1 = Rule('r1',
@@ -91,14 +85,12 @@ def test_simple_rule_chanining_with_insert():
                 When(forType(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx, child=this))),
                 Then(lambda ctx: insert(ctx, R1(ctx.child.parent, ctx.child))))
     
-    ruleset = Ruleset('rs1', [rule_1, rule_2])
-    m1 = P1(20)
-    facts = [m1]
-    result_facts = Service('ts1', [ruleset]).execute(facts)
+    facts = [P1(20)]
+    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
-    assert m1 == matching[0].vals[0]
+    assert facts[0] == matching[0].vals[0]
     assert Ch1 == type(matching[0].vals[1])
 
 def test_rule_chanining_with_insert_and_matching():
@@ -110,14 +102,12 @@ def test_rule_chanining_with_insert_and_matching():
                     When(forType(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx,child=this) and ctx.child.parent == ctx.parent))
                 ],
                 Then(lambda ctx: insert(ctx, R1(ctx.parent, ctx.child))))
-    ruleset = Ruleset('rs1', [rule_1, rule_2])
-    m1 = P1(20)
-    facts = [m1]
-    result_facts = Service('ts1', [ruleset]).execute(facts)
+    facts = [P1(20)]
+    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
-    assert m1 == matching[0].vals[0]
+    assert facts[0] == matching[0].vals[0]
     assert Ch1 == type(matching[0].vals[1])
 
 def test_simple_rule_chanining_with_update():
@@ -129,16 +119,13 @@ def test_simple_rule_chanining_with_update():
                 Then(zero_out))
     rule_2 = Rule('r2',
                 When(forType(C1), expression(lambda ctx, this: this.val <= 0 and assign(ctx, c2=this))),
-                Then(lambda ctx: insert(ctx, R1(ctx.c2))))
-    
-    ruleset = Ruleset('rs1', [rule_1, rule_2])
-    m1 = C1(20)
-    facts = [m1]
-    result_facts = Service('ts1', [ruleset]).execute(facts)
+                Then(lambda ctx: insert(ctx, R1(ctx.c2))))    
+    facts = [C1(20)]
+    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 1 ==len(matching[0].vals)
-    assert m1 == matching[0].vals[0]
+    assert facts[0] == matching[0].vals[0]
 
 def test_rule_chanining_with_delete_and_matching():
     rule_1 = Rule('r1',
@@ -149,9 +136,8 @@ def test_rule_chanining_with_delete_and_matching():
                     When(forType(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx,child=this) and this.parent == ctx.parent))
                 ],
                 Then(lambda ctx: insert(ctx, R1(ctx.parent, ctx.child))), rank=1)
-    ruleset = Ruleset('rs1', [rule_1, rule_2])
-    m1 = P1(20)
-    facts = [m1, Ch1(m1, 20)]
-    result_facts = Service('ts1', [ruleset]).execute(facts)
+    parent = P1(20)
+    facts = [parent, Ch1(parent, 20)]
+    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 0 == len(matching)
