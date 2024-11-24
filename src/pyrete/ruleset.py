@@ -1,11 +1,11 @@
 from pyrete.session import Session
 
 class Ruleset:
-    def __init__(self, id, rules, globals=[]):
+    def __init__(self, id, rules, global_ctx={}):
         self.id = id
         # TODO add rule validations
         self.rules = rules
-        self.globals = globals
+        self.global_ctx = global_ctx
 
     def __str__(self):
         return f"Ruleset({self.id})"

@@ -1,21 +1,23 @@
 import logging
+import uuid
 from collections import deque
 
-from pyrete.perms import permutations
+from src.pyrete.perm import permutations
 from pyrete.graph import Node
 from pyrete.factset import Factset
 
 class Session:
-    def __init__(self, ruleset, facts, globals=[]):
+    def __init__(self, ruleset, facts, id=uuid.uuid1(), global_ctx={}):
+        self.id = id
         self.ruleset = ruleset
         self.rules = ruleset.rules
-        self.globals = globals
+        self.global_ctx = global_ctx
         self.factset = Factset()
         self.graph = deque()
         self.__add_facts(facts)
 
     def __str__(self):
-        return f"Session(ruleset: {self.ruleset}, facts:{self.factset})"
+        return f"Session({self.id}, ruleset: {self.ruleset}, facts:{self.factset})"
     
     def __repr__(self):
         return self.__str__()
@@ -25,9 +27,9 @@ class Session:
         return self.factset.facts
 
     def __insert(self, node):
-        # TODO check for dups - needed when inserting/updating facts from rules
+        # TODO only rule.order based ordering is implemented for now
         for i, each in enumerate(self.graph):
-            if each.rule.rank > node.rule.rank:
+            if each.rule.order > node.rule.order:
                 self.graph.insert(i, node)
                 return
         self.graph.append(node)
@@ -100,7 +102,7 @@ class Session:
                 logging.debug(f"{rule}, object permuation: {perms}")
                 # insert to the graph
                 for e in perms:
-                    node = Node(rule, self.rules, self.globals, e)
+                    node = Node(rule, self.rules, self.global_ctx, e)
                     logging.debug(f"Adding node: {node}")
                     self.__insert(node)
                     node_count = node_count+1

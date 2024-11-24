@@ -1,9 +1,9 @@
-from pyrete.utils import to_list
+from src.pyrete.util import to_list
 
 class Rule:
-    def __init__(self, id, whens, thens, rank=0, **kwargs):
+    def __init__(self, id, whens, thens, order=0, **kwargs):
         self.id = id
-        self.rank = rank
+        self.order = order
         self.whens = to_list(whens)
         self.thens = to_list(thens)
         for key, value in kwargs.items():

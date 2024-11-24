@@ -10,10 +10,3 @@ def expression(exp):
 def Then(exp):
     return exp
 
-######################################
-# Functions used in when statements
-######################################
-def assign(ctx, **kwargs):
-    for key, value in kwargs.items():
-        setattr(ctx, key, value)
-    return True

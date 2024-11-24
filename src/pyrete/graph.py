@@ -18,10 +18,10 @@ class Leaf:
         return False, self.result
 
 class Node:
-    def __init__(self, rule, rules, globals, when_objs):
+    def __init__(self, rule, rules, global_ctx, when_objs):
         self.rule = rule
         self.rules = rules
-        self.globals = globals
+        self.global_ctx = global_ctx
         self.when_objs = when_objs
 
         # Create when expression execution context
@@ -43,7 +43,7 @@ class Node:
     def execute(self, facts_set):
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
-        context = SimpleNamespace(_facts=facts_set, _changes = [], _rule = self.rule, _rules = self.rules, _globals=self.globals)
+        context = SimpleNamespace(_facts=facts_set, _changes = [], _rule = self.rule, _rules = self.rules, _global=self.global_ctx)
 
         all_cached = True
         # Evaluate all when clauses
