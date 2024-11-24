@@ -3,7 +3,7 @@ import logging
 from pyrete.rule import Rule,When
 from pyrete.ruleset import Ruleset
 from pyrete.service import Service
-from pyrete.dsl import assign, forClass, expression, Then
+from pyrete.dsl import assign, forType, expression, Then
 from pyrete.signal import insert, update, delete
 
 from util import find_result_of_type
@@ -52,7 +52,7 @@ class Ch1:
 
 def test_one_rule_single_when_then():
     rule = Rule('r1', 
-                When(forClass(C1), expression(lambda ctx, this: assign(ctx, c1=this) and this.val > 1)),
+                When(forType(C1), expression(lambda ctx, this: assign(ctx, c1=this) and this.val > 1)),
                 Then(lambda ctx: insert(ctx, R1(ctx.c1))))
 
     ruleset = Ruleset('rs1', [rule])
@@ -66,8 +66,8 @@ def test_one_rule_single_when_then():
 
 def test_one_rule_multiple_when_thens():
     rule = Rule('r1', [
-                When(forClass(C1), expression(lambda ctx, this: assign(ctx, c1=this) and this.val > 1)),
-                When(forClass(C2), expression(lambda ctx, this: assign(ctx, c2=this) and this.val != ctx.c1.val and this.val > 1))
+                When(forType(C1), expression(lambda ctx, this: assign(ctx, c1=this) and this.val > 1)),
+                When(forType(C2), expression(lambda ctx, this: assign(ctx, c2=this) and this.val != ctx.c1.val and this.val > 1))
                 ],
                 Then([
                     lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
@@ -85,10 +85,10 @@ def test_one_rule_multiple_when_thens():
 
 def test_simple_rule_chanining_with_insert():
     rule_1 = Rule('r1',
-                When(forClass(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx, parent=this))),
+                When(forType(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx, parent=this))),
                 Then(lambda ctx: insert(ctx, Ch1(ctx.parent, 20))))
     rule_2 = Rule('r2',
-                When(forClass(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx, child=this))),
+                When(forType(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx, child=this))),
                 Then(lambda ctx: insert(ctx, R1(ctx.child.parent, ctx.child))))
     
     ruleset = Ruleset('rs1', [rule_1, rule_2])
@@ -103,11 +103,11 @@ def test_simple_rule_chanining_with_insert():
 
 def test_rule_chanining_with_insert_and_matching():
     rule_1 = Rule('r1',
-                When(forClass(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx, parent=this))),
+                When(forType(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx, parent=this))),
                 Then(lambda ctx: insert(ctx, Ch1(ctx.parent, 20))))
     rule_2 = Rule('r2', [
-                    When(forClass(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx,parent=this))),
-                    When(forClass(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx,child=this) and ctx.child.parent == ctx.parent))
+                    When(forType(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx,parent=this))),
+                    When(forType(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx,child=this) and ctx.child.parent == ctx.parent))
                 ],
                 Then(lambda ctx: insert(ctx, R1(ctx.parent, ctx.child))))
     ruleset = Ruleset('rs1', [rule_1, rule_2])
@@ -125,10 +125,10 @@ def test_simple_rule_chanining_with_update():
         ctx.c1.val = 0
         update(ctx, ctx.c1)
     rule_1 = Rule('r1',
-                When(forClass(C1), expression(lambda ctx, this: this.val > 0 and assign(ctx, c1=this))),
+                When(forType(C1), expression(lambda ctx, this: this.val > 0 and assign(ctx, c1=this))),
                 Then(zero_out))
     rule_2 = Rule('r2',
-                When(forClass(C1), expression(lambda ctx, this: this.val <= 0 and assign(ctx, c2=this))),
+                When(forType(C1), expression(lambda ctx, this: this.val <= 0 and assign(ctx, c2=this))),
                 Then(lambda ctx: insert(ctx, R1(ctx.c2))))
     
     ruleset = Ruleset('rs1', [rule_1, rule_2])
@@ -142,11 +142,11 @@ def test_simple_rule_chanining_with_update():
 
 def test_rule_chanining_with_delete_and_matching():
     rule_1 = Rule('r1',
-                When(forClass(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx, parent=this))),
+                When(forType(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx, parent=this))),
                 Then(lambda ctx: delete(ctx, ctx.parent)))
     rule_2 = Rule('r2', [
-                    When(forClass(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx,parent=this))),
-                    When(forClass(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx,child=this) and this.parent == ctx.parent))
+                    When(forType(P1), expression(lambda ctx, this: this.val > 0 and assign(ctx,parent=this))),
+                    When(forType(Ch1), expression(lambda ctx, this: this.val > 0 and assign(ctx,child=this) and this.parent == ctx.parent))
                 ],
                 Then(lambda ctx: insert(ctx, R1(ctx.parent, ctx.child))), rank=1)
     ruleset = Ruleset('rs1', [rule_1, rule_2])

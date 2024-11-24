@@ -1,7 +1,7 @@
 ######################################
 # Rule definition syntactic sugar
 ######################################
-def forClass(cls):
+def forType(cls):
     return cls
 
 def expression(exp):
