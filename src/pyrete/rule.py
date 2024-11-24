@@ -1,9 +1,11 @@
+from pyrete.utils import to_list
+
 class Rule:
     def __init__(self, name, whens, thens, rank=0, **kwargs):
         self.name = name
         self.rank = rank
-        self.whens = whens
-        self.thens = thens
+        self.whens = to_list(whens)
+        self.thens = to_list(thens)
         for key, value in kwargs.items():
             setattr(self, key, value)
         # TODO add validations

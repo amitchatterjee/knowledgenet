@@ -1,6 +1,5 @@
 import logging
 
-from pyrete.utils import to_list
 from types import SimpleNamespace
 
 class Leaf:
@@ -9,12 +8,12 @@ class Leaf:
         self.when_index = when_index
         self.executed = False
 
-    def execute(self, context):
+    def execute(self, context, this):
         if self.executed:
             # Return the previous result
             return True, self.result
         # Else, evaluate the expression
-        self.result = to_list(self.rule.whens)[self.when_index].exp(context)
+        self.result = self.rule.whens[self.when_index].exp(context, this)
         self.executed = True
         return False, self.result
 
@@ -27,7 +26,7 @@ class Node:
 
         # Create when expression execution context
         self.leaves = []
-        for i, when in enumerate(to_list(rule.whens)):
+        for i, when in enumerate(rule.whens):
             self.leaves.append(Leaf(rule, i))
 
     def invalidate_leaves(self, updated_facts):
@@ -49,9 +48,7 @@ class Node:
         all_cached = True
         # Evaluate all when clauses
         for i, when in enumerate(self.leaves):
-            # Add a "this" to the context
-            context.this = self.when_objs[i]
-            cached, result = when.execute(context)
+            cached, result = when.execute(context, self.when_objs[i])
             logging.debug(f"Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
             all_cached = all_cached and cached
             if not result:
@@ -63,7 +60,7 @@ class Node:
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
         logging.debug(f"Node: {self} with context:{context} all when clauses satisfied, going to execute the then clauses")
-        for then in to_list(self.rule.thens):
+        for then in self.rule.thens:
             # Execute each function/lambda included in the rule
             then(context)
 
