@@ -1,14 +1,23 @@
-from src.pyrete.util import to_list
+from pyrete.util import to_list
+from pyrete.service_registry import registry
 
 class Rule:
-    def __init__(self, id, whens, thens, order=0, **kwargs):
+    def __init__(self, id, when, then, order=0, service=None, ruleset=None, **kwargs):
         self.id = id
         self.order = order
-        self.whens = to_list(whens)
-        self.thens = to_list(thens)
+        self.whens = to_list(when)
+        self.thens = to_list(then)
         for key, value in kwargs.items():
             setattr(self, key, value)
         # TODO add validations
+        if (service and not ruleset) or (ruleset and not service):
+            raise Exception('Both "service" and "ruleset" must be specified')
+        if service:
+            if service not in registry:
+                registry[service] = {}
+            if ruleset not in registry[service]:
+                registry[service][ruleset] = []
+            registry[service][ruleset].append(self)
 
     def __str__(self):
         return f"Rule({self.id})"
@@ -19,8 +28,8 @@ class Rule:
     def __eq__(self, other):
         return self.id == other.name
 
-class When:
-    def __init__(self, onclass, exp):
-        self.onclass = onclass
-        self.exp = exp
+class Condition:
+    def __init__(self, for_type, matches_exp):
+        self.for_type = for_type
+        self.exp = matches_exp
         # TODO add validation
