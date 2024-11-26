@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyrete"
+version = "1.0.0b"
+authors = [
+  { name="Amit Chatterjee", email="info@quik-j.com" },
+]
+description = "pyrete engine"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache V2 License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/amitchatterjee/pyrete"
+Issues = "https://github.com/amitchatterjee/pyrete"

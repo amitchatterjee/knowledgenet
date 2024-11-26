@@ -1,5 +1,5 @@
-from pyrete.util import to_list
-from pyrete.service_registry import registry
+from util import to_list
+from service_registry import registry
 
 class Rule:
     def __init__(self, id, when, then, order=0, service=None, ruleset=None, **kwargs):

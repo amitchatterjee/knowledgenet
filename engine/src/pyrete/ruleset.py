@@ -1,4 +1,4 @@
-from pyrete.session import Session
+from session import Session
 
 class Ruleset:
     def __init__(self, id, rules, global_ctx={}):

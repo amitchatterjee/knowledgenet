@@ -1,17 +1,16 @@
 import logging
 
-from pyrete.rule import Rule,Condition
-from pyrete.ruleset import Ruleset
-from pyrete.service import Service
-from pyrete.helper import assign
-from pyrete.signal import insert
-from pyrete.service_registry import registry
+from rule import Rule,Condition
+from ruleset import Ruleset
+from service import Service
+from helper import assign
+from notify import insert
 
-from util import find_result_of_type
-from fact_type import C1, C2, R1, P1, Ch1
+from test.functional.test_helpers.test_util import find_result_of_type
+from test.functional.test_helpers.test_facts import C1, C2, R1, P1, Ch1
 
 def test_one_rule_single_when_then():
-    rule = Rule(id='r1', service='ts1', ruleset='rs1',
+    rule = Rule(id='r1',
                 when=Condition(for_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
                 then=lambda ctx: insert(ctx, R1(ctx.c1)))
     facts = [C1(1), C1(2)]

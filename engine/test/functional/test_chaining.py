@@ -1,13 +1,11 @@
-import logging
+from rule import Rule,Condition
+from ruleset import Ruleset
+from service import Service
+from helper import assign
+from notify import insert, update, delete
 
-from pyrete.rule import Rule,Condition
-from pyrete.ruleset import Ruleset
-from pyrete.service import Service
-from pyrete.helper import assign
-from pyrete.signal import insert, update, delete
-
-from util import find_result_of_type
-from fact_type import C1, C2, R1, P1, Ch1
+from test.functional.test_helpers.test_util import find_result_of_type
+from test.functional.test_helpers.test_facts import C1, R1, P1, Ch1
 
 def test_simple_rule_chanining_with_insert():
     rule_1 = Rule(id='r1',

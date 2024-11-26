@@ -1,4 +1,4 @@
-from pyrete.session import Session
+from session import Session
 import uuid
 
 class Service:
@@ -15,7 +15,7 @@ class Service:
         return resulting_facts
 
     def __str__(self):
-        return f"Service(ruleset: {self.ruleset})"
+        return f"Service(ruleset: {self.rulesets})"
     
     def __repr__(self):
         return self.__str__()

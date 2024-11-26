@@ -2,9 +2,9 @@ import logging
 import uuid
 from collections import deque
 
-from src.pyrete.perm import permutations
-from pyrete.graph import Node
-from pyrete.factset import Factset
+from perm import permutations
+from graph import Node
+from factset import Factset
 
 class Session:
     def __init__(self, ruleset, facts, id=uuid.uuid1(), global_ctx={}):
