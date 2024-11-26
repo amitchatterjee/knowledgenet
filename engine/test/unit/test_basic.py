@@ -6,8 +6,8 @@ from service import Service
 from helper import assign
 from notify import insert
 
-from test.functional.test_helpers.test_util import find_result_of_type
-from test.functional.test_helpers.test_facts import C1, C2, R1, P1, Ch1
+from test_helpers.test_util import find_result_of_type
+from test_helpers.test_facts import C1, C2, R1, P1, Ch1
 
 def test_one_rule_single_when_then():
     rule = Rule(id='r1',

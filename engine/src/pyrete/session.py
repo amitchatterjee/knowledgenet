@@ -102,7 +102,7 @@ class Session:
                 logging.debug(f"{rule}, object permuation: {perms}")
                 # insert to the graph
                 for each in perms:
-                    node = Node(rule, self.rules, self.global_ctx, each)
+                    node = Node(int(uuid.uuid4().int), rule, self.rules, self.global_ctx, each)
                     logging.debug(f"Adding node: {node}")
                     self.__insert(node)
                     node_count = node_count+1

@@ -10,7 +10,7 @@ def ruledef(func):
     wrapped.__wrapped__ = True
     return wrapped
 
-def load_rules_from_module(module):
+def __load_rules_from_module(module):
     decorated_methods = []
     for name, obj in inspect.getmembers(module):
         #print(f"{name}:{obj}")
@@ -32,4 +32,4 @@ def load_rules(path):
     sys.path.append(path)
     modules = __find_modules(path)
     for module in modules:
-        load_rules_from_module(module)
+        __load_rules_from_module(module)

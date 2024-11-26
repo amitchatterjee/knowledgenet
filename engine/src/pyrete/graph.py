@@ -18,7 +18,8 @@ class Leaf:
         return False, self.result
 
 class Node:
-    def __init__(self, rule, rules, global_ctx, when_objs):
+    def __init__(self, id, rule, rules, global_ctx, when_objs):
+        self.id = id
         self.rule = rule
         self.rules = rules
         self.global_ctx = global_ctx
@@ -72,17 +73,10 @@ class Node:
         return result
 
     def __str__(self):
-        return f"Node(rule:{self.rule}, whens:{self.when_objs})"
+        return f"Node({self.id}, rule:{self.rule}, whens:{self.when_objs})"
 
     def __repr__(self):
         return self.__str__()
     
     def __eq__(self, other):
-        if self.rule != other.rule:
-            return False
-        if len(self.when_objs) != len(other.when_objs):
-            return False
-        for i, when_obj in enumerate(self.when_objs):
-            if when_obj != other.when_objs[i]:
-                return False
-        return True
+        return self.id == other.id
