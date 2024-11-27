@@ -3,7 +3,7 @@ import uuid
 from collections import deque
 
 from perm import permutations
-from graph import Node
+from node import Node
 from factset import Factset
 
 class Session:

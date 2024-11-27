@@ -1,82 +1,111 @@
-import logging
+from decimal import Decimal
 
-from types import SimpleNamespace
+class Element:
+    def __init__(self, prev, next, obj, ord):
+        self.prev = prev
+        self.next = next
+        self.obj = obj
+        self.ord = ord
 
-class Leaf:
-    def __init__(self, rule, when_index):
-        self.rule = rule
-        self.when_index = when_index
-        self.executed = False
+class Graph:
+    def __init__(self, comparator):
+        self.first = None
+        self.cursor = None
+        self.comparator = comparator
 
-    def execute(self, context, this):
-        if self.executed:
-            # Return the previous result
-            return True, self.result
-        # Else, evaluate the expression
-        self.result = self.rule.whens[self.when_index].exp(context, this)
-        self.executed = True
-        return False, self.result
+    def __ordinal(self, prev, next):
+        p_ordinal = prev.ord if prev else Decimal(0)
+        n_ordinal = next.ord if next else p_ordinal + Decimal(100)
+        return (p_ordinal + n_ordinal) / Decimal(2)
 
-class Node:
-    def __init__(self, id, rule, rules, global_ctx, when_objs):
-        self.id = id
-        self.rule = rule
-        self.rules = rules
-        self.global_ctx = global_ctx
-        self.when_objs = when_objs
-
-        # Create when expression execution context
-        self.leaves = []
-        for i, when in enumerate(rule.whens):
-            self.leaves.append(Leaf(rule, i))
-
-    def invalidate_leaves(self, updated_facts):
-        for i,leaf in enumerate(self.when_objs):
-            if leaf in updated_facts:
-                # clear cache from the leaves for the leaf + everything after it
-                for j in range(i, len(self.when_objs)):
-                    leaf = self.leaves[j]
-                    leaf.executed = False
-                    leaf.result = None
-                return True
-        return False
-
-    def execute(self, facts_set):
-        # Create an empty context for when expressions to populate stuff with
-        # Add all "facts" to this context. This will be used by accumulator and other DSL methods
-        context = SimpleNamespace(_facts=facts_set, _changes = [], _rule = self.rule, _rules = self.rules, _global=self.global_ctx)
-
-        all_cached = True
-        # Evaluate all when clauses
-        for i, when in enumerate(self.leaves):
-            cached, result = when.execute(context, self.when_objs[i])
-            logging.debug(f"Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
-            all_cached = all_cached and cached
-            if not result:
-                return None
-
-        # If all the executions were cached, there is no need to execute the then
-        if all_cached:
-            return None
+    def insert(self, obj):
+        if not self.first:
+            # If this is the only element in the list
+            node = Element(None, None, obj, self.__ordinal(None,None))
+            self.first = node
+            return node
         
-        # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug(f"Node: {self} with context:{context} all when clauses satisfied, going to execute the then clauses")
-        for then in self.rule.thens:
-            # Execute each function/lambda included in the rule
-            then(context)
+        last = None
+        element = self.first
+        while element:
+            # Invoke the comparator.
+            result = self.comparator(obj, element.obj)
+            if result < 0:
+                # The obj needs to be inserted left of the element
+                prev = element.prev
+                next = element.next
+                node = Element(prev, element, obj, self.__ordinal(prev,element))
+                if prev:
+                    prev.next = node
+                else:
+                    self.first = node
+                if next:
+                    next.prev = node
+                return node
+            last = element
+            element = element.next
 
-        result = {'insert': [], 'update': [], 'delete': []}
-        # Report changes to the facts introduced by the execution of the above functions
-        for change in context._changes:
-            result[change[1]].append(change[0])
-        logging.debug(f"Result from node: {self} execution, result: {result}")
-        return result
+        # Insert it at the rightmost side of the list
+        node = Element(last, None, obj, self.__ordinal(last, None))
+        last.next = node
+        return node
 
-    def __str__(self):
-        return f"Node({self.id}, rule:{self.rule}, whens:{self.when_objs})"
+    def delete(self, obj):
+        element = self.first
+        while element:
+            if obj == element.obj:
+                prev = element.prev
+                next = element.next
+                if prev:
+                    if next:
+                        # Removing an element between two elements
+                        prev.next = next
+                        next.prev = prev
+                    else:
+                        # Removing an element that is at the end of the list
+                        prev.next = None
+                else:
+                    if next:
+                        # Removing an element that at the beginning of the list
+                        next.prev = None
+                        self.first = next
+                    else:
+                        # Removing the only element from the list
+                        self.first = None
 
-    def __repr__(self):
-        return self.__str__()
+                if self.cursor and element == self.cursor:
+                    # If this element is currently being iterated on, move the pointer forward
+                    self.cursor = next
+
+                return next
+            element = element.next
+        # Element is not found
+        return None
+
+    def start(self, node = None):
+        if not node:
+            self.cursor = self.first
+        else:
+            self.cursor = node
+
+    def get_cursor(self):
+        return self.cursor
+
+    def next(self):
+        current = self.cursor
+        if not current:
+            return None
+        self.cursor = self.cursor.next
+        return current.obj
     
-    def __eq__(self, other):
-        return self.id == other.id
+    def compare(self, node1, node2):
+        return node1.ord - node2.ord
+
+    def is_left_of(self, node):
+        return self.compare(self.cursor, node) < 0
+        
+    def is_right_of(self, node):
+        return self.compare(self.cursor, node) > 0
+    
+    def is_on_node(self, node):
+        return self.compare(self.cursor, node) == 0

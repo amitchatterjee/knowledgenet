@@ -1,4 +1,4 @@
-from linkedlist import TraversingLinkedList
+from graph import Graph
 
 def get_list(ll, node=None):
     result = []
@@ -12,7 +12,7 @@ def get_list(ll, node=None):
 
 def test_insert():
     comparator = lambda o1, o2: o1 - o2
-    ll = TraversingLinkedList(comparator)
+    ll = Graph(comparator)
     # Add first element to an empty
     ll.insert(1)
     # Append at the end of the list
@@ -27,7 +27,7 @@ def test_insert():
     
 def test_delete():
     comparator = lambda o1, o2: o1 - o2
-    ll = TraversingLinkedList(comparator)
+    ll = Graph(comparator)
     for i in range(0,10):
         ll.insert(i)
 
@@ -49,7 +49,7 @@ def test_delete():
 
 def test_delete_with_next():
     comparator = lambda o1, o2: o1 > o2
-    ll = TraversingLinkedList(comparator)
+    ll = Graph(comparator)
     for i in range(0,10):
         ll.insert(i)
     result = []
@@ -79,7 +79,7 @@ def test_delete_with_next():
 
 def test_return_and_start():
     comparator = lambda o1, o2: o1 - o2
-    ll = TraversingLinkedList(comparator)
+    ll = Graph(comparator)
     saved_node = None
     for i in range(0,10):
         # Reverse the insertion order, but it should still get ordered correctly
@@ -102,29 +102,29 @@ def test_return_and_start():
 
 def test_ordinal():
     comparator = lambda o1, o2: o1 - o2
-    ll = TraversingLinkedList(comparator)
+    ll = Graph(comparator)
     for i in range(0,10):
         node = ll.insert(i)
 
-    # Move the pointer forward by 5 steps
+    # Move the cursor forward by 5 steps
     ll.start()
     for i in range(0,5):
         obj = ll.next()
         assert i == obj
 
-    # Delete an object left of the current pointer
+    # Delete an object left of the cursor
     node = ll.delete(2)
-    # Verify that current pointer is right of the deleted node 
+    # Verify that cursor is right of the deleted node 
     assert ll.is_right_of(node)
 
-    # Now delete the node where the current pointer is set and verify that the current pointer is moved to the next position
+    # Delete the node where the cursor is set and verify that the cursor is moved to the next position
     node = ll.delete(5)
     assert ll.is_on_node(node)
     
-    # insert an element right of the current pointer
+    # insert an element right of the cursor
     node = ll.insert(10)
     assert ll.is_left_of(node)
 
-    # insert an element left of the current pointer
+    # insert an element left of the cursor
     node = ll.insert(-1)
     assert ll.is_right_of(node)
