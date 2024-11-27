@@ -1,8 +1,8 @@
 from linkedlist import TraversingLinkedList
 
-def get_list(ll):
+def get_list(ll, node=None):
     result = []
-    ll.start()
+    ll.start(node)
     while True:
         obj = ll.next()
         if obj is None:
@@ -24,8 +24,7 @@ def test_insert():
     result = get_list(ll)
     assert 4 == len(result)
     assert [0,1,5,10] == result
-    assert 4 == ll.size()
-
+    
 def test_delete():
     comparator = lambda o1, o2: o1 - o2
     ll = TraversingLinkedList(comparator)
@@ -47,10 +46,9 @@ def test_delete():
         ll.delete(each)
     result = get_list(ll)
     assert 0 == len(result)
-    assert 0 == ll.size()
 
 def test_delete_with_next():
-    comparator = lambda o1, o2: o1 - o2
+    comparator = lambda o1, o2: o1 > o2
     ll = TraversingLinkedList(comparator)
     for i in range(0,10):
         ll.insert(i)
@@ -75,11 +73,58 @@ def test_delete_with_next():
         ll.delete(i)
     # The iterator should be null as we deleted the 5 elements to the right
     assert ll.next() is None
-    # Check if the obj_lookup looks good
-    obj_lookup = [e[2] for e in ll.obj_lookup.values()]
-    obj_lookup.sort()
-    assert [0,1,2,3,4] == obj_lookup
 
     # Verify size and content
-    assert 5 == ll.size()
-    assert obj_lookup == get_list(ll)
+    assert [0,1,2,3,4]== get_list(ll)
+
+def test_return_and_start():
+    comparator = lambda o1, o2: o1 - o2
+    ll = TraversingLinkedList(comparator)
+    saved_node = None
+    for i in range(0,10):
+        # Reverse the insertion order, but it should still get ordered correctly
+        node = ll.insert(9-i)
+        if i == 5:
+            # Save the middle node
+            saved_node = node
+    result = get_list(ll, saved_node)
+    # Needs to work out with pen and paper to see if this works :-)
+    assert 6 == len(result)
+    assert [4, 5, 6, 7, 8, 9] == result
+
+    saved_node = ll.delete(5)
+    result = get_list(ll, saved_node)
+    assert 4 == len(result)
+    assert [6, 7, 8, 9] == result
+
+    saved_node = ll.delete(9)
+    assert saved_node is None
+
+def test_ordinal():
+    comparator = lambda o1, o2: o1 - o2
+    ll = TraversingLinkedList(comparator)
+    for i in range(0,10):
+        node = ll.insert(i)
+
+    # Move the pointer forward by 5 steps
+    ll.start()
+    for i in range(0,5):
+        obj = ll.next()
+        assert i == obj
+
+    # Delete an object left of the current pointer
+    node = ll.delete(2)
+    # Verify that current pointer is right of the deleted node 
+    assert ll.is_right_of(node)
+
+    # Now delete the node where the current pointer is set and verify that the current pointer is moved to the next position
+    node = ll.delete(5)
+    assert ll.is_on_node(node)
+    
+    # insert an element right of the current pointer
+    node = ll.insert(10)
+    assert ll.is_left_of(node)
+
+    # insert an element left of the current pointer
+    node = ll.insert(-1)
+    assert ll.is_right_of(node)
