@@ -1,8 +1,8 @@
 from graph import Graph
 
-def get_list(ll, node=None):
+def get_list(ll, cursor_name='default', node=None):
     result = []
-    ll.start(node)
+    ll.new_cursor(cursor_name, node)
     while True:
         obj = ll.next()
         if obj is None:
@@ -53,7 +53,7 @@ def test_delete_with_next():
     for i in range(0,10):
         ll.insert(i)
     result = []
-    ll.start()
+    ll.new_cursor()
     for i in range(0,5):
         obj = ll.next()
         if obj is None:
@@ -87,17 +87,19 @@ def test_return_and_start():
         if i == 5:
             # Save the middle node
             saved_node = node
-    result = get_list(ll, saved_node)
+    result = get_list(ll, node=saved_node)
     # Needs to work out with pen and paper to see if this works :-)
     assert 6 == len(result)
     assert [4, 5, 6, 7, 8, 9] == result
 
-    saved_node = ll.delete(5)
-    result = get_list(ll, saved_node)
+    deleted, saved_node = ll.delete(5)
+    assert deleted
+    result = get_list(ll, node=saved_node)
     assert 4 == len(result)
     assert [6, 7, 8, 9] == result
 
-    saved_node = ll.delete(9)
+    deleted, saved_node = ll.delete(9)
+    assert deleted
     assert saved_node is None
 
 def test_ordinal():
@@ -107,18 +109,19 @@ def test_ordinal():
         node = ll.insert(i)
 
     # Move the cursor forward by 5 steps
-    ll.start()
+    ll.new_cursor()
     for i in range(0,5):
         obj = ll.next()
         assert i == obj
 
     # Delete an object left of the cursor
-    node = ll.delete(2)
+    deleted, node = ll.delete(2)
+    assert deleted
     # Verify that cursor is right of the deleted node 
     assert ll.is_right_of(node)
 
     # Delete the node where the cursor is set and verify that the cursor is moved to the next position
-    node = ll.delete(5)
+    deleted, node = ll.delete(5)
     assert ll.is_on_node(node)
     
     # insert an element right of the cursor
@@ -128,3 +131,31 @@ def test_ordinal():
     # insert an element left of the cursor
     node = ll.insert(-1)
     assert ll.is_right_of(node)
+
+def test_non_default_cursor():
+    comparator = lambda o1, o2: o1 - o2
+    ll = Graph(comparator)
+    for i in range(0,10):
+        ll.insert(i)
+    # Get a default cursor and iterate through 5 items
+    ll.new_cursor()
+    for i in range(0,5):
+        obj = ll.next()
+        assert i == obj
+    # Get a default cursor and iterate through 5 items
+    ll.new_cursor(cursor_name='x')
+    for i in range(0,5):
+        obj = ll.next('x')
+        assert i == obj
+    # Make sure that the cursors are still in the same place
+    assert 5 == ll.next()
+    assert 6 == ll.next()
+    assert 5 == ll.next('x')
+    assert 6 == ll.next('x')
+    assert 7 == ll.next('x')
+    ll.delete(7)
+    assert 8 == ll.next()
+    assert 8 == ll.next('x')
+
+    
+    

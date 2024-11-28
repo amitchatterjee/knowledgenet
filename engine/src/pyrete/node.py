@@ -31,6 +31,7 @@ class Node:
             self.leaves.append(Leaf(rule, i))
 
     def invalidate_leaves(self, updated_facts):
+        found = False
         for i,leaf in enumerate(self.when_objs):
             if leaf in updated_facts:
                 # clear cache from the leaves for the leaf + everything after it
@@ -79,4 +80,4 @@ class Node:
         return self.__str__()
     
     def __eq__(self, other):
-        return self.id == other.id
+      return self.id == other.id

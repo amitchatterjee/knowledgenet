@@ -7,10 +7,13 @@ class Element:
         self.obj = obj
         self.ord = ord
 
+    def __str__(self):
+        return f"Element:({self.obj})"
+
 class Graph:
     def __init__(self, comparator):
         self.first = None
-        self.cursor = None
+        self.cursors = {}
         self.comparator = comparator
 
     def __ordinal(self, prev, next):
@@ -54,58 +57,69 @@ class Graph:
         element = self.first
         while element:
             if obj == element.obj:
-                prev = element.prev
-                next = element.next
-                if prev:
-                    if next:
-                        # Removing an element between two elements
-                        prev.next = next
-                        next.prev = prev
-                    else:
-                        # Removing an element that is at the end of the list
-                        prev.next = None
-                else:
-                    if next:
-                        # Removing an element that at the beginning of the list
-                        next.prev = None
-                        self.first = next
-                    else:
-                        # Removing the only element from the list
-                        self.first = None
+                next = self.delete_element(element)
 
-                if self.cursor and element == self.cursor:
-                    # If this element is currently being iterated on, move the pointer forward
-                    self.cursor = next
-
-                return next
+                return True, next
             element = element.next
         # Element is not found
-        return None
+        return False, None
 
-    def start(self, node = None):
-        if not node:
-            self.cursor = self.first
+    def delete_element(self, element):
+        prev = element.prev
+        next = element.next
+        if prev:
+            if next:
+                # Removing an element between two elements
+                prev.next = next
+                next.prev = prev
+            else:
+                # Removing an element that is at the end of the list
+                prev.next = None
         else:
-            self.cursor = node
+            if next:
+                # Removing an element that at the beginning of the list
+                next.prev = None
+                self.first = next
+            else:
+                # Removing the only element from the list
+                self.first = None
 
-    def get_cursor(self):
-        return self.cursor
+        for name,cursor in self.cursors.items():
+            if element == cursor:
+                # If this element is currently being iterated on, move the pointer forward
+                self.cursors[name] = next
+        return next
 
-    def next(self):
-        current = self.cursor
-        if not current:
+    def new_cursor(self, cursor_name = 'default', node = None):
+        if not node:
+            self.cursors[cursor_name] = self.first
+        else:
+            self.cursors[cursor_name] = node
+
+    def get_cursor(self, cursor_name = 'default'):
+        return self.cursors[cursor_name]
+
+    def next(self, cursor_name = 'default'):
+        cursor = self.next_element(cursor_name)
+        if not cursor:
             return None
-        self.cursor = self.cursor.next
-        return current.obj
+        return cursor.obj
+    
+    def next_element(self, cursor_name = 'default'):
+        cursor = self.cursors[cursor_name]
+        if not cursor:
+            return None
+        self.cursors[cursor_name] = cursor.next
+        return cursor
     
     def compare(self, node1, node2):
         return node1.ord - node2.ord
 
-    def is_left_of(self, node):
-        return self.compare(self.cursor, node) < 0
+    def is_left_of(self, node, cursor_name = 'default'):
+        return self.compare(self.cursors[cursor_name], node) < 0
         
-    def is_right_of(self, node):
-        return self.compare(self.cursor, node) > 0
+    def is_right_of(self, node, cursor_name = 'default'):
+        return self.compare(self.cursors[cursor_name], node) > 0
     
-    def is_on_node(self, node):
-        return self.compare(self.cursor, node) == 0
+    def is_on_node(self, node, cursor_name = 'default'):
+        return self.compare(self.cursors[cursor_name], node) == 0

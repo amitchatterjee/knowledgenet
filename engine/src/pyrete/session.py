@@ -5,6 +5,7 @@ from collections import deque
 from perm import permutations
 from node import Node
 from factset import Factset
+from graph import Graph
 
 class Session:
     def __init__(self, ruleset, facts, id=uuid.uuid1(), global_ctx={}):
@@ -13,7 +14,7 @@ class Session:
         self.rules = ruleset.rules
         self.global_ctx = global_ctx
         self.factset = Factset()
-        self.graph = deque()
+        self.graph = Graph(self.__comparator)
         self.__add_facts(facts)
 
     def __str__(self):
@@ -26,19 +27,23 @@ class Session:
         self.__execute_graph()
         return self.factset.facts
 
-    def __insert(self, node):
+    def __comparator(self, obj, other):
         # TODO only rule.order based ordering is implemented for now
-        for i, each in enumerate(self.graph):
-            if each.rule.order > node.rule.order:
-                self.graph.insert(i, node)
-                return
-        self.graph.append(node)
+        return obj.rule.order - other.rule.order
 
-    def __execute_graph(self, recursion_count = 0):
-        logging.debug(f"Executing pass: {recursion_count}")
-        counts = 0
-        for node in self.graph:
+
+    def __execute_graph(self):
+        logging.debug(f"Executing rules on graph")
+        self.graph.new_cursor()
+        while True:
+            node = self.graph.next()
+            if node is None:
+                # Reached the end of the graph
+                break
+
+            # Execute the rule on the node
             result = node.execute(self.factset)
+            counts = 0
             if result:
                 # If all conditions were satisfied and the thens were executed
                 if len(result['insert']):
@@ -57,27 +62,36 @@ class Session:
                    logging.debug(f"Deleted facts: {deleted_facts}")
 
                 if counts:
-                    # If there were inserts updates or deletes, stop the current graph execution and re-execute the graph
-                    self.__execute_graph(recursion_count + 1)
-                    break
-        logging.debug(f"Executed pass: {recursion_count}")        
+                    # if there were inserts/updates/deletes
+                    # TODO start from the beginning again. This need to change to start from the leftmost node where a change occured
+                    self.graph.new_cursor()
     
     def __delete_facts(self, deleted_facts):
-        to_delete = []
-        for i, node in enumerate(self.graph):
-            for obj in node.when_objs:
-                if obj in deleted_facts:
-                    to_delete.append(i)
-                    break
-        for index in reversed(to_delete):
-            del self.graph[index]
-        return len(to_delete)
+        cursor_name = 'delete'
+        self.graph.new_cursor(cursor_name=cursor_name)
+        deduped_deletes = set(deleted_facts)
+        counts = 0
+        while True:
+            element = self.graph.next_element(cursor_name)
+            if element is None:
+                break
+            print(element.obj)
+            if len([value for value in element.obj.when_objs if value in deduped_deletes]):
+                self.graph.delete_element(element)
+                counts = counts+1
+        return counts
 
     def __update_facts(self, updated_facts):
-        count = 0
-        for node in self.graph:
-            count = count + node.invalidate_leaves(updated_facts)
-        return count
+        cursor_name = 'update'
+        self.graph.new_cursor(cursor_name=cursor_name)
+        deduped_updates = set(updated_facts)
+        counts = 0
+        while True:
+            node = self.graph.next(cursor_name)
+            if node is None:
+                break
+            counts = counts + 1 if node.invalidate_leaves(deduped_updates) else 0
+        return counts
 
     def __add_facts(self, new_facts):
         # The new_facts variable contains a (deduped) set
@@ -104,7 +118,7 @@ class Session:
                 for each in perms:
                     node = Node(int(uuid.uuid4().int), rule, self.rules, self.global_ctx, each)
                     logging.debug(f"Adding node: {node}")
-                    self.__insert(node)
+                    self.graph.insert(node)
                     node_count = node_count+1
-        logging.debug(f"Updated graph: {self.graph}, graph size: {len(self.graph)}, new nodes count: {node_count}")
+        logging.debug(f"Updated graph: {self.graph}, new nodes count: {node_count}")
         return node_count
