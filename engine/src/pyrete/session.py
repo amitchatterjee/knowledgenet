@@ -118,7 +118,7 @@ class Session:
                 for each in perms:
                     node = Node(int(uuid.uuid4().int), rule, self.rules, self.global_ctx, each)
                     logging.debug(f"Adding node: {node}")
-                    self.graph.insert(node)
+                    self.graph.add(node)
                     node_count = node_count+1
         logging.debug(f"Updated graph: {self.graph}, new nodes count: {node_count}")
         return node_count

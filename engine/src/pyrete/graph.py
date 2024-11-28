@@ -21,7 +21,7 @@ class Graph:
         n_ordinal = next.ord if next else p_ordinal + Decimal(100)
         return (p_ordinal + n_ordinal) / Decimal(2)
 
-    def insert(self, obj):
+    def add(self, obj):
         if not self.first:
             # If this is the only element in the list
             node = Element(None, None, obj, self.__ordinal(None,None))
@@ -35,22 +35,28 @@ class Graph:
             result = self.comparator(obj, element.obj)
             if result < 0:
                 # The obj needs to be inserted left of the element
-                prev = element.prev
-                next = element.next
-                node = Element(prev, element, obj, self.__ordinal(prev,element))
-                if prev:
-                    prev.next = node
-                else:
-                    self.first = node
-                if next:
-                    next.prev = node
-                return node
+                return self.insert(obj, element)
             last = element
             element = element.next
 
         # Insert it at the rightmost side of the list
         node = Element(last, None, obj, self.__ordinal(last, None))
         last.next = node
+        return node
+
+    def insert(self, obj, element):
+        '''
+        Insert object to the left of the element
+        '''
+        prev = element.prev
+        next = element.next
+        node = Element(prev, element, obj, self.__ordinal(prev,element))
+        if prev:
+            prev.next = node
+        else:
+            self.first = node
+        if next:
+            next.prev = node
         return node
 
     def delete(self, obj):
