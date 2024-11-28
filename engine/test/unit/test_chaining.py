@@ -1,8 +1,9 @@
 from rule import Rule,Condition
 from ruleset import Ruleset
-from service import Service
+from knowledge import Knowledge
 from helper import assign
 from notify import insert, update, delete
+from service import execute
 
 from test_helpers.test_util import find_result_of_type
 from test_helpers.test_facts import C1, R1, P1, Ch1
@@ -16,7 +17,7 @@ def test_simple_rule_chanining_with_insert():
                 then=lambda ctx: insert(ctx, R1(ctx.child.parent, ctx.child)))
     
     facts = [P1(20)]
-    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
+    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
@@ -33,7 +34,7 @@ def test_rule_chanining_with_insert_and_matching():
                         Condition(for_type=Ch1, matches_exp=lambda ctx, this: this.val > 0 and assign(ctx,child=this) and ctx.child.parent == ctx.parent)],
                 then=lambda ctx: insert(ctx, R1(ctx.parent, ctx.child)))
     facts = [P1(20)]
-    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
+    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
@@ -51,7 +52,7 @@ def test_simple_rule_chanining_with_update():
                 when=Condition(for_type=C1, matches_exp=lambda ctx, this: this.val <= 0 and assign(ctx, c2=this)),
                 then=lambda ctx: insert(ctx, R1(ctx.c2)))    
     facts = [C1(20)]
-    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
+    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1==len(matching)
     assert 1 ==len(matching[0].vals)
@@ -68,6 +69,6 @@ def test_rule_chanining_with_delete_and_matching():
                 then=lambda ctx: insert(ctx, R1(ctx.parent, ctx.child)))
     parent = P1(20)
     facts = [parent, Ch1(parent, 20)]
-    result_facts = Service('ts1', [Ruleset('rs1', [rule_1, rule_2])]).execute(facts)
+    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 0 == len(matching)

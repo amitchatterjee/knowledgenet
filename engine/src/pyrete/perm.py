@@ -1,6 +1,6 @@
 import logging
 
-def permutations(hier_list, include_only=[]):
+def combinations(hier_list, include_only=[]):
     perms = [[]]
     for child in hier_list:
         perms = __append(perms, child)

@@ -2,7 +2,7 @@ import logging
 import uuid
 from collections import deque
 
-from perm import permutations
+from perm import combinations
 from node import Node
 from factset import Factset
 from graph import Graph
@@ -112,7 +112,7 @@ class Session:
 
             if satisfies:
                 # Get all the permutations associated with the objects
-                perms = permutations(when_objs, new_facts)                
+                perms = combinations(when_objs, new_facts)                
                 logging.debug(f"{rule}, object permuation: {perms}")
                 # insert to the graph
                 for each in perms:

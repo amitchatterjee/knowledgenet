@@ -1,8 +1,8 @@
 from util import to_list
-from service_registry import registry
+from knowledge_registry import registry
 
 class Rule:
-    def __init__(self, id, when, then, order=0, service=None, ruleset=None, **kwargs):
+    def __init__(self, id, when, then, order=0, knowledge=None, ruleset=None, **kwargs):
         self.id = id
         self.order = order
         self.whens = to_list(when)
@@ -10,14 +10,14 @@ class Rule:
         for key, value in kwargs.items():
             setattr(self, key, value)
         # TODO add validations
-        if (service and not ruleset) or (ruleset and not service):
-            raise Exception('Both "service" and "ruleset" must be specified')
-        if service:
-            if service not in registry:
-                registry[service] = {}
-            if ruleset not in registry[service]:
-                registry[service][ruleset] = []
-            registry[service][ruleset].append(self)
+        if (knowledge and not ruleset) or (ruleset and not knowledge):
+            raise Exception('Both "knowledge" and "ruleset" must be specified')
+        if knowledge:
+            if knowledge not in registry:
+                registry[knowledge] = {}
+            if ruleset not in registry[knowledge]:
+                registry[knowledge][ruleset] = []
+            registry[knowledge][ruleset].append(self)
 
     def __str__(self):
         return f"Rule({self.id})"
