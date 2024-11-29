@@ -85,6 +85,28 @@ In the above example, Python *lambda expressions* are used. But references to fu
 A ruleset is a collection of rules. For complex applications, the decision making process may require grouping the rules into rulesets and executing each ruleset in a specific flow. For example, rules may be classified in rulesets - validation rules, business rules and pricing rules. The requirement may be to run execute the rulesets in phases in the following manner.
 
 
-![Simplistic Rules Network](./Rule-Flow.drawio.png)
+![Rule Flow Example](./Rule-Flow.drawio.png)
 
-With Pyrete, one can achieve that by classifying rules into rulesets and specifying the flow. Pyrete executes each ruleset in an **execution session**. On completion of a session, the facts from the output session are passed as inputs for the next session in the flow. A *Then* code on a rule in a ruleset can change the normal flow (shown using white arrows) by specifying which ruleset to execute next.
+With Pyrete, one can achieve that by classifying rules into rulesets and specifying the flow. Pyrete executes each ruleset in an **execution session**. On completion of a session, the facts from the output session are passed as inputs for the next session in the flow. A *Then* code on a rule in a ruleset can change the normal flow (shown using white arrows) by specifying which ruleset to execute next (show using red arrows). 
+
+Example:
+```python
+Rule(id='end_execution', ruleset='validation_rules'  
+        when=[  
+            Condition(for_type=Validation, matches_exp=lambda ctx: not ctx.this.valid)  
+        ],  
+        then=lambda ctx: terminate())  
+```
+
+### Knowledge
+A knowledge is a collection of rulesets. A knowledge is a repository of the entire rules for a particular decision-making service. A Pyrete service.execute(...) function executes the entire set of rules that is part of a knowledge instance. 
+
+One way to view the Knowledge->Ruleset->Rule hierarchy is to consider it as a car owner's troubleshooting manual, with each chapter akin to ruleset and each section akin to rule; each section defining conditions to ascertain or derive some diagnosis.
+
+The knowledge is completely static and is created during the development cycle of a project. The knowledge does not include any facts. The facts are provided along with reference to the knowledge during execution of a service, as denoted below:
+
+> Set\<result_facts> = service(Set\<input_facts\>, Knowledge)  
+
+The relationship between various entities involved in a Pyrete service is show below:
+
+![Pyrete Entity Relationship](./Pyrete-Entity-Relationship.drawio.png)
