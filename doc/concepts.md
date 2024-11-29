@@ -32,15 +32,27 @@ Rete is not without it's own drawbacks. To start with, the algorithm is complex 
 ## Definitions
 The definitions, below, are used throughout this document and library. Note that they may not necessarily align with industry-standard terminologies.
 
-**Service**: A service is the Rete engine/framework using which application developers and business users can automate decision making. By itself, the service does not make decisions. Combined with rules and facts, a service can automate a decision.  
+**Service**: A service is the Rete engine/framework endpoint. Pyrete provides a "**execute(...)***" function to trigger rule execution on a set of facts.  
 
-**Facts**: Facts are objects that represent a "truth". Facts often constructed as objects that are instances of a classes. For example, an object that is an instance of class, *Person{}*, with attributes: *gender*, *age*, etc. can be used to model a human customer. Once populated with correct attributes, these objects may be passed in as inputs to the service; referred to as - **input facts**. Rules are executed against the input facts to produce **intermediate facts** or **result facts**. For complex decision making, intermediate facts are often produced when rules are executed, that are fed to another set of rules to produce more intermediate facts or final results. For example: when a rule, "determine_if_adult" is executed against a fact: Person(age = 10), it produces a fact that is an instance of a **Child{}** class. This object is then passed on as input to the rule, "sell_alcohol_to_adults_only" to produce a result fact that is an instance of class: **Sale{}** - Sale(allow=False). This is a trivial example to represent the concept. Very often, input facts in a complex decision making process goes through a network of rules to produce the result fact, or decision.
+**Facts**: Facts are objects that represent a "truth". Facts may have attributes that describe the characteristics of the fact.  In Pyrete, facts are instances of a classes and the characteristics are variables of the class. For example: 
 
-**FactSet**: All the facts that are part of the current execution. As mentioned above, new facts can be inserted, facts can be deleted or facts can be updated, 
+```python
+    class Person():
+        def __init__(self, gender, age):
+            self.gender = gender
+            self.age = age
+```
+Note that facts may also include classes provided by python standard libraries like list, set, tuple, dict, etc. Pyrete includes a set of container classes to facilitate rule creation that operates on a group of facts. These classes are covered in a separate document.
 
-**Rule**: A rule is defined as a set of conditions. If all the conditions are satisfied, a piece of code is executed, that may add new facts, update a fact, remove a fact, bypass the remaining rules, etc. The conditions are referred to as **When** or **Left Hand Side (LHS)** and the piece of code that is executed is called as **Then** clause or **Right Hand Side (RHS)**. The When part of the rule may contain one ore more **Condition** clauses. Each of these condition clauses identify a **class** that the clause is interested in and a "filter" **expression**, a piece of code that returns a True or False. All the condition clauses must return True in order for the Then clause to be executed. For example:
+**FactSet**: A FactSet include all the facts that are part of the current execution of rules. As mentioned above, new facts can be inserted to the Factset, facts can be deleted from the Factset or facts can be updated by rule execution. 
 
-> Rule(id='determine_if_adult',  
+**Rule**: A rule is a set of conditions and an action that is performed when all the conditions are satisfied. The conditions are referred to as **When** or **Left Hand Side (LHS)** and the action is called as **Then** clause or **Right Hand Side (RHS)**. The action is a piece of Python code represented in a function or a lambda. Each of the conditions specify a **class** that the condition is interested in and a "filter" **expression**, a function or a lambda that returns either True or False. All the conditions must return True in order for the Then function to be executed. 
+
+Pyrete provides library functions using which the Then function can insert, update and delete facts and functions that influence the Rete flow. It provides additional library functions that can be invoked from the Then expressions. These functions are covered in a separate document.
+
+For example:
+```python
+Rule(id='determine_if_adult',  
         when=[  
             Condition(for_type=Person, matches_exp=lambda ctx: ctx.this.age <21)  
         ],  
@@ -51,7 +63,6 @@ The definitions, below, are used throughout this document and library. Note that
             Condition(for_type=Child, matches_exp=lambda ctx: True)  
         ],  
         then=lambda ctx: insert(Sale(allow=False, ...)))
+```
 
-    In the above example, Python *lambda expressions* are used. But references to functions may also be passed if the expressions are more complex. The insert() function, shown above, inserts a new fact into the FactSet.
-
-In complex decision making applications, there may be many rules and many facts. The Pyrete engine manages the sequencing, execution and recursions of the rules. It also determines when the process is complete.
+In the above example, Python *lambda expressions* are used. But references to functions may also be passed if the expressions are more complex. The insert() function, shown above, inserts a new fact into the FactSet.
