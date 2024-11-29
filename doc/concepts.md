@@ -1,13 +1,23 @@
 # Pyrete Concepts
-This document describes the concepts that are used to construct this project. These concepts are not just implementation details, but are essential for application developers who are using or planning to use this library. So, it is important for application developers to read this document closely.
+This document documents the underlying concepts that are used to construct this project. These concepts are not just implementation details, but are essential for application developers who are using or planning to use this library. **So, it is important for application developers to read this document closely**.
 
-Pyrete is a Python Language software library that helps application developers to build complex application that make decisions based on objects (AKA input facts) that are supplied as input to the primary entry point (AKA service) of this library. The output of the service is a set of facts (AKA result facts) that the service infers, based on rules and conditions defined by application developers and/or business users. At a high level, the service can be represented as:
+Pyrete is a Python Language software library that enables application developers to build applications that make complex decisions based on **facts** supplied to the entrypoint (or **service**) and **rules** developed by **application developers** and **business users**. At a high level, the service can be denoted as:
 
-> Set\<result_facts>\: service (Set\<input_facts\>, Collection\<rules\>)
+> Set\<result_facts> = service(Set\<input_facts\>, Collection\<rules\>)  
+  where:  
+  - **result_facts** are output(s) returned by the execution of the Pyrete engine.  
+  - **input_facts** are input(s) to the Pyrete engine.  
+  - **rules** are the rules coded in Python language that are provided to the Pyrete engine and executed by the engine to produce the output.
 
 ## Rete
-Pyrete is an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. It is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the result, the Rete algorithm produce is more predictable and defensible as long as the input facts are accurate. It also requires no learning as the algorithm is rule-based - predefined by experts. Similar analogy applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and defensibility.
+Pyrete is an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. It is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the Rete algorithm produce are more predictable and explainable. It also requires no learning as the algorithm is rule-based, i.e., predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and explainability.
 
+### Inferencing
+Rete emulates the process used by humans to come to a decision (or conclusion) based on facts presented to him/her/them. To make the decision, a person takes the facts provided to him/her and applies a set of well-established logic (or rules). For complex decision-making, applying a rule to a set of facts may produce intermediate facts that are then used as input to another set of rules. This process continues until the person reaches a decision. One can think of Rete as a network of rules that are applied to facts. A very **simplistic** representation of the Rete network is shown below.
+
+![Simplistic Rules Network](./Rule Network.png)
+
+### When to use Rete
 Rete is not without it's own drawbacks. To start with, the algorithm is complex and application developers and business users need to understand how it works in order to design and develop rules that work efficiently and so that, it does not produce incorrect results. When asked to adopt Rete for building applications, many application developers ask the question - *why can't I use standard  constructs available on programming languages for developing the business logic (**switch/case**, **if-else**, etc.)?* This is a valid question. In fact, most simple decision-making business logic must use only standard constructs; Rete must be used only when the business process is very complex and evolving. For complex business logic, developing the application using standard constructs is likely to make the business logic very complex, difficult to maintain, difficult to train new people and error-prone. Also, keep in mind that often, requirements start out simple and grow complex over time. Another point to note is that, if business users author rules, application architects must ensure that proper design is in place to catch inefficiencies that a (non-technical) business user may inadvertently introduce. Most importantly, automated unit tests must be in place to test out the scenarios thoroughly before making the application generally-available.
 
 ## Definitions
