@@ -103,10 +103,20 @@ A knowledge is a collection of rulesets. A knowledge is a repository of the enti
 
 One way to view the Knowledge->Ruleset->Rule hierarchy is to consider it as a car owner's troubleshooting manual, with each chapter akin to ruleset and each section akin to rule; each section defining conditions to ascertain or derive some diagnosis.
 
-The knowledge is completely static and is created during the development cycle of a project. The knowledge does not include any facts. The facts are provided along with reference to the knowledge during execution of a service, as denoted below:
+The knowledge component includes static content - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the knowledge components are initialized either programmatically or via configuration as explained in later.
 
-> Set\<result_facts> = service(Set\<input_facts\>, Knowledge)  
+### Transaction
+Once the knowledge contents are initialized, the application is ready to process incoming transactions. Incoming transactions can be received as a scheduled jobs or requests received from a message broker, web services requests, etc. Each transaction must include a set of facts and the knowledge component as input. On receiving the request, the ruleset is executed using the supplied facts. The output is a set of facts that are produced by the execution. A transaction can be denoted as follows:  
 
-The relationship between various entities involved in a Pyrete service is show below:
+> Set\<result_facts> = service.execute(Set\<input_facts\>, Knowledge)  
+
+The relationship between various entities involved in a Pyrete service is shown below:
+
+#### What happens inside a transaction?
+Please refer to the diagram below while reading this section.
 
 ![Pyrete Entity Relationship](./Pyrete-Entity-Relationship.drawio.png)
+
+The blue boxes represent the entities that are created during the development phase (or authoring phase). The runtime components are represented using green (service) and red (facts and other execution artifacts) boxes. As mentioned earlier, the **execute** function in the **service** module is the endpoint for initiating a transaction. 
+
+The first step involves iterating through each ruleset and sequencing them for execution. For each ruleset, a **Session** is created. The session iterates through each rule of the ruleset and creates an execution graph. 
