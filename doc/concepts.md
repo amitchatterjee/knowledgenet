@@ -99,24 +99,67 @@ Rule(id='end_execution', ruleset='validation_rules'
 ```
 
 ### Knowledge
-A knowledge is a collection of rulesets. A knowledge is a repository of the entire rules for a particular decision-making service. A Pyrete service.execute(...) function executes the entire set of rules that is part of a knowledge instance. 
+A knowledge is a collection of rulesets. A knowledge is a repository of all the rules and rules for a decision-making service. When the function, service.execute(...) is invoked, Pyrete executes all the rulesets (and rules within the ruleset) and returns the result. Each call to the service.execute(...) function is referred to as a **Transaction**. 
 
-One way to view the Knowledge->Ruleset->Rule hierarchy is to consider it as a car owner's troubleshooting manual, with each chapter akin to ruleset and each section akin to rule; each section defining conditions to ascertain or derive some diagnosis.
+The example below describes how knowledge can be organized and executed in sequence. In this example, we are trying to decided what's wrong with a car using a "car owner's troubleshooting manual" service. Think of the Knowledge as the manual, Ruleset as chapters and Rules as paragraphs.
 
-The knowledge component includes static content - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the knowledge components are initialized either programmatically or via configuration as explained in later.
+> Troubleshooting Manual (Knowledge)
+> - Engine (Ruleset)
+>    - Fails to Start (Section)
+>        - No action when the ignition switch is activated
+>        - ...
+>    - Stalling
+>       - ...
+>    - Rough idling
+>       - ...
+> - Transmission
+>        - ...
+> - Wheels
+>    ...
+> - ...
+
+The knowledge component includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the knowledge components are initialized either programmatically or via configuration (as code) as explained in later.
 
 ### Transaction
-Once the knowledge contents are initialized, the application is ready to process incoming transactions. Incoming transactions can be received as a scheduled jobs or requests received from a message broker, web services requests, etc. Each transaction must include a set of facts and the knowledge component as input. On receiving the request, the ruleset is executed using the supplied facts. The output is a set of facts that are produced by the execution. A transaction can be denoted as follows:  
+Once the knowledge contents are initialized, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts and reference to a knowledge. The transaction process mixes the facts and the knowledge to come to a decision using the Rete algorithm. The output of this process is a set of (decision) facts. A transaction can be denoted as follows:  
 
 > Set\<result_facts> = service.execute(Set\<input_facts\>, Knowledge)  
 
-The relationship between various entities involved in a Pyrete service is shown below:
 
-#### What happens inside a transaction?
-Please refer to the diagram below while reading this section.
+## Transaction Internals
+Please refer to the diagram below while reading this section. It represents the various data structures and their relationship that Pyrete maintains as a part of a transaction.
 
 ![Pyrete Entity Relationship](./Pyrete-Entity-Relationship.drawio.png)
 
-The blue boxes represent the entities that are created during the development phase (or authoring phase). The runtime components are represented using green (service) and red (facts and other execution artifacts) boxes. As mentioned earlier, the **execute** function in the **service** module is the endpoint for initiating a transaction. 
+The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service** module is the entrypoint for initiating a transaction. The pseudocode for the execution is shown below:
+```
+    execute(knowledge, facts):
+        for each ruleset in the knowledge:
+            for each rule in the ruleset:
+                create a session (ruleset, facts)
+                result = execute the session
+                facts = result
 
-The first step involves iterating through each ruleset and sequencing them for execution. For each ruleset, a **Session** is created. The session iterates through each rule of the ruleset and creates an execution graph. 
+    session.execute(ruleset, facts):
+        create an empty graph
+        for each rule in a ruleset:
+            types = get a list of all the types from the conditions on the When part of the rule
+
+            for each type in types:
+                matching_facts = get facts that match the type
+
+            combinations = create a list of all possible combinations
+            # For example:
+            # condition 1 is interested in type A and facts [a, b] matches
+            # condition 2 is interested in type B and facts [x,y] matches
+            # Then the combinations are:
+            # (a,x), (a,y), (b,x), (b,y)
+
+            for each combination in combinations:
+                node = create a node
+                add it to the graph
+                # The engine determines the positions to insert the node into based on hints provided by the rule and other facts
+```
+
+
+
