@@ -1,3 +1,4 @@
+import pytest
 import logging
 
 from rule import Rule,Condition
@@ -6,6 +7,7 @@ from knowledge import Knowledge
 from helper import assign
 from notify import insert
 from service import execute
+from typing import Tuple
 
 from test_helpers.test_util import find_result_of_type
 from test_helpers.test_facts import C1, C2, R1, P1, Ch1
@@ -35,3 +37,16 @@ def test_one_rule_multiple_when_thens():
     assert 1==len(matching)
     assert 2 ==len(matching[0].vals)
     assert (facts[1],facts[4]) == matching[0].vals
+
+@pytest.mark.skip(reason="Generic types are not yet implemented")
+def test_generic():
+    rule = Rule(id='r1',
+                when=Condition(for_type=tuple[C1], matches_exp=lambda ctx, this: assign(ctx, l=this) and len(ctx.l) > 1),
+                then=lambda ctx: insert(ctx, R1(ctx.l)))
+    obj: tuple[C1]=(C1(1), C1(2))
+    facts = [obj]
+    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule])]), facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1== len(matching)
+    assert 1 == len(matching[0].vals)
+    assert facts[1] == matching[0].vals[0]

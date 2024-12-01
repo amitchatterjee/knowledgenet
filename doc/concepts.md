@@ -46,7 +46,7 @@ Facts are information that represent a "truth". Facts may have attributes that d
             self.gender = gender
             self.age = age
 ```
-Note that facts may also include classes provided by python standard libraries like list, set, tuple, dict, etc. Pyrete includes a set of container classes to facilitate rule creation that operates on a group of facts. These classes are covered in a separate document.
+Note that facts may also include classes/types provided by python, as long as the types are hashable. For example, a fact can be of type - tuple[int]. Pyrete includes a set of container classes to facilitate rule creation that operates on a group of facts. These classes are covered in a separate document.
 
 ### FactSet
 A FactSet include all the facts that are part of the current execution of rules. As mentioned above, new facts can be inserted to the Factset, facts can be deleted from the Factset or facts can be updated by rules during a Rete execution. 
@@ -132,32 +132,39 @@ Please refer to the diagram below while reading this section. It represents the 
 ![Pyrete Entity Relationship](./Pyrete-Entity-Relationship.drawio.png)
 
 The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service** module is the entrypoint for initiating a transaction. The pseudocode for the execution is shown below:
+
 ```
-    execute(knowledge, facts):
+    # Handles ruleset execution flow
+    service.execute(knowledge, facts):
         for each ruleset in the knowledge:
-            for each rule in the ruleset:
-                create a session (ruleset, facts)
-                result = execute the session
-                facts = result
+            session = create a session (ruleset, facts)
+            result = session.execute(ruleset, facts) # See the pseudo code below.
+            # Based on result from the above execution, continue to the next ruleset, break out of the loop, continue to another ruleset specified in the result
+            if result contains a terminate directive:
+                break
+            else if result contains a continue_to(ruleset) directive:
+                continue to the ruleset
+            facts = result
+        return facts
 
     session.execute(ruleset, facts):
         create an empty graph
         for each rule in a ruleset:
-            types = get a list of all the types from the conditions on the When part of the rule
+            types = get a list of for_types from the conditions on the When part of the rule
 
             for each type in types:
-                matching_facts = get facts that match the type
+                matching_facts = get a list of facts that match the type
 
             combinations = create a list of all possible combinations
             # For example:
-            # condition 1 is interested in type A and facts [a, b] matches
-            # condition 2 is interested in type B and facts [x,y] matches
+            # condition 1 for_type=A and facts [a, b] matches
+            # condition 2 for_type=B and facts [x,y] matches
             # Then the combinations are:
             # (a,x), (a,y), (b,x), (b,y)
 
             for each combination in combinations:
                 node = create a node
-                add it to the graph
+                add node to the graph
                 # The engine determines the positions to insert the node into based on hints provided by the rule and other facts
 ```
 
