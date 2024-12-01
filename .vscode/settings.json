@@ -4,5 +4,8 @@
     "python.analysis.extraPaths": [
         "engine/src/pyrete",
         "engine/test/unit"
-    ]
+    ],
+    "cSpell.enabledFileTypes": {
+        "*": false
+    }
 }

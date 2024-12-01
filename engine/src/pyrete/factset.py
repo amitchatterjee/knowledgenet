@@ -3,7 +3,6 @@ class Factset:
     def __init__(self):
         self.facts = set()
         self.__class_to_facts = {}
-        self.__generic_to_facts = {}
 
     def __str__(self):
         return f"Factset({self.facts})"
@@ -19,11 +18,10 @@ class Factset:
         return diff
 
     def __add_to_class_facts_dict(self, fact):
-        # print(type(fact) == tuple)
         facts_list = self.__class_to_facts[type(fact)] if type(fact) in self.__class_to_facts else []
         facts_list.append(fact)
         self.__class_to_facts[type(fact)] = facts_list
 
     def facts_of_type(self, cls):
-        # print(f"origin:{get_origin(cls)}, args: {get_args(cls)}")
+        #print(f"origin:{get_origin(cls)}, args: {get_args(cls)}")
         return self.__class_to_facts[cls] if cls in self.__class_to_facts else None

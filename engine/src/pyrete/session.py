@@ -104,7 +104,7 @@ class Session:
             when_objs = []
             # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
             for when in rule.whens:
-                objs = self.factset.facts_of_type(when.for_type)
+                objs = self.factset.facts_of_type(when.of_type)
                 if not objs:
                     satisfies = False
                     break
@@ -113,7 +113,7 @@ class Session:
             if satisfies:
                 # Get all the permutations associated with the objects
                 perms = combinations(when_objs, new_facts)                
-                logging.debug(f"{rule}, object permuation: {perms}")
+                logging.debug(f"{rule}, object permutation: {perms}")
                 # insert to the graph
                 for each in perms:
                     node = Node(int(uuid.uuid4().int), rule, self.rules, self.global_ctx, each)

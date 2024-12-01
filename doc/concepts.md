@@ -46,7 +46,7 @@ Facts are information that represent a "truth". Facts may have attributes that d
             self.gender = gender
             self.age = age
 ```
-Note that facts may also include classes/types provided by python, as long as the types are hashable. For example, a fact can be of type - tuple[int]. Pyrete includes a set of container classes to facilitate rule creation that operates on a group of facts. These classes are covered in a separate document.
+Note that facts may also include classes and types provided by python built-in and external packages, as long as the types are hashable. For example, a fact can be of type - tuple, frozenset, etc.. Pyrete includes a set of container classes to facilitate rule creation that operates on a group of facts. These classes are covered in a separate document.
 
 ### FactSet
 A FactSet include all the facts that are part of the current execution of rules. As mentioned above, new facts can be inserted to the Factset, facts can be deleted from the Factset or facts can be updated by rules during a Rete execution. 
@@ -68,13 +68,13 @@ Here is an example of a simple rule definition:
 ```python
 Rule(id='determine_if_adult',  
         when=[  
-            Condition(for_type=Person, matches_exp=lambda ctx: ctx.this.age <21)  
+            Condition(of_type=Person, matches_exp=lambda ctx: ctx.this.age <21)  
         ],  
         then=lambda ctx: insert(Child(...)))  
 
     Rule(id='sell_alcohol_to_adults_only',  
         when=[  
-            Condition(for_type=Child, matches_exp=lambda ctx: True)  
+            Condition(of_type=Child, matches_exp=lambda ctx: True)  
         ],  
         then=lambda ctx: insert(Sale(allow=False, ...)))
 ```
@@ -93,7 +93,7 @@ Example:
 ```python
 Rule(id='end_execution', ruleset='validation_rules'  
         when=[  
-            Condition(for_type=Validation, matches_exp=lambda ctx: not ctx.this.valid)  
+            Condition(of_type=Validation, matches_exp=lambda ctx: not ctx.this.valid)  
         ],  
         then=lambda ctx: terminate())  
 ```
@@ -138,7 +138,7 @@ The blue boxes represent the entities that are created during the development ph
     service.execute(knowledge, facts):
         for each ruleset in the knowledge:
             session = create a session (ruleset, facts)
-            result = session.execute(ruleset, facts) # See the pseudo code below.
+            result = session.execute(ruleset, facts) # See the pseudo function below.
             # Based on result from the above execution, continue to the next ruleset, break out of the loop, continue to another ruleset specified in the result
             if result contains a terminate directive:
                 break
@@ -148,24 +148,34 @@ The blue boxes represent the entities that are created during the development ph
         return facts
 
     session.execute(ruleset, facts):
-        create an empty graph
-        for each rule in a ruleset:
-            types = get a list of for_types from the conditions on the When part of the rule
+        graph = create an empty graph
+        for each rule in the ruleset:
+            session.add_to_graph(graph, rule, facts) # See the pseudo function below.
 
-            for each type in types:
-                matching_facts = get a list of facts that match the type
+        for each node in graph:
+            session.execute(node) # See the pseudo function below.
 
-            combinations = create a list of all possible combinations
-            # For example:
-            # condition 1 for_type=A and facts [a, b] matches
-            # condition 2 for_type=B and facts [x,y] matches
-            # Then the combinations are:
-            # (a,x), (a,y), (b,x), (b,y)
 
-            for each combination in combinations:
-                node = create a node
-                add node to the graph
-                # The engine determines the positions to insert the node into based on hints provided by the rule and other facts
+    session.execute(node):
+        # TODO
+
+    session.add_to_graph(graph, rule, facts):
+        types = get a list of for_types from the conditions on the When part of the rule
+
+        for each type in types:
+            matching_facts = get a list of facts that match the type
+
+        combinations = create a list of all possible combinations
+        # For example:
+        # condition 1 of_type=A and facts [a, b] matches
+        # condition 2 of_type=B and facts [x,y] matches
+        # Then the combinations are:
+        # (a,x), (a,y), (b,x), (b,y)
+
+        for each combination in combinations:
+            node = create a node
+            add node to the graph
+            # The engine determines the positions to insert the node into based on hints provided by the rule and other facts
 ```
 
 

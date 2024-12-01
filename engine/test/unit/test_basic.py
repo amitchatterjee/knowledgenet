@@ -14,7 +14,7 @@ from test_helpers.test_facts import C1, C2, R1, P1, Ch1
 
 def test_one_rule_single_when_then():
     rule = Rule(id='r1',
-                when=Condition(for_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
+                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
                 then=lambda ctx: insert(ctx, R1(ctx.c1)))
     facts = [C1(1), C1(2)]
     result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule])]), facts)
@@ -25,8 +25,8 @@ def test_one_rule_single_when_then():
 
 def test_one_rule_multiple_when_thens():
     rule = Rule(id='r1', when=[
-                Condition(for_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
-                Condition(for_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this) and this.val != ctx.c1.val and this.val > 1)],
+                Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
+                Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this) and this.val != ctx.c1.val and this.val > 1)],
                 then=[
                     lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
                     lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2))])
@@ -38,15 +38,19 @@ def test_one_rule_multiple_when_thens():
     assert 2 ==len(matching[0].vals)
     assert (facts[1],facts[4]) == matching[0].vals
 
-@pytest.mark.skip(reason="Generic types are not yet implemented")
-def test_generic():
-    rule = Rule(id='r1',
-                when=Condition(for_type=tuple[C1], matches_exp=lambda ctx, this: assign(ctx, l=this) and len(ctx.l) > 1),
+def test_condition_with_container_objs():
+    rule_1 = Rule(id='r1',
+                when=Condition(of_type=tuple, matches_exp=lambda ctx, this: assign(ctx, l=this) and len(this) >= 2),
                 then=lambda ctx: insert(ctx, R1(ctx.l)))
-    obj: tuple[C1]=(C1(1), C1(2))
-    facts = [obj]
-    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule])]), facts)
+    rule_2 = Rule(id='r2',
+                when=Condition(of_type=frozenset, matches_exp=lambda ctx, this: assign(ctx, d=this) and 'name' in this),
+                then=lambda ctx: insert(ctx, R1(ctx.d)))
+    facts = [(C1(1), C1(2)), frozenset({'name': 'tester'})]
+    result_facts = execute(Knowledge('k1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1== len(matching)
+    matching.sort(key=lambda o: str(o)) # Sort to make the order predictable
+    assert 2== len(matching)
     assert 1 == len(matching[0].vals)
-    assert facts[1] == matching[0].vals[0]
+    assert facts[0] == matching[0].vals[0]
+    assert 1 == len(matching[1].vals)
+    assert facts[1] == matching[1].vals[0]

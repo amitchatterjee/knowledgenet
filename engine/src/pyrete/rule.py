@@ -29,7 +29,7 @@ class Rule:
         return self.id == other.name
 
 class Condition:
-    def __init__(self, for_type, matches_exp):
-        self.for_type = for_type
+    def __init__(self, of_type, matches_exp):
+        self.of_type = of_type
         self.exp = matches_exp
         # TODO add validation
