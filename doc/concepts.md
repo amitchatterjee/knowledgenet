@@ -101,21 +101,24 @@ Rule(id='end_execution', ruleset='validation_rules'
 ### Knowledge
 A knowledge is a collection of rulesets. A knowledge is a repository of all the rules and rules for a decision-making service. When the function, service.execute(...) is invoked, Pyrete executes all the rulesets (and rules within the ruleset) and returns the result. Each call to the service.execute(...) function is referred to as a **Transaction**. 
 
-The example below describes how knowledge can be organized and executed in sequence. In this example, we are trying to decided what's wrong with a car using a "car owner's troubleshooting manual" service. Think of the Knowledge as the manual, Ruleset as chapters and Rules as paragraphs.
+The example below describes how knowledge can be organized and executed in sequence. In this example, a payment processing system makes a decision whether to pay the invoices it receives based on rules defined by the company's payment auditors. Each invoice is akin to an **transaction** (described below). In this case, think of the Knowledge as the manual authored by the auditors - Ruleset as chapters and Rules as paragraphs.
 
-> Troubleshooting Manual (Knowledge)
-> - Engine (Ruleset)
->    - Fails to Start (Section)
->        - No action when the ignition switch is activated
->        - ...
->    - Stalling
->       - ...
->    - Rough idling
->       - ...
-> - Transmission
->        - ...
-> - Wheels
->    ...
+> Knowledge: Payment Decision Manual
+> - Ruleset: Validation
+>    - Rule: Invoice is complete (Rule)
+>       - Condition: All mandatory fields of the invoice are entered
+>       - Condition: All fields have valid data types and sizes
+>    - Rule: Invoice is from a valid vendor
+>       - Condition: The vendor is in approved vendors list
+>       - Condition: The bank account of the vendor matches
+> - Ruleset: Eligibility
+>   - Rule: Duplicate
+>       - Condition: The invoice does not match any previously-paid invoice
+>   - Rule: Overpayment  
+>       - Condition: The vendor owes the company money
+> - Ruleset: Payment
+>   - Rule: Contract    
+>       - Condition: The amount matches contracted rate
 > - ...
 
 The knowledge component includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the knowledge components are initialized either programmatically or via configuration (as code) as explained in later.
