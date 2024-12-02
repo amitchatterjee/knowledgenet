@@ -8,7 +8,10 @@ class Element:
         self.ord = ord
 
     def __str__(self):
-        return f"Element:({self.obj})"
+        return f"Element:({self.obj}, ordinal:{self.ord})"
+    
+    def __repr__(self):
+        return self.__str__()
 
 class Graph:
     def __init__(self, comparator):
@@ -118,14 +121,34 @@ class Graph:
         self.cursors[cursor_name] = cursor.next
         return cursor
     
-    def compare(self, node1, node2):
-        return node1.ord - node2.ord
+    def compare(self, element1, element2):
+        return element1.ord - element2.ord
 
-    def is_left_of(self, node, cursor_name = 'default'):
-        return self.compare(self.cursors[cursor_name], node) < 0
+    def cursor_is_left_of(self, element, cursor_name = 'default'):
+        return self.compare(self.cursors[cursor_name], element) < 0 if self.cursors[cursor_name] else True
         
-    def is_right_of(self, node, cursor_name = 'default'):
-        return self.compare(self.cursors[cursor_name], node) > 0
+    def cursor_is_right_of(self, element, cursor_name = 'default'):
+        return self.compare(self.cursors[cursor_name], element) > 0 if self.cursors[cursor_name] else False
     
-    def is_on_node(self, node, cursor_name = 'default'):
-        return self.compare(self.cursors[cursor_name], node) == 0
+    def cursor_is_on(self, element, cursor_name = 'default'):
+        return self.compare(self.cursors[cursor_name], element) == 0 if self.cursors[cursor_name] else False
+
+    def to_list(self, cursor_name='default', node=None):
+        result = []
+        self.new_cursor(cursor_name, node)
+        while True:
+            obj = self.next(cursor_name)
+            if obj is None:
+                break
+            result.append(obj)
+        return result
+    
+    def to_element_list(self, cursor_name='default', node=None):
+        result = []
+        self.new_cursor(cursor_name, node)
+        while True:
+            element = self.next_element(cursor_name)
+            if element is None:
+                break
+            result.append(element)
+        return result

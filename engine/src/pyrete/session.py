@@ -33,72 +33,87 @@ class Session:
 
 
     def __execute_graph(self):
-        logging.debug(f"Executing rules on graph")
+        logging.debug(f"Executing rules on graph: {self.graph}")
+        #print(f"Graph content: {self.graph.to_element_list()}")
         self.graph.new_cursor()
         while True:
-            node = self.graph.next()
-            if node is None:
+            element = self.graph.next_element()
+            if element is None:
                 # Reached the end of the graph
                 break
-
+            node = element.obj
             # Execute the rule on the node
             result = node.execute(self.factset)
-            counts = 0
+            count = 0
+            leftmost = element
             if result:
                 # If all conditions were satisfied and the thens were executed
                 if len(result['insert']):
                     new_facts = result['insert']
-                    counts = counts + self.__add_facts(new_facts)
+                    leftmost, chg_count = self.__add_facts(new_facts, leftmost)
+                    count = count + chg_count
                     logging.debug(f"Inserted facts: {new_facts}")
             
                 if len(result['update']):
                     updated_facts = result['update']
-                    counts = counts + self.__update_facts(updated_facts)
+                    leftmost, chg_count  = self.__update_facts(updated_facts, leftmost)
+                    count = count + chg_count
                     logging.debug(f"Updated facts: {updated_facts}")
 
                 if len(result['delete']):
                    deleted_facts = result['delete']
-                   counts = counts + self.__delete_facts(deleted_facts)
+                   leftmost, chg_count =  self.__delete_facts(deleted_facts, leftmost)
+                   count = count + chg_count
                    logging.debug(f"Deleted facts: {deleted_facts}")
 
-                if counts:
-                    # if there were inserts/updates/deletes
-                    # TODO start from the beginning again. This need to change to start from the leftmost node where a change occured
-                    self.graph.new_cursor()
+                logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")
+                self.graph.new_cursor(node=leftmost)
     
-    def __delete_facts(self, deleted_facts):
+    def __delete_facts(self, deleted_facts, current_leftmost):
         cursor_name = 'delete'
         self.graph.new_cursor(cursor_name=cursor_name)
         deduped_deletes = set(deleted_facts)
-        counts = 0
+        new_leftmost = current_leftmost
+        count = 0
         while True:
             element = self.graph.next_element(cursor_name)
             if element is None:
                 break
-            print(element.obj)
-            if len([value for value in element.obj.when_objs if value in deduped_deletes]):
-                self.graph.delete_element(element)
-                counts = counts+1
-        return counts
 
-    def __update_facts(self, updated_facts):
+            if len([value for value in element.obj.when_objs if value in deduped_deletes]):
+                next_element = self.graph.delete_element(element)
+                if element.obj == new_leftmost.obj:
+                    # If the leftmost object is being deleted
+                    new_leftmost = next_element
+                else:
+                    new_leftmost = self.__minimum(new_leftmost, element)
+                count = count+1
+        logging.debug(f"Deleted from graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
+        return new_leftmost, count
+
+    def __update_facts(self, updated_facts, current_leftmost):
         cursor_name = 'update'
         self.graph.new_cursor(cursor_name=cursor_name)
         deduped_updates = set(updated_facts)
-        counts = 0
+        new_leftmost = current_leftmost
+        count = 0
         while True:
-            node = self.graph.next(cursor_name)
-            if node is None:
+            element = self.graph.next_element(cursor_name)
+            if element is None:
                 break
-            counts = counts + 1 if node.invalidate_leaves(deduped_updates) else 0
-        return counts
+            if element.obj.invalidate_leaves(deduped_updates):
+                new_leftmost = self.__minimum(new_leftmost, element)
+                count = count+1
+        logging.debug(f"Updated graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
+        return new_leftmost, count
 
-    def __add_facts(self, new_facts):
+    def __add_facts(self, new_facts, current_leftmost=None):
         # The new_facts variable contains a (deduped) set
         new_facts = self.factset.add_facts(new_facts)
 
+        new_leftmost = current_leftmost
+        count = 0
         logging.debug(f"Adding to graph: all facts: {self.factset.facts}, new: {new_facts}")
-        node_count = 0
         for rule in self.rules:
             satisfies = True
             when_objs = []
@@ -116,9 +131,20 @@ class Session:
                 logging.debug(f"{rule}, object permutation: {perms}")
                 # insert to the graph
                 for each in perms:
-                    node = Node(int(uuid.uuid4().int), rule, self.rules, self.global_ctx, each)
-                    logging.debug(f"Adding node: {node}")
-                    self.graph.add(node)
-                    node_count = node_count+1
-        logging.debug(f"Updated graph: {self.graph}, new nodes count: {node_count}")
-        return node_count
+                    node_id = f"{self.id}:{rule.id}:{each}"
+                    node = Node(node_id, rule, self.rules, self.global_ctx, each)
+                    element = self.graph.add(node)
+                    logging.debug(f"Added node: {element}")
+                    new_leftmost = self.__minimum(new_leftmost, element)
+                    count = count+1
+                    
+        logging.debug(f"Inserted into graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
+        return new_leftmost, count
+    
+    def __minimum(self, element1, element2):
+        if not element1:
+            # print(f"Minimum: min = {element2} e1:{element1}, e2: {element2}")
+            return element2
+        min = element2 if self.graph.compare(element1, element2) >= 0 else element1
+        # print(f"Minimum: min = {min} e1:{element1}, e2: {element2}")
+        return min

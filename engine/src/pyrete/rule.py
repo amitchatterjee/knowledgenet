@@ -2,9 +2,10 @@ from util import to_list
 from knowledge_registry import registry
 
 class Rule:
-    def __init__(self, id, when, then, order=0, knowledge=None, ruleset=None, **kwargs):
+    def __init__(self, id, when, then, order=0, merges = None, knowledge=None, ruleset=None, **kwargs):
         self.id = id
         self.order = order
+        self.merges = merges
         self.whens = to_list(when)
         self.thens = to_list(then)
         for key, value in kwargs.items():

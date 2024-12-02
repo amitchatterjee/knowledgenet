@@ -1,15 +1,5 @@
 from graph import Graph
 
-def get_list(g, cursor_name='default', node=None):
-    result = []
-    g.new_cursor(cursor_name, node)
-    while True:
-        obj = g.next()
-        if obj is None:
-            break
-        result.append(obj)
-    return result
-
 def test_insert():
     comparator = lambda o1, o2: o1 - o2
     g = Graph(comparator)
@@ -21,7 +11,7 @@ def test_insert():
     g.add(5)
     # Insert at beginning
     g.add(0)
-    result = get_list(g)
+    result = g.to_list()
     assert 4 == len(result)
     assert [0,1,5,10] == result
     
@@ -37,14 +27,14 @@ def test_delete():
     g.delete(9)
     # Delete an element in the middle
     g.delete(5)
-    result = get_list(g)
+    result = g.to_list()
     assert 7 == len(result)
     assert [1,2,3,4,6,7,8] == result
 
     # Delete the remaining
     for each in result:
         g.delete(each)
-    result = get_list(g)
+    result = g.to_list()
     assert 0 == len(result)
 
 def test_delete_with_next():
@@ -75,7 +65,7 @@ def test_delete_with_next():
     assert g.next() is None
 
     # Verify size and content
-    assert [0,1,2,3,4]== get_list(g)
+    assert [0,1,2,3,4]== g.to_list()
 
 def test_return_and_start():
     comparator = lambda o1, o2: o1 - o2
@@ -87,14 +77,14 @@ def test_return_and_start():
         if i == 5:
             # Save the middle node
             saved_node = node
-    result = get_list(g, node=saved_node)
+    result = g.to_list(node=saved_node)
     # Needs to work out with pen and paper to see if this works :-)
     assert 6 == len(result)
     assert [4, 5, 6, 7, 8, 9] == result
 
     deleted, saved_node = g.delete(5)
     assert deleted
-    result = get_list(g, node=saved_node)
+    result = g.to_list(node=saved_node)
     assert 4 == len(result)
     assert [6, 7, 8, 9] == result
 
@@ -118,19 +108,19 @@ def test_ordinal():
     deleted, node = g.delete(2)
     assert deleted
     # Verify that cursor is right of the deleted node 
-    assert g.is_right_of(node)
+    assert g.cursor_is_right_of(node)
 
     # Delete the node where the cursor is set and verify that the cursor is moved to the next position
     deleted, node = g.delete(5)
-    assert g.is_on_node(node)
+    assert g.cursor_is_on(node)
     
     # insert an element right of the cursor
     node = g.add(10)
-    assert g.is_left_of(node)
+    assert g.cursor_is_left_of(node)
 
     # insert an element left of the cursor
     node = g.add(-1)
-    assert g.is_right_of(node)
+    assert g.cursor_is_right_of(node)
 
 def test_non_default_cursor():
     comparator = lambda o1, o2: o1 - o2
