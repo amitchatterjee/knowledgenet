@@ -2,7 +2,8 @@ from util import to_list
 from knowledge_registry import registry
 
 class Rule:
-    def __init__(self, id, when, then, order=0, merges = None, knowledge=None, ruleset=None, **kwargs):
+    def __init__(self, id, when, then, order=0, merges = None, knowledge=None, ruleset=None, 
+                 run_once=False, retrigger=True, **kwargs):
         self.id = id
         self.order = order
         self.merges = merges

@@ -6,3 +6,11 @@ def update(ctx, fact):
 
 def delete(ctx, fact):
     ctx._changes.append((fact, 'delete'))
+
+def end(ctx):
+    # TODO
+    pass
+
+def switch(ctx, ruleset):
+    # TODO
+    pass
