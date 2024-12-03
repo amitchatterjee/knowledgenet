@@ -15,11 +15,11 @@ class Element:
 
 class Graph:
     def __init__(self, comparator):
-        self.first = None
+        self.first: Element = None
         self.cursors = {}
         self.comparator = comparator
 
-    def __ordinal(self, prev, next):
+    def __ordinal(self, prev: Element, next: Element) -> Decimal:
         p_ordinal = prev.ord if prev else Decimal(0)
         n_ordinal = next.ord if next else p_ordinal + Decimal(100)
         return (p_ordinal + n_ordinal) / Decimal(2)
@@ -73,9 +73,9 @@ class Graph:
         # Element is not found
         return False, None
 
-    def delete_element(self, element):
-        prev = element.prev
-        next = element.next
+    def delete_element(self, element: Element) -> Element:
+        prev: Element = element.prev
+        next: Element = element.next
         if prev:
             if next:
                 # Removing an element between two elements

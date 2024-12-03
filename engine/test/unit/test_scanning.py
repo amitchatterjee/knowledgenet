@@ -15,7 +15,6 @@ def test_scanning():
     # Sort by the description. possible descriptions are [small, large] - see the rules
     matching.sort(key=lambda e: e.vals[1])
     assert 2==len(matching)
-    print(matching[0])
     assert facts[1] == matching[0].vals[0]
     assert 'large' == matching[0].vals[1]
     assert facts[0] == matching[1].vals[0]

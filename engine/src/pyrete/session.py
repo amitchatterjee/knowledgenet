@@ -70,9 +70,11 @@ class Session:
                 self.graph.new_cursor(node=leftmost)
     
     def __delete_facts(self, deleted_facts, current_leftmost):
+        deduped_deletes = set(deleted_facts)
+        self.factset.del_facts(deduped_deletes)
+
         cursor_name = 'delete'
         self.graph.new_cursor(cursor_name=cursor_name)
-        deduped_deletes = set(deleted_facts)
         new_leftmost = current_leftmost
         count = 0
         while True:

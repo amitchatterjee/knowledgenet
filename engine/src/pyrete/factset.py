@@ -16,6 +16,10 @@ class Factset:
         for fact in diff:
             self.__add_to_class_facts_dict(fact)
         return diff
+    
+    def del_facts(self, f):
+        for each in f:
+            self.facts.remove(each)
 
     def __add_to_class_facts_dict(self, fact):
         facts_list = self.__class_to_facts[type(fact)] if type(fact) in self.__class_to_facts else []

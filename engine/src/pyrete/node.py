@@ -66,12 +66,13 @@ class Node:
             # Execute each function/lambda included in the rule
             then(context)
 
-        result = {'insert': [], 'update': [], 'delete': []}
+        # Cache the changes in the event we have to do deep undo
+        self.changes = {'insert': [], 'update': [], 'delete': []}
         # Report changes to the facts introduced by the execution of the above functions
         for change in context._changes:
-            result[change[1]].append(change[0])
-        logging.debug(f"Result from node: {self} execution, result: {result}")
-        return result
+            self.changes[change[1]].append(change[0])
+        logging.debug(f"Result from node: {self} execution, changes: {self.changes}")
+        return self.changes
 
     def __str__(self):
         return f"Node({self.id}, rule:{self.rule}, whens:{self.when_objs})"
