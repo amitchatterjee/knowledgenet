@@ -12,7 +12,7 @@ At a high level, the service can be denoted as:
   - **rules** are the rules coded in Python language that are provided to the Pyrete engine and executed by the engine to produce the output.
 
 ## Rete
-Pyrete is an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. It is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the Rete algorithm produce are more predictable and explainable. It also requires no learning as the algorithm is rule-based, i.e., predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and explainability.
+Pyrete is an implementation of an **Inference Engine** using an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. Rete is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the Rete algorithm produce are more predictable and explainable. It also requires no learning as the algorithm is rule-based, i.e., predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and explainability.
 
 ### Inferencing
 A Rete execution emulates the process used by humans to come to a decision (or conclusion) based on facts presented to him/her/them. To make the decision, a person takes the facts provided to him/her and applies a set of well-established logic (or rules). For complex decision-making, applying a rule to a set of facts may produce intermediate facts that are then used as input to another set of rules. This process continues until the person reaches a decision. One can think of Rete execution as a network of rules that are applied to facts in a certain order. A very **simplistic** representation of the Rete network execution is shown below.
@@ -35,10 +35,10 @@ Rete is not without it's own drawbacks. To start with, the algorithm is complex 
 The definitions, below, are used throughout this document and library. Note that they may not necessarily align with industry-standard terminologies.
 
 ### Service 
-A service is the Pyrete Rete engine endpoint. Pyrete provides a "**execute(...)***" function to trigger rule execution. An application may include multiple services for different types of decision making.  
+A service is the Pyrete Rete engine endpoint. Pyrete provides a "**execute(...)***" function to trigger rule execution on the Pyrete Inference Engine. An application may include multiple services for different types of decision making using different Knowledge Bases.
 
 ### Facts
-Facts are information that represent a "truth". Facts may have attributes that describe the characteristics of the fact. In Pyrete, facts are instances of a classes and the characteristics are variables of the class. For example: 
+Facts are information that represent a "truth". Facts may have attributes (often, referred to as **features**) that describe the characteristics of the fact. In Pyrete, facts are instances of a classes and the characteristics are variables of the class. For example: 
 
 ```python
     class Person():
@@ -98,12 +98,12 @@ Rule(id='end_execution', ruleset='validation_rules'
         then=lambda ctx: terminate())  
 ```
 
-### Knowledge
-A knowledge is a collection of rulesets. A knowledge is a repository of all the rules and rules for a decision-making service. When the function, service.execute(...) is invoked, Pyrete executes all the rulesets (and rules within the ruleset) and returns the result. Each call to the service.execute(...) function is referred to as a **Transaction**. 
+### Manual
+A manual is a collection of rulesets. A manual is a repository of all the rules and rules for a decision-making service. When the function, service.execute(...) is invoked, Pyrete executes all the rulesets (and rules within the ruleset) and returns the result. Each call to the service.execute(...) function is referred to as a **Transaction**. 
 
-The example below describes how knowledge can be organized and executed in sequence. In this example, a payment processing system makes a decision whether to pay the invoices it receives based on rules defined by the company's payment auditors. Each invoice is akin to an **transaction** (described below). In this case, think of the Knowledge as the manual authored by the auditors - Ruleset as chapters and Rules as paragraphs.
+The example below describes how manual can be organized and executed in sequence. In this example, a payment processing system makes a decision whether to pay the invoices it receives based on rules defined by the company's payment auditors. Each invoice is akin to an **transaction** (described below). In this case, think of the Manual as a rule book authored by the auditors - Ruleset as chapters and Rules as paragraphs.
 
-> Knowledge: Payment Decision Manual
+> Manual: Payment Decision Manual
 > - Ruleset: Validation
 >    - Rule: Invoice is complete (Rule)
 >       - Condition: All mandatory fields of the invoice are entered
@@ -121,13 +121,12 @@ The example below describes how knowledge can be organized and executed in seque
 >       - Condition: The amount matches contracted rate
 > - ...
 
-The knowledge component includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the knowledge components are initialized either programmatically or via configuration (as code) as explained in later.
+The manual component includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the manual components are initialized either programmatically or via configuration (as code) as explained in later.
 
 ### Transaction
-Once the knowledge contents are initialized, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts and reference to a knowledge. The transaction process mixes the facts and the knowledge to come to a decision using the Rete algorithm. The output of this process is a set of (decision) facts. A transaction can be denoted as follows:  
+Once the manual contents are initialized, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts and reference to a manual. The combination of the facts and the manual is referred to as the **Knowledge Base**. The transaction process uses the knowledge base to come to a decision using the Rete algorithm. The output of this process is a set of (decision) facts. A transaction can be denoted as follows:  
 
-> Set\<result_facts> = service.execute(Set\<input_facts\>, Knowledge)  
-
+> Set\<result_facts> = service.execute(Set\<input_facts\>, Manual)  
 
 ## Transaction Internals
 Please refer to the diagram below while reading this section. It represents the various data structures and their relationship that Pyrete maintains as a part of a transaction.
@@ -138,8 +137,8 @@ The blue boxes represent the entities that are created during the development ph
 
 ```
     # Handles ruleset execution flow
-    service.execute(knowledge, facts):
-        for each ruleset in the knowledge:
+    service.execute(manual, facts):
+        for each ruleset in the manual:
             session = create a session (ruleset, facts)
             result = session.execute(ruleset, facts) # See the pseudo function below.
             # Based on result from the above execution, continue to the next ruleset, break out of the loop, continue to another ruleset specified in the result
