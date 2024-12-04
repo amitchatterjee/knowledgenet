@@ -156,11 +156,30 @@ The blue boxes represent the entities that are created during the development ph
             session.add_to_graph(graph, rule, facts) # See the pseudo function below.
 
         for each node in graph:
-            session.execute(node) # See the pseudo function below.
+            changes = node.execute(node) # See the pseudo function below.
 
+    node.execute(node):
+        all_match = True
+        all_cached = True
+        for each condition in when:
+            if matches_exp was evaluated earlier:
+                match = cached match result
+                cache = True
+            else:
+                match = execute matching_expo
+                cache = False
 
-    session.execute(node):
-        # TODO
+            all_match = all_match and match
+            all_cached = any_cached and cached
+
+        if all_cached:
+            return
+        if all_matched:
+            execute the then functions
+            cache results
+            return the results. the result returns the facts that were merged in by the then functions
+                {inserted_facts: [...], updated_facts: [...], deleted_facts: [...]}
+ 
 
     session.add_to_graph(graph, rule, facts):
         types = get a list of for_types from the conditions on the When part of the rule
