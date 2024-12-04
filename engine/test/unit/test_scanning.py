@@ -8,9 +8,9 @@ from test_helpers.test_util import find_result_of_type
 
 def test_scanning():
     load_rules('test/unit/scanner_rules')
-    manual = lookup('m1')
+    repository = lookup('m1')
     facts = [C1(5), C1(15)]
-    result_facts = execute(manual,facts)
+    result_facts = execute(repository,facts)
     matching = find_result_of_type(R1, result_facts)
     # Sort by the description. possible descriptions are [small, large] - see the rules
     matching.sort(key=lambda e: e.vals[1])
