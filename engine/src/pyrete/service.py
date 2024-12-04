@@ -1,6 +1,6 @@
 import uuid
 from session import Session
-from manual import Manual
+from repository import Repository
 
 def execute(manual, facts, global_ctx={}):
     resulting_facts = facts

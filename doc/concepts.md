@@ -98,12 +98,12 @@ Rule(id='end_execution', ruleset='validation_rules'
         then=lambda ctx: terminate())  
 ```
 
-### Manual
-A manual is a collection of rulesets. A manual is a repository of all the rules and rules for a decision-making service. When the function, service.execute(...) is invoked, Pyrete executes all the rulesets (and rules within the ruleset) and returns the result. Each call to the service.execute(...) function is referred to as a **Transaction**. 
+### Repository
+A repository is a collection of rulesets for a decision-making service. When the function, service.execute(...) is invoked, Pyrete executes all the rulesets (and rules within the ruleset) and returns the result. Each call to the service.execute(...) function is referred to as a **Transaction**. 
 
-The example below describes how manual can be organized and executed in sequence. In this example, a payment processing system makes a decision whether to pay the invoices it receives based on rules defined by the company's payment auditors. Each invoice is akin to an **transaction** (described below). In this case, think of the Manual as a rule book authored by the auditors - Ruleset as chapters and Rules as paragraphs.
+The example below describes how repository can be organized and executed in sequence. In this example, a payment processing system makes a decision whether to pay the invoices it receives based on rules defined by the company's payment auditors. Each invoice is akin to an **transaction** (described below). In this case, think of the Repository as a rule book authored by the auditors - Ruleset as chapters and Rules as paragraphs.
 
-> Manual: Payment Decision Manual
+> Repository: Payment Decision Manual
 > - Ruleset: Validation
 >    - Rule: Invoice is complete (Rule)
 >       - Condition: All mandatory fields of the invoice are entered
@@ -121,12 +121,12 @@ The example below describes how manual can be organized and executed in sequence
 >       - Condition: The amount matches contracted rate
 > - ...
 
-The manual component includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, the manual components are initialized either programmatically or via configuration (as code) as explained in later.
+The repository includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, repositories are initialized either programmatically or via configuration (as code) as explained in later.
 
 ### Transaction
-Once the manual contents are initialized, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts and reference to a manual. The combination of the facts and the manual is referred to as the **Knowledge Base**. The transaction process uses the knowledge base to come to a decision using the Rete algorithm. The output of this process is a set of (decision) facts. A transaction can be denoted as follows:  
+Once a repository is initialized, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts and reference to a repository. The facts and the repository combo is referred to as the **Knowledge Base**. The transaction process uses the knowledge base to come to a decision using the Rete algorithm. The output of this process is a set of (decision/result) facts. A transaction can be denoted as follows:  
 
-> Set\<result_facts> = service.execute(Set\<input_facts\>, Manual)  
+> Set\<result_facts> = service.execute(Set\<input_facts\>, Repository)  
 
 ## Transaction Internals
 Please refer to the diagram below while reading this section. It represents the various data structures and their relationship that Pyrete maintains as a part of a transaction.
@@ -137,8 +137,8 @@ The blue boxes represent the entities that are created during the development ph
 
 ```
     # Handles ruleset execution flow
-    service.execute(manual, facts):
-        for each ruleset in the manual:
+    service.execute(repository, facts):
+        for each ruleset in the repository:
             session = create a session (ruleset, facts)
             result = session.execute(ruleset, facts) # See the pseudo function below.
             # Based on result from the above execution, continue to the next ruleset, break out of the loop, continue to another ruleset specified in the result

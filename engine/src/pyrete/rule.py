@@ -1,8 +1,8 @@
 from util import to_list
-from manual_registry import registry
+from repository import registry
 
 class Rule:
-    def __init__(self, id, when, then, order=0, merges = None, manual=None, ruleset=None, 
+    def __init__(self, id, when, then, order=0, merges = None, repository=None, ruleset=None, 
                  run_once=False, retrigger=True, **kwargs):
         self.id = id
         self.order = order
@@ -12,14 +12,14 @@ class Rule:
         for key, value in kwargs.items():
             setattr(self, key, value)
         # TODO add validations
-        if (manual and not ruleset) or (ruleset and not manual):
-            raise Exception('Both "manual" and "ruleset" must be specified')
-        if manual:
-            if manual not in registry:
-                registry[manual] = {}
-            if ruleset not in registry[manual]:
-                registry[manual][ruleset] = []
-            registry[manual][ruleset].append(self)
+        if (repository and not ruleset) or (ruleset and not repository):
+            raise Exception('Both "repository" and "ruleset" must be specified')
+        if repository:
+            if repository not in registry:
+                registry[repository] = {}
+            if ruleset not in registry[repository]:
+                registry[repository][ruleset] = []
+            registry[repository][ruleset].append(self)
 
     def __str__(self):
         return f"Rule({self.id})"

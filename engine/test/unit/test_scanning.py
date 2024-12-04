@@ -1,6 +1,6 @@
 
 from scanner import load_rules
-from manual_registry import lookup
+from repository import lookup
 from service import execute
 
 from test_helpers.test_facts import C1, R1
