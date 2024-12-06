@@ -2,13 +2,15 @@ from util import to_list
 from repository import registry
 
 class Rule:
-    def __init__(self, id, when, then, order=0, merges = None, repository=None, ruleset=None, 
-                 run_once=False, retrigger=True, **kwargs):
+    def __init__(self, id, when, then, order=0, merges=None, repository=None, ruleset=None, 
+                 run_once=False, retrigger_on_update=True, **kwargs):
         self.id = id
         self.order = order
         self.merges = merges
         self.whens = to_list(when)
         self.thens = to_list(then)
+        self.run_once = run_once
+        self.retrigger_on_update = retrigger_on_update
         for key, value in kwargs.items():
             setattr(self, key, value)
         # TODO add validations

@@ -8,7 +8,7 @@ from test_helpers.test_util import find_result_of_type
 
 def test_scanning():
     load_rules('test/unit/scanner_rules')
-    repository = lookup('m1')
+    repository = lookup('repo1')
     facts = [C1(5), C1(15)]
     result_facts = execute(repository,facts)
     matching = find_result_of_type(R1, result_facts)

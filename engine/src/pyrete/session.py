@@ -5,7 +5,8 @@ from collections import deque
 from perm import combinations
 from node import Node
 from factset import Factset
-from graph import Graph
+from graph import Graph, Element
+from typing import Union
 
 class Session:
     def __init__(self, ruleset, facts, id=uuid.uuid1(), global_ctx={}):
@@ -31,16 +32,11 @@ class Session:
         # TODO only rule.order based ordering is implemented for now
         return obj.rule.order - other.rule.order
 
-
     def __execute_graph(self):
         logging.debug(f"Executing rules on graph: {self.graph}")
         #print(f"Graph content: {self.graph.to_element_list()}")
         self.graph.new_cursor()
-        while True:
-            element = self.graph.next_element()
-            if element is None:
-                # Reached the end of the graph
-                break
+        while element := self.graph.next_element():
             node = element.obj
             # Execute the rule on the node
             result = node.execute(self.factset)
@@ -56,7 +52,7 @@ class Session:
             
                 if len(result['update']):
                     updated_facts = result['update']
-                    leftmost, chg_count  = self.__update_facts(updated_facts, leftmost)
+                    leftmost, chg_count  = self.__update_facts(node, updated_facts, leftmost)
                     count = count + chg_count
                     logging.debug(f"Updated facts: {updated_facts}")
 
@@ -66,10 +62,15 @@ class Session:
                    count = count + chg_count
                    logging.debug(f"Deleted facts: {deleted_facts}")
 
+                if 'break' in result or 'switch' in result:
+                    # Terminate the session execution
+                    logging.debug(f"Ending session: {self.id}, destination: {result['switch'] if 'switch' in result else 'break'}")
+                    break
+
                 logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")
-                self.graph.new_cursor(node=leftmost)
+                self.graph.new_cursor(element=leftmost)
     
-    def __delete_facts(self, deleted_facts, current_leftmost):
+    def __delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)
         self.factset.del_facts(deduped_deletes)
 
@@ -93,23 +94,30 @@ class Session:
         logging.debug(f"Deleted from graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
         return new_leftmost, count
 
-    def __update_facts(self, updated_facts, current_leftmost):
+    def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         cursor_name = 'update'
         self.graph.new_cursor(cursor_name=cursor_name)
         deduped_updates = set(updated_facts)
         new_leftmost = current_leftmost
         count = 0
-        while True:
-            element = self.graph.next_element(cursor_name)
-            if element is None:
-                break
-            if element.obj.invalidate_leaves(deduped_updates):
+        logging.debug(f"Iterating through graph with updating facts: {updated_facts}, deduped: {deduped_updates}")
+        while element:= self.graph.next_element(cursor_name):
+            node = element.obj
+            if node.rule.run_once and node.ran:
+                # If the rule option is for the node to run only once and the node has executed earlier, skip this node
+                continue # to the next node
+
+            if node == execution_node and not node.rule.retrigger_on_update:
+                # if this node updated the object and the rule option is not to retrigger on updare
+                continue
+
+            if node.invalidate_leaves(deduped_updates):
                 new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
         logging.debug(f"Updated graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
         return new_leftmost, count
 
-    def __add_facts(self, new_facts, current_leftmost=None):
+    def __add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
         new_facts = self.factset.add_facts(new_facts)
 
@@ -143,7 +151,7 @@ class Session:
         logging.debug(f"Inserted into graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
         return new_leftmost, count
     
-    def __minimum(self, element1, element2):
+    def __minimum(self, element1: Element, element2:Element)->Element:
         if not element1:
             # print(f"Minimum: min = {element2} e1:{element1}, e2: {element2}")
             return element2

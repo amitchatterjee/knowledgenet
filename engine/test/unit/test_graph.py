@@ -77,14 +77,14 @@ def test_return_and_start():
         if i == 5:
             # Save the middle node
             saved_node = node
-    result = g.to_list(node=saved_node)
+    result = g.to_list(element=saved_node)
     # Needs to work out with pen and paper to see if this works :-)
     assert 6 == len(result)
     assert [4, 5, 6, 7, 8, 9] == result
 
     deleted, saved_node = g.delete(5)
     assert deleted
-    result = g.to_list(node=saved_node)
+    result = g.to_list(element=saved_node)
     assert 4 == len(result)
     assert [6, 7, 8, 9] == result
 

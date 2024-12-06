@@ -24,13 +24,14 @@ class Node:
         self.rules = rules
         self.global_ctx = global_ctx
         self.when_objs = when_objs
+        self.ran = False
 
         # Create when expression execution context
         self.leaves = []
         for i, when in enumerate(rule.whens):
             self.leaves.append(Leaf(rule, i))
 
-    def invalidate_leaves(self, updated_facts):
+    def invalidate_leaves(self, updated_facts:set)->bool:
         found = False
         for i,leaf in enumerate(self.when_objs):
             if leaf in updated_facts:
@@ -42,9 +43,11 @@ class Node:
                 return True
         return False
 
-    def execute(self, facts_set):
+    def execute(self, facts_set:set)->dict:
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
+
+        # TODO for _changes, switch to use dict instead of using lists[tuple]
         context = SimpleNamespace(_facts=facts_set, _changes = [], _rule = self.rule, _rules = self.rules, _global=self.global_ctx)
 
         all_cached = True
@@ -70,8 +73,12 @@ class Node:
         self.changes = {'insert': [], 'update': [], 'delete': []}
         # Report changes to the facts introduced by the execution of the above functions
         for change in context._changes:
-            self.changes[change[1]].append(change[0])
+            if change[1] in ['break','switch']:
+                self.changes[change[1]] = change[0]
+            else:
+                self.changes[change[1]].append(change[0])
         logging.debug(f"Result from node: {self} execution, changes: {self.changes}")
+        self.ran = True
         return self.changes
 
     def __str__(self):
