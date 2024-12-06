@@ -13,7 +13,7 @@ def next_ruleset(ctx):
     ctx._changes.append((True, 'break'))
 
 def end(ctx):
-    ctx._changes['switch'] = Switch('_end')
+    ctx._changes.append((Switch('_end'), 'switch'))
 
 def switch(ctx, ruleset):
-    ctx._changes['switch'] = Switch(ruleset)
+    ctx._changes.append((Switch(ruleset), 'switch'))

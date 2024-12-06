@@ -62,9 +62,14 @@ class Session:
                    count = count + chg_count
                    logging.debug(f"Deleted facts: {deleted_facts}")
 
-                if 'break' in result or 'switch' in result:
+                if 'break' in result:
+                     logging.debug(f"Breaking session: {self.id}, destination: next_ruleset")
+                     break
+                    
+                if 'switch' in result:
                     # Terminate the session execution
-                    logging.debug(f"Ending session: {self.id}, destination: {result['switch'] if 'switch' in result else 'break'}")
+                    logging.debug(f"Ending session: {self.id}, destination: {result['switch']}")
+                    self.factset.add_facts([result['switch']])
                     break
 
                 logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")
