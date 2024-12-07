@@ -44,32 +44,32 @@ class Session:
             leftmost = element
             if result:
                 # If all conditions were satisfied and the thens were executed
-                if len(result['insert']):
-                    new_facts = result['insert']
+                if 'insert' in node.changes:
+                    new_facts = node.changes['insert']
                     leftmost, chg_count = self.__add_facts(new_facts, leftmost)
                     count = count + chg_count
                     logging.debug(f"Inserted facts: {new_facts}")
             
-                if len(result['update']):
-                    updated_facts = result['update']
+                if 'update' in node.changes:
+                    updated_facts = node.changes['update']
                     leftmost, chg_count  = self.__update_facts(node, updated_facts, leftmost)
                     count = count + chg_count
                     logging.debug(f"Updated facts: {updated_facts}")
 
-                if len(result['delete']):
-                   deleted_facts = result['delete']
+                if 'delete' in node.changes:
+                   deleted_facts = node.changes['delete']
                    leftmost, chg_count =  self.__delete_facts(deleted_facts, leftmost)
                    count = count + chg_count
                    logging.debug(f"Deleted facts: {deleted_facts}")
 
-                if 'break' in result:
+                if 'break' in node.changes:
                      logging.debug(f"Breaking session: {self.id}, destination: next_ruleset")
                      break
                     
-                if 'switch' in result:
+                if 'switch' in node.changes:
                     # Terminate the session execution
-                    logging.debug(f"Ending session: {self.id}, destination: {result['switch']}")
-                    self.factset.add_facts([result['switch']])
+                    logging.debug(f"Ending session: {self.id}, destination: {node.changes['switch']}")
+                    self.factset.add_facts([node.changes['switch']])
                     break
 
                 logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")

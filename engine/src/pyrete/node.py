@@ -47,8 +47,7 @@ class Node:
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
 
-        # TODO for _changes, switch to use dict instead of using lists[tuple]
-        context = SimpleNamespace(_facts=facts_set, _changes = [], _rule = self.rule, _rules = self.rules, _global=self.global_ctx)
+        context = SimpleNamespace(_facts=facts_set, _changes={}, _rule = self.rule, _rules = self.rules, _global=self.global_ctx)
 
         all_cached = True
         # Evaluate all when clauses
@@ -57,30 +56,21 @@ class Node:
             logging.debug(f"Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
             all_cached = all_cached and cached
             if not result:
-                return None
+                return False
 
         # If all the executions were cached, there is no need to execute the then
         if all_cached:
-            return None
+            return False
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
         logging.debug(f"Node: {self} with context:{context} all when clauses satisfied, going to execute the then clauses")
         for then in self.rule.thens:
             # Execute each function/lambda included in the rule
             then(context)
-
-        # Cache the changes in the event we have to do deep undo
-        self.changes = {'insert': [], 'update': [], 'delete': []}
-        # Report changes to the facts introduced by the execution of the above functions
-        for change in context._changes:
-            if change[1] in ['break','switch']:
-                self.changes[change[1]] = change[0]
-            else:
-                self.changes[change[1]].append(change[0])
+        self.changes = context._changes
         logging.debug(f"Result from node: {self} execution, changes: {self.changes}")
         self.ran = True
-        return self.changes
-
+        return True
     def __str__(self):
         return f"Node({self.id}, rule:{self.rule}, whens:{self.when_objs})"
 

@@ -1,7 +1,7 @@
-from session import Session
+from rule import Rule
 
 class Ruleset:
-    def __init__(self, id, rules, global_ctx={}):
+    def __init__(self, id:str, rules:list[Rule], global_ctx={}):
         self.id = id
         # TODO add rule validations
         self.rules = rules

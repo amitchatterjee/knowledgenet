@@ -4,7 +4,7 @@ from collections.abc import Hashable
 
 T = TypeVar('T')
 class Element:
-    def __init__(self: T, prev: T, next: T, obj: Hashable, ord: Decimal):
+    def __init__(self:T, prev:T, next:T, obj:Hashable, ord:Decimal):
         self.prev = prev
         self.next = next
         self.obj = obj
@@ -17,17 +17,17 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator: Callable):
+    def __init__(self, comparator:Callable):
         self.first: Element = None
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator
 
-    def __ordinal(self, prev: Element, next: Element) -> Decimal:
+    def __ordinal(self, prev:Element, next:Element) -> Decimal:
         p_ordinal = prev.ord if prev else Decimal(0)
         n_ordinal = next.ord if next else p_ordinal + Decimal(100)
         return (p_ordinal + n_ordinal) / Decimal(2)
 
-    def add(self, obj: Hashable)->Element:
+    def add(self, obj:Hashable)->Element:
         if not self.first:
             # If this is the only element in the list
             element = Element(None, None, obj, self.__ordinal(None,None))
@@ -50,7 +50,7 @@ class Graph:
         last.next = element
         return element
 
-    def insert(self, obj: Hashable, element: Element)->Element:
+    def insert(self, obj:Hashable, element:Element)->Element:
         '''
         Insert object to the left of the element
         '''
@@ -65,7 +65,7 @@ class Graph:
             next.prev = element
         return element
 
-    def delete(self, obj: Hashable)->tuple[bool,Element]:
+    def delete(self, obj:Hashable)->tuple[bool,Element]:
         element = self.first
         while element:
             if obj == element.obj:
@@ -76,7 +76,7 @@ class Graph:
         # Element is not found
         return False, None
 
-    def delete_element(self, element: Element)->Element:
+    def delete_element(self, element:Element)->Element:
         prev: Element = element.prev
         next: Element = element.next
         if prev:
@@ -124,16 +124,16 @@ class Graph:
         self.cursors[cursor_name] = cursor.next
         return cursor
     
-    def compare(self, element1: Element, element2: Element)->int:
+    def compare(self, element1:Element, element2:Element)->int:
         return element1.ord - element2.ord
 
-    def cursor_is_left_of(self, element: Element, cursor_name='default')->bool:
+    def cursor_is_left_of(self, element:Element, cursor_name='default')->bool:
         return self.compare(self.cursors[cursor_name], element) < 0 if self.cursors[cursor_name] else True
         
-    def cursor_is_right_of(self, element: Element, cursor_name='default')->bool:
+    def cursor_is_right_of(self, element:Element, cursor_name='default')->bool:
         return self.compare(self.cursors[cursor_name], element) > 0 if self.cursors[cursor_name] else False
     
-    def cursor_is_on(self, element: Element, cursor_name='default')->bool:
+    def cursor_is_on(self, element:Element, cursor_name='default')->bool:
         return self.compare(self.cursors[cursor_name], element) == 0 if self.cursors[cursor_name] else False
 
     def to_list(self, cursor_name='default', element:Element =None)->list:

@@ -1,9 +1,11 @@
+from typing import Union, Type
 from util import to_list
-from repository import registry
 
 class Rule:
-    def __init__(self, id, when, then, order=0, merges=None, repository=None, ruleset=None, 
+    def __init__(self, id:str, when:Union[list,object], then:Union[list,object], 
+                 order=0, merges:list[Type]=None, repository:str=None, ruleset:str=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):
+        from repository import registry
         self.id = id
         self.order = order
         self.merges = merges
