@@ -2,7 +2,7 @@ from rule import Rule,Condition
 from ruleset import Ruleset
 from repository import Repository
 from helper import assign
-from notify import insert, update, delete
+from controls import insert, update, delete
 from service import execute
 
 from test_helpers.test_util import find_result_of_type

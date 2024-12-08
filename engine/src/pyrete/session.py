@@ -46,7 +46,7 @@ class Session:
                 # If all conditions were satisfied and the thens were executed
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
-                    leftmost, chg_count = self.__add_facts(new_facts, leftmost)
+                    leftmost, chg_count, changed_collectors = self.__add_facts(new_facts, leftmost)
                     count = count + chg_count
                     logging.debug(f"Inserted facts: {new_facts}")
             
@@ -124,7 +124,7 @@ class Session:
 
     def __add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
-        new_facts = self.factset.add_facts(new_facts)
+        new_facts, changed_collectors = self.factset.add_facts(new_facts)
 
         new_leftmost = current_leftmost
         count = 0
@@ -154,7 +154,7 @@ class Session:
                     count = count+1
                     
         logging.debug(f"Inserted into graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
-        return new_leftmost, count
+        return new_leftmost, count, changed_collectors
     
     def __minimum(self, element1: Element, element2:Element)->Element:
         if not element1:

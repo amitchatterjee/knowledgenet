@@ -5,7 +5,7 @@ from rule import Rule,Condition
 from ruleset import Ruleset
 from repository import Repository
 from helper import assign
-from notify import insert
+from controls import insert
 from service import execute
 from typing import Tuple
 

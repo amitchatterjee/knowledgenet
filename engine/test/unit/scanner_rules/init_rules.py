@@ -1,6 +1,6 @@
 from scanner import ruledef
 from rule import Rule, Condition
-from notify import insert
+from controls import insert
 from helper import assign
 
 from test_helpers.test_facts import C1, R1

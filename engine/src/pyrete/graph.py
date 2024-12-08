@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Callable, TypeVar
+from typing import TypeVar
 from collections.abc import Hashable
 
 T = TypeVar('T')
@@ -17,7 +17,7 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator:Callable):
+    def __init__(self, comparator:callable):
         self.first: Element = None
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator

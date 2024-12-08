@@ -1,9 +1,15 @@
-from typing import Union, Type
+from typing import Union
 from util import to_list
 
+class Condition:
+    def __init__(self, of_type:type, matches_exp:callable):
+        self.of_type = of_type
+        self.exp = matches_exp
+        # TODO add validation
+
 class Rule:
-    def __init__(self, id:str, when:Union[list,object], then:Union[list,object], 
-                 order=0, merges:list[Type]=None, repository:str=None, ruleset:str=None, 
+    def __init__(self, id:str, when:Union[list[Condition],Condition], then:Union[list[callable],callable], 
+                 order=0, merges:list[type]=None, repository:str=None, ruleset:str=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):
         from repository import registry
         self.id = id
@@ -33,9 +39,3 @@ class Rule:
 
     def __eq__(self, other):
         return self.id == other.name
-
-class Condition:
-    def __init__(self, of_type, matches_exp):
-        self.of_type = of_type
-        self.exp = matches_exp
-        # TODO add validation
