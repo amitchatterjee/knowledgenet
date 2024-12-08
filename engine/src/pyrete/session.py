@@ -43,24 +43,27 @@ class Session:
             count = 0
             leftmost = element
             if result:
+                changes = set()
                 # If all conditions were satisfied and the thens were executed
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
                     leftmost, chg_count, changed_collectors = self.__add_facts(new_facts, leftmost)
+                    changes.update(changed_collectors)
                     count = count + chg_count
                     logging.debug(f"Inserted facts: {new_facts}")
-            
-                if 'update' in node.changes:
-                    updated_facts = node.changes['update']
-                    leftmost, chg_count  = self.__update_facts(node, updated_facts, leftmost)
-                    count = count + chg_count
-                    logging.debug(f"Updated facts: {updated_facts}")
 
                 if 'delete' in node.changes:
                    deleted_facts = node.changes['delete']
-                   leftmost, chg_count =  self.__delete_facts(deleted_facts, leftmost)
+                   leftmost, chg_count, changed_collectors =  self.__delete_facts(deleted_facts, leftmost)
+                   changes.update(changed_collectors)
                    count = count + chg_count
                    logging.debug(f"Deleted facts: {deleted_facts}")
+
+                if 'update' in node.changes:
+                    changes.update(node.changes['update'])
+                    leftmost, chg_count  = self.__update_facts(node, changes, leftmost)
+                    count = count + chg_count
+                    logging.debug(f"Updated facts: {changes}")
 
                 if 'break' in node.changes:
                      logging.debug(f"Breaking session: {self.id}, destination: next_ruleset")
@@ -77,7 +80,7 @@ class Session:
     
     def __delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)
-        self.factset.del_facts(deduped_deletes)
+        changed_collectors = self.factset.del_facts(deduped_deletes)
 
         cursor_name = 'delete'
         self.graph.new_cursor(cursor_name=cursor_name)
@@ -97,7 +100,7 @@ class Session:
                     new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
         logging.debug(f"Deleted from graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
-        return new_leftmost, count
+        return new_leftmost, count, changed_collectors
 
     def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         cursor_name = 'update'

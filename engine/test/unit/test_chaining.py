@@ -124,7 +124,6 @@ def test_chaining_with_walkback_on_delete():
                     Condition(of_type=P1, matches_exp=lambda ctx, this: this.val > 0 and assign(ctx,parent=this)),
                     Condition(of_type=Ch1, matches_exp=lambda ctx, this: this.val > 0 and assign(ctx,child=this) and this.parent == ctx.parent)],
                 then=rule_2_then)
- 
     parent = P1(20)
     facts = [parent, Ch1(parent, 20)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)

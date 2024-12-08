@@ -38,7 +38,7 @@ def test_one_rule_multiple_when_thens():
     assert 2 ==len(matching[0].vals)
     assert (facts[1],facts[4]) == matching[0].vals
 
-def test_condition_with_container_objs():
+def test_condition_with_python_collection_objs():
     rule_1 = Rule(id='r1',
                 when=Condition(of_type=tuple, matches_exp=lambda ctx, this: assign(ctx, l=this) and len(this) >= 2),
                 then=lambda ctx: insert(ctx, R1(ctx.l)))

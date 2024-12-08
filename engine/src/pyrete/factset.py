@@ -16,8 +16,10 @@ class Factset:
         new_facts = set(f) - self.facts
 
         # Initialize the newly-added collectors
+        new_collectors = set()
         for collector in new_facts:
             if type(collector) == Collector:
+                new_collectors.add(collector)
                 self.__add_to_collector_facts_dict(collector)
                 # Initialize the newly-added collectors with facts that are already in the factset 
                 matching_facts = self.__type_to_facts[collector.of_type]
@@ -26,7 +28,7 @@ class Factset:
                     collector.add(matching_fact)
 
         # Initialize the newly-added facts
-        collectors = {}
+        updated_collectors = set()
         for fact in new_facts:
             if type(fact) != Collector:
                 self.__add_to_type_facts_dict(fact)
@@ -36,32 +38,39 @@ class Factset:
                     matching_collectors = self.__type_to_collector[type(fact)]
                     for collector in matching_collectors:
                         if collector.add(fact):
-                            collectors.add(collector)
+                            updated_collectors.add(collector)
 
          # Update the factset
         self.facts.update(new_facts)
 
-        return new_facts, collectors
+        return new_facts, updated_collectors - new_collectors
     
     def del_facts(self, facts):
+        updated_collectors = set()
         for fact in facts:
             self.facts.remove(fact)
             typ = type(fact)
             if typ != Collector and typ in self.__type_to_facts:
                 flist = self.__type_to_facts[typ]
                 flist.remove(fact)
+                if type(fact) in self.__type_to_collector:
+                    matching_collectors = self.__type_to_collector[type(fact)]
+                    for collector in matching_collectors:
+                        if collector.remove(fact):
+                            updated_collectors.add(collector)
             elif typ == Collector and typ in self.__type_to_collector:
                 flist = self.__type_to_collector[typ]
                 flist.remove(fact)
+        return updated_collectors
 
     def __add_to_type_facts_dict(self, fact):
-        facts_list = self.__type_to_facts[type(fact)] if type(fact) in self.__type_to_facts else []
-        facts_list.append(fact)
+        facts_list = self.__type_to_facts[type(fact)] if type(fact) in self.__type_to_facts else set()
+        facts_list.add(fact)
         self.__type_to_facts[type(fact)] = facts_list
 
     def __add_to_collector_facts_dict(self, collector):
-        collectors_list = self.__type_to_collector[collector.of_type] if collector.of_type in self.__type_to_collector else []
-        collectors_list.append(collector)
+        collectors_list = self.__type_to_collector[collector.of_type] if collector.of_type in self.__type_to_collector else set()
+        collectors_list.add(collector)
         self.__type_to_collector[collector.of_type] = collectors_list
 
     def facts_of_type(self, of_type):
