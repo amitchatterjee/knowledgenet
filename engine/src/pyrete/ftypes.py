@@ -5,15 +5,18 @@ class Switch:
         
 class Collector:
     def __init__(self, id:str, of_type:type, filter:callable=None, nvalue:callable=None):
-        self.of_type = type
+        self.of_type = of_type
         self.id = id
         self.filter = filter
         self.nvalue = nvalue  
-        self.collection = {}
+        self.collection = set()
         self.sum = 0.0
 
     def __eq__(self, other):
       return self.id == other.id
+    
+    def __hash__(self):
+        return hash(self.id)
 
     def add(self, obj):
         if type(obj) != self.of_type:

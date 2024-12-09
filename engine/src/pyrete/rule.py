@@ -1,11 +1,16 @@
 from typing import Union
+
 from util import to_list
+from ftypes import Collector
 
 class Condition:
-    def __init__(self, of_type:type, matches_exp:callable):
+    def __init__(self, of_type:type, matches_exp:callable, id=None):
+        if of_type == Collector and not id:
+            raise Exception("when of_type is Collector, id must be specified")
+        # TODO add more validations
         self.of_type = of_type
         self.exp = matches_exp
-        # TODO add validation
+        self.id = id
 
 class Rule:
     def __init__(self, id:str, when:Union[list[Condition],Condition], then:Union[list[callable],callable], 

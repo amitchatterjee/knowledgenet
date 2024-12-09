@@ -1,12 +1,12 @@
 import logging
 import uuid
-from collections import deque
+from typing import Union
 
 from perm import combinations
 from node import Node
 from factset import Factset
 from graph import Graph, Element
-from typing import Union
+from ftypes import Collector
 
 class Session:
     def __init__(self, ruleset, facts, id=uuid.uuid1(), global_ctx={}):
@@ -137,7 +137,10 @@ class Session:
             when_objs = []
             # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
             for when in rule.whens:
-                objs = self.factset.facts_of_type(when.of_type)
+                id = None
+                if when.of_type == Collector:
+                    id = when.id
+                objs = self.factset.facts_of_type(when.of_type, id=id)
                 if not objs:
                     satisfies = False
                     break
