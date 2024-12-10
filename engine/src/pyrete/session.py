@@ -17,6 +17,7 @@ class Session:
         self.factset = Factset()
         self.graph = Graph(self.__comparator)
         self.__add_facts(facts)
+        # print(self.graph.to_list())
 
     def __str__(self):
         return f"Session({self.id}, ruleset: {self.ruleset}, facts:{self.factset})"
@@ -135,7 +136,6 @@ class Session:
         for rule in self.rules:
             satisfies = True
             when_objs = []
-            print(type(rule.whens))
             # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
             for when in rule.whens:
                 id = None

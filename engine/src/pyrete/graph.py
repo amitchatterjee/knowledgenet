@@ -136,7 +136,7 @@ class Graph:
     def cursor_is_on(self, element:Element, cursor_name='default')->bool:
         return self.compare(self.cursors[cursor_name], element) == 0 if self.cursors[cursor_name] else False
 
-    def to_list(self, cursor_name='default', element:Element =None)->list:
+    def to_list(self, cursor_name='default', element:Element=None)->list:
         result = []
         self.new_cursor(cursor_name, element)
         while True:
