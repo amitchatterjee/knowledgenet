@@ -62,6 +62,8 @@ class Session:
 
                 if 'update' in node.changes:
                     changes.update(node.changes['update'])
+
+                if len(changes):
                     leftmost, chg_count  = self.__update_facts(node, changes, leftmost)
                     count = count + chg_count
                     logging.debug(f"Updated facts: {changes}")
@@ -160,7 +162,7 @@ class Session:
                     new_leftmost = self.__minimum(new_leftmost, element)
                     count = count+1
                     
-        logging.debug(f"Inserted into graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
+        logging.debug(f"Inserted into graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
     
     def __minimum(self, element1: Element, element2:Element)->Element:
