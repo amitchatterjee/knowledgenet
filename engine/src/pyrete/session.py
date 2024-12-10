@@ -44,29 +44,29 @@ class Session:
             count = 0
             leftmost = element
             if result:
-                changes = set()
+                all_updates = set()
                 # If all conditions were satisfied and the thens were executed
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
                     leftmost, chg_count, changed_collectors = self.__add_facts(new_facts, leftmost)
-                    changes.update(changed_collectors)
+                    all_updates.update(changed_collectors)
                     count = count + chg_count
                     logging.debug(f"Inserted facts: {new_facts}")
 
                 if 'delete' in node.changes:
                    deleted_facts = node.changes['delete']
                    leftmost, chg_count, changed_collectors =  self.__delete_facts(deleted_facts, leftmost)
-                   changes.update(changed_collectors)
+                   all_updates.update(changed_collectors)
                    count = count + chg_count
                    logging.debug(f"Deleted facts: {deleted_facts}")
 
                 if 'update' in node.changes:
-                    changes.update(node.changes['update'])
+                    all_updates.update(node.changes['update'])
 
-                if len(changes):
-                    leftmost, chg_count  = self.__update_facts(node, changes, leftmost)
+                if len(all_updates):
+                    leftmost, chg_count  = self.__update_facts(node, all_updates, leftmost)
                     count = count + chg_count
-                    logging.debug(f"Updated facts: {changes}")
+                    logging.debug(f"Updated facts: {all_updates}")
 
                 if 'break' in node.changes:
                      logging.debug(f"Breaking session: {self.id}, destination: next_ruleset")
@@ -102,7 +102,7 @@ class Session:
                 else:
                     new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
-        logging.debug(f"Deleted from graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
+        logging.debug(f"Deleted from graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
 
     def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
