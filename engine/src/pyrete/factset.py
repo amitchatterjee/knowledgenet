@@ -47,6 +47,25 @@ class Factset:
         self.facts.update(new_facts)
         return new_facts, updated_collectors - new_collectors
     
+    def update_facts(self, facts):
+        collectors = set()
+        updated_collectors = set()
+        for fact in facts:
+            typ = type(fact)
+            if typ != Collector:
+                if type(fact) in self.__type_to_collector:
+                    matching_collectors = self.__type_to_collector[type(fact)]
+                    for collector in matching_collectors:
+                        if fact in collector.collection and collector.nval:
+                            # TODO adjust sum, etc.
+                            collector.remove(fact)
+                            collector.add(fact)
+                        updated_collectors.add(collector)
+            else:
+                # type = Collector
+                collectors.add(fact)
+        return updated_collectors - collectors
+
     def del_facts(self, facts):
         updated_collectors = set()
         for fact in facts:

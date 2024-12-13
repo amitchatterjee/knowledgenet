@@ -1,11 +1,11 @@
-
+from typing import Callable
 class Switch:
     def __init__(self, ruleset:str):
         self.ruleset = ruleset
         
 class Collector:
     # TODO - add more on-the-fly statistical capabilities. Statistics that can be generated "on the fly" include: simple aggregations like count, sum, average, minimum, maximum, current values, running totals, live data feeds, real-time trends, percentiles, standard deviation within a data stream, and dynamic filters applied to data as it arrives; essentially, any calculation that can be performed directly on incoming data without needing to pre-process or store large amounts of data beforehand
-    def __init__(self, id:str, of_type:type, filter:callable=None, nvalue:callable=None):
+    def __init__(self, id:str, of_type:type, filter:Callable=None, nvalue:Callable=None):
         self.of_type = of_type
         self.id = id
         self.filter = filter

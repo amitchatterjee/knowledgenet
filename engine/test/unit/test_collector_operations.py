@@ -65,7 +65,6 @@ def test_collector_changes_on_fact_insertion():
     assert 3 == matching[1].vals[1]
 
 def test_collector_changes_on_fact_deletion():
-
     rule_1 = Rule(id='r1',
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
                   then=lambda ctx: delete(ctx, ctx.obj))

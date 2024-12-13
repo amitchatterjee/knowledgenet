@@ -1,10 +1,10 @@
 from decimal import Decimal
-from typing import TypeVar
+from typing import TypeVar, Callable, Union
 from collections.abc import Hashable
 
 T = TypeVar('T')
-class Element:
-    def __init__(self:T, prev:T, next:T, obj:Hashable, ord:Decimal):
+class Element:    
+    def __init__(self:T, prev:Union[T,None], next:Union[T,None], obj:Hashable, ord:Decimal):
         self.prev = prev
         self.next = next
         self.obj = obj
@@ -18,12 +18,12 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator:callable):
-        self.first: Element = None
+    def __init__(self, comparator:Callable):
+        self.first = None
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator
 
-    def __ordinal(self, prev:Element, next:Element) -> Decimal:
+    def __ordinal(self, prev:Union[Element,None], next:Union[Element,None]) -> Decimal:
         p_ordinal = prev.ord if prev else Decimal(0)
         n_ordinal = next.ord if next else p_ordinal + Decimal(100)
         return (p_ordinal + n_ordinal) / Decimal(2)
@@ -35,8 +35,8 @@ class Graph:
             self.first = element
             return element
         
-        last = None
-        element = self.first
+        last:Union[Element,None] = None
+        element:Element = self.first
         while element:
             # Invoke the comparator.
             result = self.comparator(obj, element.obj)
@@ -56,7 +56,6 @@ class Graph:
         Insert object to the left of the current element
         '''
         prev = current.prev
-        next = current.next
         element = Element(prev, current, obj, self.__ordinal(prev,current))
         if prev:
             prev.next = element
@@ -71,7 +70,6 @@ class Graph:
         while element:
             if obj == element.obj:
                 next = self.delete_element(element)
-
                 return True, next
             element = element.next
         # Element is not found
@@ -118,7 +116,7 @@ class Graph:
             return None
         return cursor.obj
     
-    def next_element(self, cursor_name='default')->Element:
+    def next_element(self, cursor_name='default')->Union[Element,None]:
         cursor = self.cursors[cursor_name]
         if not cursor:
             return None

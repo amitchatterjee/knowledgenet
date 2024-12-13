@@ -64,8 +64,12 @@ class Session:
                     all_updates.update(node.changes['update'])
 
                 if len(all_updates):
-                    leftmost, chg_count  = self.__update_facts(node, all_updates, leftmost)
+                    leftmost, chg_count, changed_collectors  = self.__update_facts(node, all_updates, leftmost)
                     count = count + chg_count
+                    if len(changed_collectors) > 0:
+                        # As a part of updated, additional collectors may have been affected, update the graph accordingly
+                        leftmost, chg_count, changed_collectors + self.__update_facts(node, all_updates, leftmost)
+                        count = count + chg_count
                     logging.debug(f"Updated facts: {all_updates}")
 
                 if 'break' in node.changes:
@@ -104,12 +108,13 @@ class Session:
         return new_leftmost, count, changed_collectors
 
     def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
-        cursor_name = 'update'
-        self.graph.new_cursor(cursor_name=cursor_name)
-        deduped_updates = set(updated_facts)
+        deduped_updates = set(updated_facts) # Remove duplicates
+        changed_collectors = self.factset.update_facts(updated_facts)
         new_leftmost = current_leftmost
         count = 0
         logging.debug(f"Iterating through graph with updated facts: {updated_facts}, deduped: {deduped_updates}")
+        cursor_name = 'update'
+        self.graph.new_cursor(cursor_name=cursor_name)
         while element:= self.graph.next_element(cursor_name):
             node = element.obj
             if node.rule.run_once and node.ran:
@@ -124,7 +129,7 @@ class Session:
                 new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
         logging.debug(f"Updated graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
-        return new_leftmost, count
+        return new_leftmost, count, changed_collectors
 
     def __add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
