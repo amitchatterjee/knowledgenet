@@ -25,13 +25,14 @@ class Node:
         self.global_ctx = global_ctx
         self.when_objs = when_objs
         self.ran = False
+        self.context = None
 
         # Create when expression execution context
         self.leaves = []
         for i, when in enumerate(rule.whens):
             self.leaves.append(Leaf(rule, i))
 
-    def invalidate_leaves(self, updated_facts:set)->bool:
+    def reset_whens(self, updated_facts:set)->bool:
         found = False
         for i,leaf in enumerate(self.when_objs):
             if leaf in updated_facts:
@@ -47,12 +48,14 @@ class Node:
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
 
-        context = SimpleNamespace(_facts=facts_set, _changes={}, _rule = self.rule, _rules = self.rules, _global=self.global_ctx)
-
+        if not self.context:
+            self.context = SimpleNamespace(_facts=facts_set, _rule=self.rule, _rules=self.rules, _global=self.global_ctx)
+        self.context._changes={}
+        
         all_cached = True
         # Evaluate all when clauses
         for i, when in enumerate(self.leaves):
-            cached, result = when.execute(context, self.when_objs[i])
+            cached, result = when.execute(self.context, self.when_objs[i])
             logging.debug(f"Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
             all_cached = all_cached and cached
             if not result:
@@ -63,11 +66,12 @@ class Node:
             return False
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug(f"Node: {self} with context:{context} all when clauses satisfied, going to execute the then clauses")
+        logging.debug(f"Node: {self} with context:{self.context} all when clauses satisfied, going to execute the then clauses")
         for then in self.rule.thens:
             # Execute each function/lambda included in the rule
-            then(context)
-        self.changes = context._changes
+            then(self.context)
+        self.changes = self.context._changes
+
         logging.debug(f"Result from node: {self} execution, changes: {self.changes}")
         self.ran = True
         return True

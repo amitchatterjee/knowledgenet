@@ -11,6 +11,7 @@ class Element:
         self.ord = ord
 
     def __str__(self):
+        #return f"Element:({self.obj}, prev:{self.prev.obj if self.prev else None}, next:{self.next.obj if self.next else None} ordinal:{self.ord})"
         return f"Element:({self.obj}, ordinal:{self.ord})"
     
     def __repr__(self):
@@ -50,19 +51,19 @@ class Graph:
         last.next = element
         return element
 
-    def insert(self, obj:Hashable, element:Element)->Element:
+    def insert(self, obj:Hashable, current:Element)->Element:
         '''
-        Insert object to the left of the element
+        Insert object to the left of the current element
         '''
-        prev = element.prev
-        next = element.next
-        element = Element(prev, element, obj, self.__ordinal(prev,element))
+        prev = current.prev
+        next = current.next
+        element = Element(prev, current, obj, self.__ordinal(prev,current))
         if prev:
             prev.next = element
         else:
             self.first = element
-        if next:
-            next.prev = element
+
+        current.prev = element
         return element
 
     def delete(self, obj:Hashable)->tuple[bool,Element]:
@@ -77,8 +78,8 @@ class Graph:
         return False, None
 
     def delete_element(self, element:Element)->Element:
-        prev: Element = element.prev
-        next: Element = element.next
+        prev:Element = element.prev
+        next:Element = element.next
         if prev:
             if next:
                 # Removing an element between two elements
@@ -102,13 +103,13 @@ class Graph:
                 self.cursors[name] = next
         return next
 
-    def new_cursor(self, cursor_name = 'default', element:Element = None):
+    def new_cursor(self, cursor_name='default', element:Element=None):
         if not element:
             self.cursors[cursor_name] = self.first
         else:
             self.cursors[cursor_name] = element
 
-    def get_cursor(self, cursor_name = 'default')->Element:
+    def get_cursor(self, cursor_name='default')->Element:
         return self.cursors[cursor_name]
 
     def next(self, cursor_name='default')->Hashable:

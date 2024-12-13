@@ -38,7 +38,7 @@ class Rule:
             registry[repository][ruleset].append(self)
 
     def __str__(self):
-        return f"Rule({self.id})"
+        return f"Rule({self.id}, order:{self.order})"
     
     def __repr__(self):
         return self.__str__()

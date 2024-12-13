@@ -15,7 +15,7 @@ def test_flow_control_with_end():
     rule_1_2 = Rule(id='r12',
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: this.val > 10),
                 then=lambda ctx: end(ctx))
-    rule_1_3 = Rule(id='r13', rank=1,
+    rule_1_3 = Rule(id='r13', order=1,
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: True),
                 then=lambda ctx: insert(ctx, R1('r13')))
     
@@ -48,7 +48,7 @@ def test_flow_control_with_switch():
     rule_1_2 = Rule(id='r12',
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: this.val > 10),
                 then=lambda ctx: switch(ctx, 'rs3'))
-    rule_1_3 = Rule(id='r13', rank=1,
+    rule_1_3 = Rule(id='r13', order=1,
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this)),
                 then=lambda ctx: insert(ctx, R1(ctx.c2.val)))
     

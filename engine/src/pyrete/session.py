@@ -17,7 +17,7 @@ class Session:
         self.factset = Factset()
         self.graph = Graph(self.__comparator)
         self.__add_facts(facts)
-        # print(self.graph.to_list())
+        # print(self.graph.to_list(cursor_name='list'))
 
     def __str__(self):
         return f"Session({self.id}, ruleset: {self.ruleset}, facts:{self.factset})"
@@ -35,7 +35,7 @@ class Session:
 
     def __execute_graph(self):
         logging.debug(f"Executing rules on graph: {self.graph}")
-        #print(f"Graph content: {self.graph.to_element_list()}")
+        #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
         self.graph.new_cursor()
         while element := self.graph.next_element():
             node = element.obj
@@ -84,17 +84,14 @@ class Session:
     def __delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.factset.del_facts(deduped_deletes)
-
+       
         cursor_name = 'delete'
         self.graph.new_cursor(cursor_name=cursor_name)
         new_leftmost = current_leftmost
         count = 0
-        while True:
-            element = self.graph.next_element(cursor_name)
-            if element is None:
-                break
-
-            if len([value for value in element.obj.when_objs if value in deduped_deletes]):
+        while element := self.graph.next_element(cursor_name):
+            overlap = [value for value in element.obj.when_objs if value in deduped_deletes]
+            if len(overlap):
                 next_element = self.graph.delete_element(element)
                 if element.obj == new_leftmost.obj:
                     # If the leftmost object is being deleted
@@ -102,6 +99,7 @@ class Session:
                 else:
                     new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
+
         logging.debug(f"Deleted from graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
 
@@ -111,7 +109,7 @@ class Session:
         deduped_updates = set(updated_facts)
         new_leftmost = current_leftmost
         count = 0
-        logging.debug(f"Iterating through graph with updating facts: {updated_facts}, deduped: {deduped_updates}")
+        logging.debug(f"Iterating through graph with updated facts: {updated_facts}, deduped: {deduped_updates}")
         while element:= self.graph.next_element(cursor_name):
             node = element.obj
             if node.rule.run_once and node.ran:
@@ -122,7 +120,7 @@ class Session:
                 # if this node updated the object and the rule option is not to retrigger on updare
                 continue
 
-            if node.invalidate_leaves(deduped_updates):
+            if node.reset_whens(deduped_updates):
                 new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
         logging.debug(f"Updated graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")

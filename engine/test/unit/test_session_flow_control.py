@@ -54,7 +54,7 @@ def test_flow_control_with_next_ruleset():
     rule_2 = Rule(id='r2',
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: this.val > 10),
                 then=lambda ctx: next_ruleset(ctx))
-    rule_3 = Rule(id='r3', rank=1,
+    rule_3 = Rule(id='r3', order=1,
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this)),
                 then=lambda ctx: insert(ctx, R1(ctx.c2.val)))
     facts = [C1(20)]
