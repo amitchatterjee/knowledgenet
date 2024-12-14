@@ -147,5 +147,20 @@ def test_non_default_cursor():
     assert 8 == g.next()
     assert 8 == g.next('x')
 
+def test_many_inserts_in_between():
+    comparator = lambda o1, o2: o1 - o2
+    g = Graph(comparator)
+    # Increasing this number slows down the tests. But, I ran with 10000
+    high = 100
+    g.add(0)
+    g.add(high)
+    for i in range(1,high):
+        g.add(i)
+    result = g.to_list()
+    assert high+1 == len(result)
+    for i,j in enumerate(result):
+        assert i == j
+    
+
     
     

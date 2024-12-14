@@ -1,4 +1,3 @@
-import pytest
 import logging
 
 from rule import Rule,Condition

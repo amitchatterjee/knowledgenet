@@ -56,14 +56,11 @@ class Factset:
                 if type(fact) in self.__type_to_collector:
                     matching_collectors = self.__type_to_collector[type(fact)]
                     for collector in matching_collectors:
-                        if fact in collector.collection and collector.nval:
-                            # TODO adjust sum, etc.
+                        if fact in collector.collection and collector.nvalue:
+                            # adjust on the fly stats: sum, etc.
                             collector.remove(fact)
                             collector.add(fact)
                         updated_collectors.add(collector)
-            else:
-                # type = Collector
-                collectors.add(fact)
         return updated_collectors - collectors
 
     def del_facts(self, facts):

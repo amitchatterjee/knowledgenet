@@ -67,8 +67,9 @@ class Session:
                     leftmost, chg_count, changed_collectors  = self.__update_facts(node, all_updates, leftmost)
                     count = count + chg_count
                     if len(changed_collectors) > 0:
+                        logging.debug(f"An update resulted in changes to collectors: {changed_collectors}")
                         # As a part of updated, additional collectors may have been affected, update the graph accordingly
-                        leftmost, chg_count, changed_collectors + self.__update_facts(node, all_updates, leftmost)
+                        leftmost, chg_count, changed_collectors = self.__update_facts(node, changed_collectors, leftmost)
                         count = count + chg_count
                     logging.debug(f"Updated facts: {all_updates}")
 
@@ -107,7 +108,8 @@ class Session:
         logging.debug(f"Deleted from graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
 
-    def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
+    def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], 
+                       current_leftmost: Element)->tuple[Element:int]:
         deduped_updates = set(updated_facts) # Remove duplicates
         changed_collectors = self.factset.update_facts(updated_facts)
         new_leftmost = current_leftmost

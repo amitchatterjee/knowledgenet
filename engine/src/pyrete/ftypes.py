@@ -4,14 +4,19 @@ class Switch:
         self.ruleset = ruleset
         
 class Collector:
-    # TODO - add more on-the-fly statistical capabilities. Statistics that can be generated "on the fly" include: simple aggregations like count, sum, average, minimum, maximum, current values, running totals, live data feeds, real-time trends, percentiles, standard deviation within a data stream, and dynamic filters applied to data as it arrives; essentially, any calculation that can be performed directly on incoming data without needing to pre-process or store large amounts of data beforehand
     def __init__(self, id:str, of_type:type, filter:Callable=None, nvalue:Callable=None):
         self.of_type = of_type
         self.id = id
         self.filter = filter
         self.nvalue = nvalue  
         self.collection = set()
-        self.sum = 0.0
+        self.__cached_sum = None
+
+    def __str__(self):
+        return f"Collector({self.id}, size:{len(self.collection)})"
+    
+    def __repr__(self):
+        return self.__str__()
 
     def __eq__(self, other):
       return self.id == other.id
@@ -28,10 +33,7 @@ class Collector:
             return False
         
         self.collection.add(obj)
-
-        if self.nvalue:
-            val = self.nvalue(obj)
-            self.sum = self.sum + val
+        self.__cached_sum = None
         return True
 
     def remove(self, obj):
@@ -43,7 +45,13 @@ class Collector:
             return False
         
         self.collection.remove(obj)
-        if self.nvalue:
-            val = self.nvalue(obj)
-            self.sum = self.sum - val
+        self.__cached_sum = None
         return True
+    
+    def sum(self):
+        if not self.nvalue:
+            raise Exception("Don't know how to compute sum as nvalue is not provided")
+        if self.__cached_sum is None:
+            self.__cached_sum = sum([self.nvalue(each) for each in self.collection])
+        return self.__cached_sum
+        
