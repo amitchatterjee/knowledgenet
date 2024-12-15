@@ -5,8 +5,8 @@ from helper import assign
 from controls import insert, update, delete
 from service import execute
 
-from test_helpers.test_util import find_result_of_type
-from test_helpers.test_facts import C1, R1, P1, Ch1
+from test_helpers.unit_util import find_result_of_type
+from test_helpers.unit_facts import C1, R1, P1, Ch1
 
 def test_rule_chaining_with_insert():
     rule_1 = Rule(id='r1',

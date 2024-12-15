@@ -5,8 +5,8 @@ from helper import assign
 from controls import insert, update, next_ruleset
 from service import execute
 
-from test_helpers.test_util import find_result_of_type
-from test_helpers.test_facts import C1, C2, R1
+from test_helpers.unit_util import find_result_of_type
+from test_helpers.unit_facts import C1, C2, R1
 
 def test_flow_control_with_run_once():
     def rule_1_then(ctx):

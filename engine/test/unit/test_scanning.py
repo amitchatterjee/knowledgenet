@@ -3,8 +3,8 @@ from scanner import load_rules
 from repository import lookup
 from service import execute
 
-from test_helpers.test_facts import C1, R1
-from test_helpers.test_util import find_result_of_type
+from test_helpers.unit_facts import C1, R1
+from test_helpers.unit_util import find_result_of_type
 
 def test_scanning():
     load_rules('test/unit/scanner_rules')

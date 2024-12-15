@@ -5,7 +5,7 @@ class Factset:
         self.facts = set()
         self.__type_to_facts:dict[type,object] = {}
         self.__type_to_collector:dict[type,Collector] = {}
-        self.__id_to_collector:dict[str,Collector] = {}
+        self.__id_to_collectors:dict[str,set[Collector]] = {}
 
     def __str__(self):
         return f"Factset({self.facts})"
@@ -22,7 +22,9 @@ class Factset:
             if type(collector) == Collector:
                 new_collectors.add(collector)
                 self.__add_to_collector_facts_dict(collector)
-                self.__id_to_collector[collector.id] = collector
+                cset = self.__id_to_collectors[collector.id] if collector.id in self.__id_to_collectors else set()
+                cset.add(collector)
+                self.__id_to_collectors[collector.id] = cset
                 # Initialize the newly-added collectors with facts that are already in the factset 
                 if collector.of_type in self.__type_to_facts:
                     matching_facts = self.__type_to_facts[collector.of_type]
@@ -79,7 +81,10 @@ class Factset:
             else:
                 flist = self.__type_to_collector[typ]
                 flist.remove(fact)
-                del self.__id_to_collector[fact.id]
+                cset = self.__id_to_collectors[fact.id]
+                cset.remove(fact)
+                if len(cset) == 0:
+                    del self.__id_to_collectors[fact.id]
         return updated_collectors
 
     def __add_to_type_facts_dict(self, fact):
@@ -94,6 +99,6 @@ class Factset:
 
     def facts_of_type(self, of_type, id=None):
         if of_type == Collector:
-            return [self.__id_to_collector[id]] if id in self.__id_to_collector else None
+            return self.__id_to_collectors[id] if id in self.__id_to_collectors else None
         else:
             return self.__type_to_facts[of_type] if of_type in self.__type_to_facts else None

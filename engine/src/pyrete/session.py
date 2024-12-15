@@ -60,13 +60,8 @@ class Session:
                     all_updates.update(node.changes['update'])
 
                 if len(all_updates):
-                    leftmost, chg_count, changed_collectors  = self.__update_facts(node, all_updates, leftmost)
+                    leftmost, chg_count = self.__update_facts(node, all_updates, leftmost)
                     count = count + chg_count
-                    if len(changed_collectors) > 0:
-                        logging.debug(f"An update resulted in changes to collectors: {changed_collectors}")
-                        # As a part of updated, additional collectors may have been affected, update the graph accordingly
-                        leftmost, chg_count, changed_collectors = self.__update_facts(node, changed_collectors, leftmost)
-                        count = count + chg_count
                     logging.debug(f"Updated facts: {all_updates}")
 
                 if 'break' in node.changes:
@@ -126,8 +121,14 @@ class Session:
             if node.reset_whens(deduped_updates):
                 new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
+
+        if len(changed_collectors) > 0:
+            logging.debug(f"An update resulted in changes to collectors: {changed_collectors}")
+            # As a part of updated, additional collectors may have been affected, update the graph accordingly
+            new_leftmost, chg_count = self.__update_facts(node, changed_collectors, new_leftmost)
+            count = count + chg_count
         logging.debug(f"Updated graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
-        return new_leftmost, count, changed_collectors
+        return new_leftmost, count
 
     def __add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
