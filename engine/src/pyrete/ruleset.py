@@ -15,3 +15,7 @@ class Ruleset:
 
     def __eq__(self, other):
         return self.id == other.name
+    
+    def comparator(self, obj, other):
+        # TODO only rule.order based ordering is implemented for now
+        return obj.rule.order - other.rule.order

@@ -4,11 +4,13 @@ class Switch:
         self.ruleset = ruleset
         
 class Collector:
-    def __init__(self, id:str, of_type:type, filter:Callable=None, nvalue:Callable=None):
+    def __init__(self, id:str, of_type:type, filter:Callable=None, nvalue:Callable=None, **kwargs):
         self.of_type = of_type
         self.id = id
         self.filter = filter
-        self.nvalue = nvalue  
+        self.nvalue = nvalue
+        for key, value in kwargs.items():
+            setattr(self, key, value)
         self.collection = set()
         self.__cached_sum = None
 

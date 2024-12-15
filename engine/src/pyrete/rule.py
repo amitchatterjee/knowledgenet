@@ -16,7 +16,7 @@ class Rule:
     def __init__(self, id:str, when:Union[list[Condition],tuple[Condition],Condition], 
                  then:Union[list[callable],tuple[callable],callable], 
                  order=0, merges:list[type]=None, repository:str=None, ruleset:str=None, 
-                 run_once=False, retrigger_on_update=True, **kwargs):
+                 run_once=False, retrigger_on_update=True):
         from repository import registry
         self.id = id
         self.order = order
@@ -25,8 +25,7 @@ class Rule:
         self.thens = to_tuple(then)
         self.run_once = run_once
         self.retrigger_on_update = retrigger_on_update
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        
         # TODO add validations
         if (repository and not ruleset) or (ruleset and not repository):
             raise Exception('Both "repository" and "ruleset" must be specified')

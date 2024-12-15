@@ -108,9 +108,6 @@ def test_collector_changes_on_fact_updates():
     assert 30 == matching[0].vals[0]
     assert 2 == matching[0].vals[1]
 
-    def divide_by_2(ctx):
-        ctx.obj.val = ctx.obj.val // 2
-        update(ctx, ctx.obj)
     rule_1 = Rule(id='r1', retrigger_on_update=False, order=1,
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, obj=this)),
                   then=divide_by_2)

@@ -15,7 +15,7 @@ class Session:
         self.rules = ruleset.rules
         self.global_ctx = global_ctx
         self.factset = Factset()
-        self.graph = Graph(self.__comparator)
+        self.graph = Graph(ruleset.comparator)
         self.__add_facts(facts)
         # print(self.graph.to_list(cursor_name='list'))
 
@@ -28,10 +28,6 @@ class Session:
     def execute(self):
         self.__execute_graph()
         return self.factset.facts
-
-    def __comparator(self, obj, other):
-        # TODO only rule.order based ordering is implemented for now
-        return obj.rule.order - other.rule.order
 
     def __execute_graph(self):
         logging.debug(f"Executing rules on graph: {self.graph}")
