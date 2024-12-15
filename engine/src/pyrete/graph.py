@@ -42,7 +42,7 @@ class Graph:
             result = self.comparator(obj, element.obj)
             if result < 0:
                 # The obj needs to be inserted left of the element
-                return self.insert(obj, element)
+                return self.__insert(obj, element)
             last = element
             element = element.next
 
@@ -51,7 +51,7 @@ class Graph:
         last.next = element
         return element
 
-    def insert(self, obj:Hashable, current:Element)->Element:
+    def __insert(self, obj:Hashable, current:Element)->Element:
         '''
         Insert object to the left of the current element
         '''

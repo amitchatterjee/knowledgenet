@@ -50,7 +50,7 @@ def test_flow_control_with_switch():
                 then=lambda ctx: switch(ctx, 'rs3'))
     rule_1_3 = Rule(id='r13', order=1,
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this)),
-                then=lambda ctx: insert(ctx, R1(ctx.c2.val)))
+                then=lambda ctx: insert(ctx, R1('r13')))
     
     rule_2_1 = Rule(id='r21',
                 when=Condition(of_type=C2, matches_exp=lambda ctx, this: True),

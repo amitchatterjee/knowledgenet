@@ -15,7 +15,6 @@ class Factset:
 
     def add_facts(self, f):
         new_facts = set(f) - self.facts
-
         # Initialize the newly-added collectors
         new_collectors = set()
         for collector in new_facts:

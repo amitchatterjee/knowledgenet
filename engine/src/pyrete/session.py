@@ -75,6 +75,9 @@ class Session:
                     break
 
                 logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")
+
+                # TODO Temporarily commented out
+                # if element is not leftmost:
                 self.graph.new_cursor(element=leftmost)
     
     def __delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
@@ -137,6 +140,11 @@ class Session:
         new_leftmost = current_leftmost
         count = 0
         logging.debug(f"Adding to graph: all facts: {self.factset.facts}, new: {new_facts}")
+
+        # TODO Temporary code - start
+        #if len(new_facts) == 0:
+        #    return new_leftmost, 0, changed_collectors
+        # TODO Temporary code - end
         for rule in self.rules:
             satisfies = True
             when_objs = []
@@ -167,10 +175,10 @@ class Session:
         logging.debug(f"Inserted into graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
     
-    def __minimum(self, element1: Element, element2:Element)->Element:
+    def __minimum(self, element1:Element, element2:Element)->Element:
         if not element1:
-            # print(f"Minimum: min = {element2} e1:{element1}, e2: {element2}")
+            # logging.debug(f"min: {element2}, e1:{element1}, e2: {element2}")
             return element2
         min = element2 if self.graph.compare(element1, element2) >= 0 else element1
-        # print(f"Minimum: min = {min} e1:{element1}, e2: {element2}")
+        # logging.debug(f"min: {min}, e1:{element1}, e2: {element2}")
         return min
