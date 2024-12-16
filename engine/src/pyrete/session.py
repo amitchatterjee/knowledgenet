@@ -76,9 +76,8 @@ class Session:
 
                 logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")
 
-                # TODO Temporarily commented out
-                # if element is not leftmost:
-                self.graph.new_cursor(element=leftmost)
+                if element is not leftmost:
+                    self.graph.new_cursor(element=leftmost)
     
     def __delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)

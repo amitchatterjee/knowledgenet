@@ -29,27 +29,37 @@ class Graph:
         return (p_ordinal + n_ordinal) / Decimal(2)
 
     def add(self, obj:Hashable)->Element:
+        added_element = None
         if not self.first:
             # If this is the only element in the list
             element = Element(None, None, obj, self.__ordinal(None,None))
             self.first = element
-            return element
-        
-        last:Union[Element,None] = None
-        element:Element = self.first
-        while element:
-            # Invoke the comparator.
-            result = self.comparator(obj, element.obj)
-            if result < 0:
-                # The obj needs to be inserted left of the element
-                return self.__insert(obj, element)
-            last = element
-            element = element.next
+            added_element = element
+        else:
+            last:Union[Element,None] = None
+            element:Element = self.first
+            while element:
+                # Invoke the comparator.
+                result = self.comparator(obj, element.obj)
+                if result < 0:
+                    # The obj needs to be inserted left of the element
+                    added_element = self.__insert(obj, element)
+                    break
+                last = element
+                element = element.next
 
-        # Insert it at the rightmost side of the list
-        element = Element(last, None, obj, self.__ordinal(last, None))
-        last.next = element
-        return element
+            if not added_element:
+                # Insert it at the rightmost side of the list
+                added_element = Element(last, None, obj, self.__ordinal(last, None))
+                last.next = added_element
+
+        # adjust cursors
+        for name,cursor in self.cursors.items():
+            if added_element.next == cursor:
+                # If the element being added is just before the cursor, adjust it
+                self.cursors[name] = added_element
+
+        return added_element
 
     def __insert(self, obj:Hashable, current:Element)->Element:
         '''
