@@ -131,3 +131,17 @@ def test_chaining_with_walkback_on_delete():
     assert 0 == len(matching)
     matching = find_result_of_type(Ch1, result_facts)
     assert 0 == len(matching)
+
+def test_multiple_combinations():
+    rule_1 = Rule(id='r1',
+                when=[Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
+                    Condition(of_type=Ch1, matches_exp=lambda ctx, this: this.parent == ctx.parent and assign(ctx, child=this))],
+                then=lambda ctx: insert(ctx, R1(ctx.parent, ctx.child)))
+    p1 = P1(1)
+    p2 = P1(2)
+    facts = [p1, Ch1(p1,1), Ch1(p1,2), p2, Ch1(p2,1), Ch1(p2,2)]
+    result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 4 == len(matching)
+    matching.sort(key=lambda each: each.vals[0].val * 10 + each.vals[1].val)
+    assert [(1, 1), (1, 2), (2, 1), (2, 2)] == [(e.vals[0].val, e.vals[1].val) for e in matching]
