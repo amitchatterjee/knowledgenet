@@ -6,9 +6,9 @@ class Switch:
         self.ruleset = ruleset
         
 class Collector:
-    def __init__(self, id:str, of_type:type, filter:Callable=None, nvalue:Callable=None, **kwargs):
+    def __init__(self, group:str, of_type:type, filter:Callable=None, nvalue:Callable=None, **kwargs):
         self.of_type = of_type
-        self.id = id
+        self.group = group
         self.filter = filter
         self.nvalue = nvalue
         for key, value in kwargs.items():
@@ -16,14 +16,14 @@ class Collector:
         self.collection = set()
         self.__cached_sum = None
 
-        hasher = hashlib.sha256(id.encode())
+        hasher = hashlib.sha256(group.encode())
         for key,value in sorted(kwargs.items()):
             hasher.update(str(key).encode())
             hasher.update(str(value).encode())
         self.__int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        return f"Collector({self.id}, size:{len(self.collection)})"
+        return f"Collector({self.group}, size:{len(self.collection)})"
     
     def __repr__(self):
         return self.__str__()

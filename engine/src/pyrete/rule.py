@@ -4,13 +4,13 @@ from util import to_tuple
 from ftypes import Collector
 
 class Condition:
-    def __init__(self, of_type:type, matches_exp:callable, id=None):
-        if of_type == Collector and not id:
+    def __init__(self, of_type:type, matches_exp:callable, group=None):
+        if of_type == Collector and not group:
             raise Exception("when of_type is Collector, id must be specified")
         # TODO add more validations
         self.of_type = of_type
         self.exp = matches_exp
-        self.id = id
+        self.group = group
 
 class Rule:
     def __init__(self, id:str, when:Union[list[Condition],tuple[Condition],Condition], 

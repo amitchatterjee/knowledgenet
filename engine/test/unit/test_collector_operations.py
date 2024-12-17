@@ -13,9 +13,9 @@ from test_helpers.unit_facts import C1, R1, P1, Ch1
 
 def test_collector_in_input_facts():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(10), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
@@ -24,9 +24,9 @@ def test_collector_in_input_facts():
 
 def test_collector_filter():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(10), Collector(of_type=C1, id='sum_of_c1s', filter=lambda this, obj: obj.val > 10, nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', filter=lambda this, obj: obj.val > 10, nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 0 == len(matching)
@@ -36,9 +36,9 @@ def test_collector_changes_on_fact_insertion():
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(20), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
@@ -50,9 +50,9 @@ def test_collector_changes_on_fact_insertion():
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(20), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
@@ -67,9 +67,9 @@ def test_collector_changes_on_fact_deletion():
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
                   then=lambda ctx: delete(ctx, ctx.obj))
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(20), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
@@ -80,9 +80,9 @@ def test_collector_changes_on_fact_deletion():
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
                   then=lambda ctx: delete(ctx, ctx.obj))
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(20), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
@@ -100,9 +100,9 @@ def test_collector_changes_on_fact_updates():
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, obj=this)),
                   then=divide_by_2)
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(50), C1(10), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
@@ -113,9 +113,9 @@ def test_collector_changes_on_fact_updates():
                   when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, obj=this)),
                   then=divide_by_2)
     rule_2 = Rule(id='r2', 
-                when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Condition(of_type=Collector, group='sum_of_c1s', matches_exp=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(50), C1(10), Collector(of_type=C1, id='sum_of_c1s', nvalue=lambda obj: obj.val)]
+    facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -130,13 +130,33 @@ def test_collector_changes_on_fact_updates():
 def test_collector_insert_from_rule():
     rule_1 = Rule(id='r1',
                 when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
-                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, id='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
+                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
     p1 = P1(1)
     p2 = P1(2)
-    facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,21), Ch1(p2,22)]
+    facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,20), Ch1(p2,21)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
     matching = find_result_of_type(Collector, result_facts)
     assert 2 == len(matching)
+    result = sort_collection(matching)
+    assert(OrderedDict([(1, [10, 11]), (2, [20, 21])]) == result)
+
+    rule_1 = Rule(id='r1',
+                when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
+                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
+    def add_children(ctx):
+        insert(ctx, Ch1(ctx.parent, ctx.parent.val*10))
+        insert(ctx, Ch1(ctx.parent, ctx.parent.val*10+1))
+    rule_2 = Rule(id='r2', order=1,
+                when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
+                then=add_children)
+    facts = [P1(1), P1(2)]
+    result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
+    matching = find_result_of_type(Collector, result_facts)
+    assert 2 == len(matching)
+    result = sort_collection(matching)
+    assert(OrderedDict([(1, [10, 11]), (2, [20, 21])]) == result)
+
+def sort_collection(matching):
     matching.sort(key=lambda e: e.parent.val)
     result = OrderedDict()
     for each in matching:
@@ -144,4 +164,4 @@ def test_collector_insert_from_rule():
         l.sort(key=lambda e: e.val)
         l = [i.val for i in l]
         result[each.parent.val] = l
-    assert(OrderedDict([(1, [10, 11]), (2, [21, 22])]) == result)
+    return result

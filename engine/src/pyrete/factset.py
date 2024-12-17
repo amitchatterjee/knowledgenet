@@ -5,7 +5,7 @@ class Factset:
         self.facts = set()
         self.__type_to_facts:dict[type,object] = {}
         self.__type_to_collector:dict[type,Collector] = {}
-        self.__id_to_collectors:dict[str,set[Collector]] = {}
+        self.__group_to_collectors:dict[str,set[Collector]] = {}
 
     def __str__(self):
         return f"Factset({self.facts})"
@@ -21,9 +21,9 @@ class Factset:
             if type(collector) == Collector:
                 new_collectors.add(collector)
                 self.__add_to_collector_facts_dict(collector)
-                cset = self.__id_to_collectors[collector.id] if collector.id in self.__id_to_collectors else set()
+                cset = self.__group_to_collectors[collector.group] if collector.group in self.__group_to_collectors else set()
                 cset.add(collector)
-                self.__id_to_collectors[collector.id] = cset
+                self.__group_to_collectors[collector.group] = cset
                 # Initialize the newly-added collectors with facts that are already in the factset 
                 if collector.of_type in self.__type_to_facts:
                     matching_facts = self.__type_to_facts[collector.of_type]
@@ -80,10 +80,10 @@ class Factset:
             else:
                 flist = self.__type_to_collector[typ]
                 flist.remove(fact)
-                cset = self.__id_to_collectors[fact.id]
+                cset = self.__group_to_collectors[fact.group]
                 cset.remove(fact)
                 if len(cset) == 0:
-                    del self.__id_to_collectors[fact.id]
+                    del self.__group_to_collectors[fact.group]
         return updated_collectors
 
     def __add_to_type_facts_dict(self, fact):
@@ -96,8 +96,8 @@ class Factset:
         collectors_list.add(collector)
         self.__type_to_collector[collector.of_type] = collectors_list
 
-    def facts_of_type(self, of_type, id=None):
+    def facts_of_type(self, of_type, group=None):
         if of_type == Collector:
-            return self.__id_to_collectors[id] if id in self.__id_to_collectors else None
+            return self.__group_to_collectors[group] if group in self.__group_to_collectors else None
         else:
             return self.__type_to_facts[of_type] if of_type in self.__type_to_facts else None
