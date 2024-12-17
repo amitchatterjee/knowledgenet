@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from rule import Rule,Condition
 from ruleset import Ruleset
 from repository import Repository
@@ -25,7 +26,7 @@ def test_collector_filter():
     rule_1 = Rule(id='r1',
                 when=Condition(of_type=Collector, id='sum_of_c1s', matches_exp=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
-    facts = [C1(10), C1(10), Collector(of_type=C1, id='sum_of_c1s', filter=lambda obj: obj.val > 10, nvalue=lambda obj: obj.val)]
+    facts = [C1(10), C1(10), Collector(of_type=C1, id='sum_of_c1s', filter=lambda this, obj: obj.val > 10, nvalue=lambda obj: obj.val)]
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
     matching = find_result_of_type(R1, result_facts)
     assert 0 == len(matching)
@@ -125,3 +126,22 @@ def test_collector_changes_on_fact_updates():
     assert matching[1].vals[0] in [25+10,50+5]
     # The last iteration will always be 30
     assert 30 == matching[2].vals[0]
+
+def test_collector_insert_from_rule():
+    rule_1 = Rule(id='r1',
+                when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
+                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, id='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
+    p1 = P1(1)
+    p2 = P1(2)
+    facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,21), Ch1(p2,22)]
+    result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
+    matching = find_result_of_type(Collector, result_facts)
+    assert 2 == len(matching)
+    matching.sort(key=lambda e: e.parent.val)
+    result = OrderedDict()
+    for each in matching:
+        l = list(each.collection)
+        l.sort(key=lambda e: e.val)
+        l = [i.val for i in l]
+        result[each.parent.val] = l
+    assert(OrderedDict([(1, [10, 11]), (2, [21, 22])]) == result)

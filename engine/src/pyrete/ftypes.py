@@ -1,4 +1,6 @@
 from typing import Callable
+import hashlib
+
 class Switch:
     def __init__(self, ruleset:str):
         self.ruleset = ruleset
@@ -14,24 +16,27 @@ class Collector:
         self.collection = set()
         self.__cached_sum = None
 
+        hasher = hashlib.sha256(id.encode())
+        for key,value in sorted(kwargs.items()):
+            hasher.update(str(key).encode())
+            hasher.update(str(value).encode())
+        self.__int_hash = int(hasher.hexdigest(), 16)
+
     def __str__(self):
         return f"Collector({self.id}, size:{len(self.collection)})"
     
     def __repr__(self):
         return self.__str__()
-
-    def __eq__(self, other):
-      return self.id == other.id
-    
+   
     def __hash__(self):
-        return hash(self.id)
-
+        return self.__int_hash
+    
     def add(self, obj):
         if type(obj) != self.of_type:
             return False
         if obj in self.collection:
             return False
-        if self.filter and not self.filter(obj):
+        if self.filter and not self.filter(self, obj):
             return False
         
         self.collection.add(obj)
@@ -43,7 +48,7 @@ class Collector:
             return False
         if obj not in self.collection:
             return False
-        if self.filter and not self.filter(obj):
+        if self.filter and not self.filter(self, obj):
             return False
         
         self.collection.remove(obj)
