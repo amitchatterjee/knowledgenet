@@ -18,7 +18,7 @@ class Repository:
         self.rulesets = rulesets
 
     def __str__(self):
-        return f"Repository(rulesets: {self.rulesets})"
+        return f"Repository({self.id})"
     
     def __repr__(self):
         return self.__str__()

@@ -56,7 +56,7 @@ class Node:
         # Evaluate all when clauses
         for i, when in enumerate(self.leaves):
             cached, result = when.execute(self.context, self.when_objs[i])
-            logging.debug(f"Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
+            logging.debug(f"{self}:  Executed when expression for: {self}[{i}]: cached/result: {cached}:{result}")
             all_cached = all_cached and cached
             if not result:
                 return False
@@ -66,13 +66,13 @@ class Node:
             return False
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug(f"Node: {self} with context:{self.context} all when clauses satisfied, going to execute the then clauses")
+        logging.debug(f"{self}: Node: All when clauses satisfied, going to execute the then clauses. Context:{self.context}")
         for then in self.rule.thens:
             # Execute each function/lambda included in the rule
             then(self.context)
         self.changes = self.context._changes
 
-        logging.debug(f"Result from node: {self} execution, changes: {self.changes}")
+        logging.debug(f"{self}: Result from when execution, changes: {self.changes}")
         self.ran = True
         return True
     def __str__(self):

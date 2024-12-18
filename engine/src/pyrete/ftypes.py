@@ -4,6 +4,10 @@ import hashlib
 class Switch:
     def __init__(self, ruleset:str):
         self.ruleset = ruleset
+    def __str__(self):
+        return f"Switch({self.ruleset})"
+    def __repr__(self):
+        return self.__str__()
         
 class Collector:
     def __init__(self, group:str, of_type:type, filter:Callable=None, nvalue:Callable=None, **kwargs):
@@ -23,7 +27,7 @@ class Collector:
         self.__int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        return f"Collector({self.group}, size:{len(self.collection)})"
+        return f"Collector({self.group})"
     
     def __repr__(self):
         return self.__str__()

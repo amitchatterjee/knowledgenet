@@ -16,12 +16,11 @@ class Session:
         self.global_ctx = global_ctx
         self.factset = Factset()
         self.graph = Graph(ruleset.comparator, id=id)
-        logging.debug(f"Initializing graph: {self.graph}")
+        logging.debug(f"{self}: Initializing graph")
         self.__add_facts(facts)
-        # print(self.graph.to_list(cursor_name='list'))
 
     def __str__(self):
-        return f"Session({self.id}, ruleset: {self.ruleset}, facts:{self.factset})"
+        return f"Session({self.id})"
     
     def __repr__(self):
         return self.__str__()
@@ -31,7 +30,7 @@ class Session:
         return self.factset.facts
 
     def __execute_graph(self):
-        logging.debug(f"Executing rules on graph: {self.graph}")
+        logging.debug(f"{self}: Executing rules on graph")
         #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
         self.graph.new_cursor()
         while element := self.graph.next_element():
@@ -48,14 +47,14 @@ class Session:
                     leftmost, chg_count, changed_collectors = self.__add_facts(new_facts, leftmost)
                     all_updates.update(changed_collectors)
                     count = count + chg_count
-                    logging.debug(f"Inserted facts: {new_facts}")
+                    logging.debug(f"{self}: Inserted facts: {new_facts}")
 
                 if 'delete' in node.changes:
                    deleted_facts = node.changes['delete']
                    leftmost, chg_count, changed_collectors =  self.__delete_facts(deleted_facts, leftmost)
                    all_updates.update(changed_collectors)
                    count = count + chg_count
-                   logging.debug(f"Deleted facts: {deleted_facts}")
+                   logging.debug(f"{self}: Deleted facts: {deleted_facts}")
 
                 if 'update' in node.changes:
                     all_updates.update(node.changes['update'])
@@ -63,19 +62,19 @@ class Session:
                 if len(all_updates):
                     leftmost, chg_count = self.__update_facts(node, all_updates, leftmost)
                     count = count + chg_count
-                    logging.debug(f"Updated facts: {all_updates}")
+                    logging.debug(f"{self}: Updated facts: {all_updates}")
 
                 if 'break' in node.changes:
-                     logging.debug(f"Breaking session: {self.id}, destination: next_ruleset")
+                     logging.debug(f"{self}: Breaking session: destination: next_ruleset")
                      break
                     
                 if 'switch' in node.changes:
                     # Terminate the session execution
-                    logging.debug(f"Ending session: {self.id}, destination: {node.changes['switch']}")
+                    logging.debug(f"{self}: Ending session: destination: {node.changes['switch']}")
                     self.factset.add_facts([node.changes['switch']])
                     break
 
-                logging.debug(f"After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}, cursor needs to adjust: {self.graph.cursor_is_right_of(leftmost)}")
+                logging.debug(f"{self}: After all merges were completed: change count: {count}, leftmost element with change: {leftmost}, current element: {element}")
 
                 if element is not leftmost:
                     self.graph.new_cursor(element=leftmost)
@@ -99,7 +98,7 @@ class Session:
                     new_leftmost = self.__minimum(new_leftmost, element)
                 count = count+1
 
-        logging.debug(f"Deleted from graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
+        logging.debug(f"{self}: Deleted fatcs from graph, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
 
     def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], 
@@ -108,7 +107,7 @@ class Session:
         changed_collectors = self.factset.update_facts(updated_facts)
         new_leftmost = current_leftmost
         count = 0
-        logging.debug(f"Iterating through graph with updated facts: {updated_facts}, deduped: {deduped_updates}")
+        logging.debug(f"{self}: Iterating through graph with updated facts: {updated_facts}, deduped: {deduped_updates}")
         cursor_name = 'update'
         self.graph.new_cursor(cursor_name=cursor_name)
         while element:= self.graph.next_element(cursor_name):
@@ -126,11 +125,11 @@ class Session:
                 count = count+1
 
         if len(changed_collectors) > 0:
-            logging.debug(f"An update resulted in changes to collectors: {changed_collectors}")
+            logging.debug(f"{self}: An update resulted in changes to collectors: {changed_collectors}")
             # As a part of updated, additional collectors may have been affected, update the graph accordingly
             new_leftmost, chg_count = self.__update_facts(node, changed_collectors, new_leftmost)
             count = count + chg_count
-        logging.debug(f"Updated graph: {self.graph}, count: {count}, new leftmost: {new_leftmost}")
+        logging.debug(f"{self}: Updated graph, count: {count}, new leftmost: {new_leftmost}")
         return new_leftmost, count
 
     def __add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
@@ -139,7 +138,7 @@ class Session:
 
         new_leftmost = current_leftmost
         count = 0
-        logging.debug(f"Adding to graph: all facts: {self.factset.facts}, new: {new_facts}")
+        logging.debug(f"{self}: Adding to graph all facts: {self.factset.facts}, new: {new_facts}")
 
         # TODO Temporary code - start
         #if len(new_facts) == 0:
@@ -162,23 +161,21 @@ class Session:
             if satisfies:
                 # Get all the permutations associated with the objects
                 perms = combinations(when_objs, new_facts)                
-                logging.debug(f"{rule}, object permutation: {perms}")
+                logging.debug(f"{self}: {rule}, object permutation: {perms}")
                 # insert to the graph
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
                     node = Node(node_id, rule, self.rules, self.global_ctx, each)
                     element = self.graph.add(node)
-                    logging.debug(f"Added node: {element}")
+                    logging.debug(f"{self}: Added node: {element}")
                     new_leftmost = self.__minimum(new_leftmost, element)
                     count = count+1
                     
-        logging.debug(f"Inserted into graph: {self.graph}, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
+        logging.debug(f"{self}: Inserted into graph, count: {count}, changed_collectors: {changed_collectors}, new leftmost: {new_leftmost}")
         return new_leftmost, count, changed_collectors
     
     def __minimum(self, element1:Element, element2:Element)->Element:
         if not element1:
-            # logging.debug(f"min: {element2}, e1:{element1}, e2: {element2}")
             return element2
         min = element2 if self.graph.compare(element1, element2) >= 0 else element1
-        # logging.debug(f"min: {min}, e1:{element1}, e2: {element2}")
         return min
