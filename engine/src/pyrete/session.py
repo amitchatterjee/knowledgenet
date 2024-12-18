@@ -140,10 +140,6 @@ class Session:
         count = 0
         logging.debug(f"{self}: Adding to graph all facts: {self.factset.facts}, new: {new_facts}")
 
-        # TODO Temporary code - start
-        #if len(new_facts) == 0:
-        #    return new_leftmost, 0, changed_collectors
-        # TODO Temporary code - end
         for rule in self.rules:
             satisfies = True
             when_objs = []

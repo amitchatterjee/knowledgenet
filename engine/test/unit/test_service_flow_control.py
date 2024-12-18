@@ -39,7 +39,6 @@ def test_flow_control_with_end():
     matching.sort(key=lambda e: e.vals[0])
     assert 'r13' == matching[0].vals[0]
     assert 'r21' == matching[1].vals[0]
-    # TODO this is not working properly. Looks like there is an issue with leftmost computation. Look into it and fix it
 
 def test_flow_control_with_switch():
     rule_1_1 = Rule(id='r11',
