@@ -128,6 +128,9 @@ def test_collector_changes_on_fact_updates():
     assert 30 == matching[2].vals[0]
 
 def test_collector_insert_from_rule():
+    '''
+    For each object of type P1, create a collector that keeps track of all objects of type Ch1 that refers to it
+    '''
     rule_1 = Rule(id='r1',
                 when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
                 then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
@@ -137,26 +140,52 @@ def test_collector_insert_from_rule():
     result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1])]), facts)
     matching = find_result_of_type(Collector, result_facts)
     assert 2 == len(matching)
-    result = sort_collection(matching)
+    result = sort_collectors(matching)
     assert(OrderedDict([(1, [10, 11]), (2, [20, 21])]) == result)
 
+def test_complex_interactions_with_collectors():
+    '''
+    For each object of type P1, create a collector that keeps track of all objects of type Ch1 that refers to it
+    '''
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
-                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
-    def add_children(ctx):
+                when=Condition(of_type=P1, matches_exp=lambda ctx,this: assign(ctx, parent=this)),
+                then=lambda ctx: insert(ctx, 
+                                        Collector(of_type=Ch1, group='child', parent=ctx.parent, 
+                                            filter=lambda this,child: child.parent == this.parent, 
+                                            nvalue=lambda obj: obj.val)))
+    def add_3_children(ctx):
         insert(ctx, Ch1(ctx.parent, ctx.parent.val*10))
         insert(ctx, Ch1(ctx.parent, ctx.parent.val*10+1))
+        insert(ctx, Ch1(ctx.parent, ctx.parent.val*10+2))
+    '''
+    For each object of type P1, add 3 objects of type Ch1 that refers to it. Note the order.
+    '''
     rule_2 = Rule(id='r2', order=1,
                 when=Condition(of_type=P1, matches_exp=lambda ctx, this: assign(ctx, parent=this)),
-                then=add_children)
+                then=add_3_children)
+    
+    '''
+    For each object of type P1 with obj.val = 1, match the corresponding collector that contains atleast three objects in it's collection. Note the order = 0. This rule should not fire unless rule_2 is invoked.
+    '''
+    rule_3 = Rule(id='r3',
+                when=[
+                    Condition(of_type=P1, matches_exp=lambda ctx, this: this.val == 1 and assign(ctx, p=this)),
+                    Condition(of_type=Collector, group='child', 
+                              matches_exp=lambda ctx, this: this.parent == ctx.p and len(this.collection) >=3  and assign(ctx, collector=this))],
+                then=lambda ctx: insert(ctx, R1(ctx.p.val, ctx.collector.sum())))
     facts = [P1(1), P1(2)]
-    result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])]), facts)
+    result_facts = execute(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])]), facts)
     matching = find_result_of_type(Collector, result_facts)
     assert 2 == len(matching)
-    result = sort_collection(matching)
-    assert(OrderedDict([(1, [10, 11]), (2, [20, 21])]) == result)
+    result = sort_collectors(matching)
+    assert(OrderedDict([(1, [10, 11, 12]), (2, [20, 21, 22])]) == result)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    assert R1 == type(matching[0])
+    assert 1 == matching[0].vals[0]
+    assert 10+11+12 == matching[0].vals[1]
 
-def sort_collection(matching):
+def sort_collectors(matching):
     matching.sort(key=lambda e: e.parent.val)
     result = OrderedDict()
     for each in matching:

@@ -1,5 +1,6 @@
 from session import Session
 from ftypes import Switch
+from time import time
 
 def __find_switch(facts):
     for fact in facts:
@@ -12,7 +13,7 @@ def execute(repository, facts, global_ctx={}, start_from=None):
     for ruleset in repository.rulesets:
         if start_from and ruleset.id != start_from:
             continue
-        session = Session(ruleset, resulting_facts, f"{repository.id}:{ruleset.id}", global_ctx)
+        session = Session(ruleset, resulting_facts, f"{repository.id}:{ruleset.id}:{time()}", global_ctx)
         resulting_facts = session.execute()
         if switch_to := __find_switch(resulting_facts):
             resulting_facts.remove(switch_to)

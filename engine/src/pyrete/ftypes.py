@@ -30,7 +30,7 @@ class Collector:
    
     def __hash__(self):
         return self.__int_hash
-    
+
     def add(self, obj):
         if type(obj) != self.of_type:
             return False

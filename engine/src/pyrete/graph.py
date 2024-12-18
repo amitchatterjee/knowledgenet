@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import TypeVar, Callable, Union
 from collections.abc import Hashable
+import uuid
 
 T = TypeVar('T')
 class Element:    
@@ -18,10 +19,17 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator:Callable):
+    def __init__(self, comparator:Callable, id=uuid.uuid1()):
         self.first = None
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator
+        self.id = id
+
+    def __str__(self):
+        return f"Graph({self.id})"
+    
+    def __repr__(self):
+        return self.__str__()
 
     def __ordinal(self, prev:Union[Element,None], next:Union[Element,None]) -> Decimal:
         p_ordinal = prev.ord if prev else Decimal(0)

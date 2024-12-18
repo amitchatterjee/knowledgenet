@@ -13,6 +13,9 @@ class Factset:
     def __repr__(self):
         return self.__str__()
 
+    def get_collectors(self, group:str)->set[Collector]:
+        return self.__group_to_collectors[group] if group in self.__group_to_collectors else None
+
     def add_facts(self, f):
         new_facts = set(f) - self.facts
         # Initialize the newly-added collectors

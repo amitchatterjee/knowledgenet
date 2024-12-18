@@ -15,7 +15,8 @@ class Session:
         self.rules = ruleset.rules
         self.global_ctx = global_ctx
         self.factset = Factset()
-        self.graph = Graph(ruleset.comparator)
+        self.graph = Graph(ruleset.comparator, id=id)
+        logging.debug(f"Initializing graph: {self.graph}")
         self.__add_facts(facts)
         # print(self.graph.to_list(cursor_name='list'))
 
