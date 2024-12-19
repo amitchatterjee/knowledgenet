@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyrete"
+name = "knowledgenet"
 version = "1.0.0b"
 authors = [
   { name="Amit Chatterjee", email="info@quik-j.com" },
 ]
-description = "pyrete engine"
+description = "Knowledgenet RETE engine"
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -17,5 +17,5 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/amitchatterjee/pyrete"
-Issues = "https://github.com/amitchatterjee/pyrete"
+Homepage = "https://github.com/amitchatterjee/knowledgenet"
+Issues = "https://github.com/amitchatterjee/knowledgenet"

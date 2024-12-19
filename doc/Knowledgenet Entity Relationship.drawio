@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" version="25.0.1">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" version="25.0.3">
   <diagram name="Page-1" id="RC7_iYQg-gNcwzrBWBoC">
     <mxGraphModel dx="1050" dy="570" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
       <root>
@@ -165,8 +165,8 @@
             <mxPoint x="5" y="7" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="hTZwY5HHQxkWMezb6eO1-12" value="&lt;b&gt;&lt;font style=&quot;font-size: 19px;&quot;&gt;pyrete.service.execute (Repository, Fact[])&lt;/font&gt;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-          <mxGeometry x="361.75" y="70" width="176.5" height="50" as="geometry" />
+        <mxCell id="hTZwY5HHQxkWMezb6eO1-12" value="&lt;b&gt;&lt;font style=&quot;font-size: 19px;&quot;&gt;knowledgenet.Service(Repository).execute (Fact[])&lt;/font&gt;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="233" y="50" width="440" height="50" as="geometry" />
         </mxCell>
         <mxCell id="Vqbwu5_xEdoBO6F1TTGz-4" value="Creates" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="460" y="150" width="60" height="30" as="geometry" />
