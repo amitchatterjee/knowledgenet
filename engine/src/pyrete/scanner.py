@@ -3,6 +3,20 @@ import inspect
 import sys
 import os
 import importlib
+from ruleset import Ruleset
+from repository import Repository
+
+registry={}
+
+def lookup(repository:str):
+    if repository not in registry:
+        raise Exception('repository not found')
+    rulesets=[]
+    for ruleset_id, rules in registry[repository].items():
+        rulesets.append(Ruleset(ruleset_id, rules))
+    # Sort by id. The assumption is that the ids are defined in such a way that order can be determined. For example: 001-validation-rules, 002-business-rules, etc.
+    rulesets.sort(key=lambda e: e.id)
+    return Repository(repository, rulesets)
 
 def ruledef(func):
     def wrapped(*args, **kwargs):

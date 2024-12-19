@@ -1,6 +1,5 @@
 
-from scanner import load_rules
-from repository import lookup
+from scanner import load_rules, lookup
 from service import Service
 
 from test_helpers.unit_facts import C1, R1

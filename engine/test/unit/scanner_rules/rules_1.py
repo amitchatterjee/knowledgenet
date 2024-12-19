@@ -19,5 +19,10 @@ def rule2():
     when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 10),
     then=set_as_large)
 
-def somethingelse():
-    pass
+# This should not scan
+def rule3():
+    def set_as_large(ctx):
+        insert(ctx, R1(ctx.c1, 'large'))
+    return Rule(id='r3', repository='repo1', ruleset='rs1',
+    when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 10),
+    then=set_as_large)

@@ -17,7 +17,7 @@ class Rule:
                  then:Union[list[callable],tuple[callable],callable], 
                  order=0, merges:list[type]=None, repository:str=None, ruleset:str=None, 
                  run_once=False, retrigger_on_update=True):
-        from repository import registry
+ 
         self.id = id
         self.order = order
         self.merges = merges
@@ -27,6 +27,7 @@ class Rule:
         self.retrigger_on_update = retrigger_on_update
         
         # TODO add validations
+        from scanner import registry
         if (repository and not ruleset) or (ruleset and not repository):
             raise Exception('Both "repository" and "ruleset" must be specified')
         if repository:

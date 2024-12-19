@@ -1,12 +1,14 @@
 from rule import Rule
-
+from util import to_tuple
+from typing import Union
 class Ruleset:
-    def __init__(self, id:str, rules:list[Rule], global_ctx={}):
+    def __init__(self, id:str, rules:Union[Rule,tuple[Rule],list[Rule]], global_ctx={}):
         self.id = id
         # TODO add rule validations
-        self.rules = rules
+        # TODO add rule sequencing
+        self.rules = to_tuple(rules)
         self.global_ctx = global_ctx
-
+ 
     def __str__(self):
         return f"Ruleset({self.id})"
     
