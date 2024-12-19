@@ -4,5 +4,7 @@ def assign(ctx, **kwargs):
     return True
 
 def global_ctx(ctx):
-    return ctx._global 
+    return ctx._global
 
+def factset(ctx):
+    return ctx._facts

@@ -22,12 +22,11 @@ module_dir = os.path.dirname(module_path)
 
 def __load_rules_from_module(module):
     decorated_methods = []
-    for name, obj in inspect.getmembers(module):
+    for name,obj in inspect.getmembers(module):
         #print(f"{name}:{obj}")
         if inspect.isfunction(obj) and name != 'ruledef':
             if getattr(obj, '__wrapped__', False):
-                obj()
-                
+                obj()                
     return decorated_methods
 
 def __find_modules(path):
@@ -37,7 +36,6 @@ def __find_modules(path):
             module_name = file[:-3]  # Remove .py extension
             modules.append(importlib.import_module(module_name))
     return modules
-
 
 def load_rules(path):
     sys.path.append(path)
