@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-dists
-          path: engine/dist/
+          path: dist/
 
   pypi-publish:
     runs-on: fedora-latest
@@ -60,9 +60,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dists
-          path: engine/dist/
+          path: dist/
 
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: engine/dist/
+          packages-dir: dist/

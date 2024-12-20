@@ -3,8 +3,8 @@
     "python.testing.pytestEnabled": true,
     "python.analysis.typeCheckingMode": "off",
     "python.analysis.extraPaths": [
-        "engine/src/knowledgenet",
-        "engine/test/unit"
+        "src/knowledgenet",
+        "test/unit"
     ],
     "cSpell.enabledFileTypes": {
         "*": false

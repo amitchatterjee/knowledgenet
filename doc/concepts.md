@@ -1,15 +1,15 @@
 # Knowledgenet Concepts
 This document documents the underlying concepts that are used to construct this project. These concepts are not just implementation details, but are essential for application developers who are using or planning to use this library. **So, it is important for application developers to read this document closely**.
 
-Knowledgenet is a Python Language software library that enables application developers to build applications that make complex decisions based on **facts** supplied to the service entrypoint and **rules** developed by **application developers** and **business users**. The individuals or groups that create the rules are referred to as **authors". 
+Knowledgenet is a Python Language software library that enables application developers to build applications that make complex decisions based on **facts** supplied to the service entrypoint and **rules** developed by **application developers** and **business users**. The individuals or groups that create the rules are often referred to as rule **authors". 
 
 At a high level, the entrypoint can be denoted as:
 
-> Set\<result_facts> = entrypoint(Set\[input_facts\], List\[rules\])  
+> entrypoint(input_facts:set, rules:tuple) -> result_facts:set  
   where:  
   - **result_facts** are output(s) returned by the execution of the Knowledgenet engine.  
   - **input_facts** are input(s) to the Knowledgenet engine.  
-  - **rules** are the rules coded in Python language that are provided to the Knowledgenet engine and executed by the engine to produce the output.
+  - **rules** are the rules coded in Python language that are provided to the Knowledgenet engine. The Knowledgenet engine orchestrates the execution of the rules to produce the output.
 
 ## Rete
 Knowledgenet is an implementation of an **Inference Engine** using an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. Rete is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the Rete algorithm produce are more predictable and explainable. It also requires no "learning" as the algorithm is rule-based, i.e., predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and explainability.
@@ -67,7 +67,7 @@ Knowledgenet provides library functions using which the Then function can insert
 Here is an example of a simple rule definition:
 ```python
 Rule(id='determine_if_adult',  
-        when=Condition(of_type=Person, matches_exp=lambda ctx: ctx.this.age <21),  
+        when=Condition(of_type=Person, matches_exp=lambda ctx, this: this.age <21),  
         then=lambda ctx: insert(Child(...)))  
 
     Rule(id='sell_alcohol_to_adults_only',  
@@ -75,11 +75,10 @@ Rule(id='determine_if_adult',
         then=lambda ctx: insert(Sale(allow=False, ...)))
 ```
 
-In the above example, Python *lambda expressions* are used. But references to functions may also be passed if the expressions are more complex. The insert() function, shown above, inserts a new fact into the FactSet.
+In the above example, Python *lambda expressions* are used. But references to functions may also be passed if the expressions are more complex and not compatible with lambda syntax. The insert() function, shown above, inserts a new fact into the FactSet.
 
 ### Ruleset
 A ruleset is a collection of rules. For complex applications, the decision making process may require grouping the rules into rulesets and executing each ruleset in a specific flow. For example, rules may be classified in rulesets - validation rules, business rules and pricing rules. The requirement may be to run execute the rulesets in phases in the following manner.
-
 
 ![Rule Flow Example](./Rule-Flow.drawio.png)
 
@@ -89,7 +88,7 @@ Example:
 ```python
 Rule(id='end_execution', ruleset='validation_rules'  
         when=[  
-            Condition(of_type=Validation, matches_exp=lambda ctx: not ctx.this.valid)  
+            Condition(of_type=Validation, matches_exp=lambda ctx, this: not this.valid())  
         ],  
         then=lambda ctx: end())  
 ```
@@ -120,13 +119,18 @@ The example below describes how repository can be organized and executed in sequ
 The repository includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, repositories are initialized either programmatically or via configuration (as code) as explained in later.
 
 ### Transaction
-Once a service is initialized with a rule repository, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts. The facts and the repository combo is referred to as the **Knowledge Base**. The transaction process uses the knowledge base to come to a decision using the Rete algorithm. The output of this process is a set of (decision/result) facts. A transaction can be denoted as follows:  
+Once a service is initialized with a rule repository, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts. The facts and the repository combo is referred to as the **Knowledge Base**. The transaction process executes rules in the repository to produce decisions using the Rete algorithm. The output of this process is a set of (decision/result) facts. A service can execute many transactions and transaction executions are thread-safe. A transaction can be denoted as follows:  
 
-> Set\<result_facts> = Service(Repository).execute(Set\[input_facts\])  
+> \# Init - one time
+>  service = Service(repo:Repository)
+>
+>  \# Transaction processing - many times
+>  result_facts:set = service.execute(input_facts:set)  
+
 
 ## Transaction Internals
-Please refer to the diagram below while reading this section. It represents the various data structures and their relationship that Knowledgenet maintains as a part of a transaction.
+Please refer to the diagram below. It represents the various data structures and their relationship that Knowledgenet maintains as a part of a transaction.
 
 ![Knowledgenet Entity Relationship](./Knowledgenet-Entity-Relationship.drawio.png)
 
-The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service.Service** class is the entrypoint for initiating a transaction. 
+The blue boxes represent the entities that are created during the development phase (or authoring phase) and is input to a service. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to a transaction and other execution artifacts created in the process of processing the transaction. As mentioned earlier, the **execute** function in the **service.Service** class is the entrypoint for processing a transaction. It is a synchronous call.
