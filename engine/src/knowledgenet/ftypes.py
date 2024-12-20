@@ -15,7 +15,7 @@ class Collector:
         self.group = group
         self.filter = filter
         self.nvalue = nvalue
-        for key, value in kwargs.items():
+        for key,value in kwargs.items():
             setattr(self, key, value)
         self.collection = set()
         self.__cached_sum = None

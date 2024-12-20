@@ -5,10 +5,12 @@ import os
 import importlib
 from ruleset import Ruleset
 from repository import Repository
+from util import to_tuple
+from typing import Union
 
 registry={}
 
-def lookup(repository:str):
+def lookup(repository:str)->Repository:
     if repository not in registry:
         raise Exception('repository not found')
     rulesets=[]
@@ -20,7 +22,15 @@ def lookup(repository:str):
 
 def ruledef(func):
     def wrapped(*args, **kwargs):
-        return func(*args, **kwargs)
+        rule = func(*args, **kwargs)
+        if not rule.repository or not rule.ruleset:
+            raise Exception('Both "repository" and "ruleset" must be specified')
+        if rule.repository not in registry:
+            registry[rule.repository] = {}
+        if rule.ruleset not in registry[rule.repository]:
+            registry[rule.repository][rule.ruleset] = []
+        registry[rule.repository][rule.ruleset].append(rule)
+        return rule
     wrapped.__wrapped__ = True
     return wrapped
 
@@ -51,8 +61,10 @@ def _find_modules(path):
             modules.append(importlib.import_module(module_name))
     return modules
 
-def load_rules(path):
-    sys.path.append(path)
-    modules = _find_modules(path)
-    for module in modules:
-        _load_rules_from_module(module)
+def load_rules_from_filepaths(paths:Union[str,list,tuple]):
+    paths = to_tuple(paths)
+    for path in paths:
+        sys.path.append(path)
+        modules = _find_modules(path)
+        for module in modules:
+            _load_rules_from_module(module)

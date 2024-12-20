@@ -1,12 +1,12 @@
 
-from scanner import load_rules, lookup
+from scanner import load_rules_from_filepaths, lookup
 from service import Service
 
 from test_helpers.unit_facts import C1, R1
 from test_helpers.unit_util import find_result_of_type
 
 def test_scanning():
-    load_rules('test/unit/scanner_rules')
+    load_rules_from_filepaths('test/unit/scanner_rules')
     repository = lookup('repo1')
     facts = [C1(5), C1(15)]
     result_facts = Service(repository).execute(facts)
