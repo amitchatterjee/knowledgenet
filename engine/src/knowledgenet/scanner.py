@@ -34,7 +34,7 @@ module_dir = os.path.dirname(module_path)
 
 '''
 
-def __load_rules_from_module(module):
+def _load_rules_from_module(module):
     decorated_methods = []
     for name,obj in inspect.getmembers(module):
         #print(f"{name}:{obj}")
@@ -43,7 +43,7 @@ def __load_rules_from_module(module):
                 obj()                
     return decorated_methods
 
-def __find_modules(path):
+def _find_modules(path):
     modules = []
     for file in os.listdir(path):
         if file.endswith(".py") and not file.startswith("__"):
@@ -53,6 +53,6 @@ def __find_modules(path):
 
 def load_rules(path):
     sys.path.append(path)
-    modules = __find_modules(path)
+    modules = _find_modules(path)
     for module in modules:
-        __load_rules_from_module(module)
+        _load_rules_from_module(module)

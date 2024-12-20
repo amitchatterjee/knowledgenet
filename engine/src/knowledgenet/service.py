@@ -14,7 +14,7 @@ class Service:
     def __repr__(self):
         return self.__str__()
 
-    def __find_switch(self, facts):
+    def _find_switch(self, facts):
         for fact in facts:
             if isinstance(fact, Switch):
                 return fact
@@ -31,7 +31,7 @@ class Service:
             session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}", self.global_ctx)
             resulting_facts = session.execute()
             logging.debug("Executed session: %s", session)
-            if switch_to := self.__find_switch(resulting_facts):
+            if switch_to := self._find_switch(resulting_facts):
                 resulting_facts.remove(switch_to)
                 if switch_to.ruleset == '_end':
                     break

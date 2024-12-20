@@ -149,7 +149,7 @@ def test_non_default_cursor():
 
 def test_many_inserts_in_between():
     '''
-    The primary purpose of this test is to make sure that the precision of the graph.__ordinal function is good enough for handling high number of facts between two facts
+    The primary purpose of this test is to make sure that the precision of the graph._ordinal function is good enough for handling high number of facts between two facts
     '''
     comparator = lambda o1, o2: o1 - o2
     g = Graph(comparator)

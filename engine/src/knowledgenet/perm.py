@@ -3,7 +3,7 @@ import logging
 def combinations(hier_list, include_only=[]):
     perms = [[]]
     for child in hier_list:
-        perms = __append(perms, child)
+        perms = _append(perms, child)
     if len(include_only):
         excludes = []
         for perm in perms:
@@ -13,7 +13,7 @@ def combinations(hier_list, include_only=[]):
         perms = [x for x in perms if x not in excludes]
     return perms
 
-def __append(parent, child):
+def _append(parent, child):
     ret = []
     for p in parent:
         for e in child:

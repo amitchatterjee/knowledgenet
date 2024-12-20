@@ -6,7 +6,7 @@ Install the appropriate packages:
    pip install build
    pip install debugpy
 
-# Run pytests:
+# Run tests:
 >> cd engine  
    python -m pytest -rPX -vv --cov
 

@@ -17,7 +17,7 @@ class Session:
         self.factset = Factset()
         self.graph = Graph(ruleset.comparator, id=id)
         logging.debug("%s: Initializing graph", self)
-        self.__add_facts(facts)
+        self._add_facts(facts)
 
     def __str__(self):
         return f"Session({self.id})"
@@ -26,10 +26,10 @@ class Session:
         return self.__str__()
 
     def execute(self):
-        self.__execute_graph()
+        self._execute_graph()
         return self.factset.facts
 
-    def __execute_graph(self):
+    def _execute_graph(self):
         logging.debug("%s: Executing rules on graph", self)
         #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
         self.graph.new_cursor()
@@ -44,14 +44,14 @@ class Session:
                 # If all conditions were satisfied and the thens were executed
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
-                    leftmost, chg_count, changed_collectors = self.__add_facts(new_facts, leftmost)
+                    leftmost, chg_count, changed_collectors = self._add_facts(new_facts, leftmost)
                     all_updates.update(changed_collectors)
                     count = count + chg_count
                     logging.debug("%s: Inserted facts: %s", self, new_facts)
 
                 if 'delete' in node.changes:
                    deleted_facts = node.changes['delete']
-                   leftmost, chg_count, changed_collectors =  self.__delete_facts(deleted_facts, leftmost)
+                   leftmost, chg_count, changed_collectors =  self._delete_facts(deleted_facts, leftmost)
                    all_updates.update(changed_collectors)
                    count = count + chg_count
                    logging.debug("%s: Deleted facts: %s", self, deleted_facts)
@@ -60,7 +60,7 @@ class Session:
                     all_updates.update(node.changes['update'])
 
                 if len(all_updates):
-                    leftmost, chg_count = self.__update_facts(node, all_updates, leftmost)
+                    leftmost, chg_count = self._update_facts(node, all_updates, leftmost)
                     count = count + chg_count
                     logging.debug("%s: Updated facts: %s", self, all_updates)
 
@@ -79,7 +79,7 @@ class Session:
                 if element is not leftmost:
                     self.graph.new_cursor(element=leftmost)
     
-    def __delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
+    def _delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.factset.del_facts(deduped_deletes)
         logging.debug("%s: Iterating through graph with deleted facts: %s", self, deduped_deletes)
@@ -95,13 +95,13 @@ class Session:
                     # If the leftmost object is being deleted
                     new_leftmost = next_element
                 else:
-                    new_leftmost = self.__minimum(new_leftmost, element)
+                    new_leftmost = self._minimum(new_leftmost, element)
                 count = count+1
 
         logging.debug("%s: Deleted fatcs from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count, changed_collectors
 
-    def __update_facts(self, execution_node: Node, updated_facts: Union[set,list], 
+    def _update_facts(self, execution_node: Node, updated_facts: Union[set,list], 
                        current_leftmost: Element)->tuple[Element:int]:
         deduped_updates = set(updated_facts) # Remove duplicates
         changed_collectors = self.factset.update_facts(updated_facts)
@@ -121,18 +121,18 @@ class Session:
                 continue
 
             if node.reset_whens(deduped_updates):
-                new_leftmost = self.__minimum(new_leftmost, element)
+                new_leftmost = self._minimum(new_leftmost, element)
                 count = count+1
 
         if len(changed_collectors) > 0:
             logging.debug("%s: An update resulted in changes to collectors: %s", self, changed_collectors)
             # As a part of updated, additional collectors may have been affected, update the graph accordingly
-            new_leftmost, chg_count = self.__update_facts(node, changed_collectors, new_leftmost)
+            new_leftmost, chg_count = self._update_facts(node, changed_collectors, new_leftmost)
             count = count + chg_count
         logging.debug("%s: Updated graph, count: %d, changed_collectors:%s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count
 
-    def __add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
+    def _add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
         new_facts, changed_collectors = self.factset.add_facts(new_facts)
 
@@ -164,13 +164,13 @@ class Session:
                     node = Node(node_id, rule, self.rules, self.global_ctx, each)
                     element = self.graph.add(node)
                     logging.debug("%s: Added node: %s", self, element)
-                    new_leftmost = self.__minimum(new_leftmost, element)
+                    new_leftmost = self._minimum(new_leftmost, element)
                     count = count+1
                     
         logging.debug("%s: Inserted into graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count, changed_collectors
     
-    def __minimum(self, element1:Element, element2:Element)->Element:
+    def _minimum(self, element1:Element, element2:Element)->Element:
         if not element1:
             return element2
         min = element2 if self.graph.compare(element1, element2) >= 0 else element1

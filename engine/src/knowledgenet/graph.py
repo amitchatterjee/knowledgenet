@@ -31,7 +31,7 @@ class Graph:
     def __repr__(self):
         return self.__str__()
 
-    def __ordinal(self, prev:Union[Element,None], next:Union[Element,None]) -> Decimal:
+    def _ordinal(self, prev:Union[Element,None], next:Union[Element,None]) -> Decimal:
         p_ordinal = prev.ord if prev else Decimal(0)
         n_ordinal = next.ord if next else p_ordinal + Decimal(100)
         return (p_ordinal + n_ordinal) / Decimal(2)
@@ -40,7 +40,7 @@ class Graph:
         added_element = None
         if not self.first:
             # If this is the only element in the list
-            element = Element(None, None, obj, self.__ordinal(None,None))
+            element = Element(None, None, obj, self._ordinal(None,None))
             self.first = element
             added_element = element
         else:
@@ -51,14 +51,14 @@ class Graph:
                 result = self.comparator(obj, element.obj)
                 if result < 0:
                     # The obj needs to be inserted left of the element
-                    added_element = self.__insert(obj, element)
+                    added_element = self._insert(obj, element)
                     break
                 last = element
                 element = element.next
 
             if not added_element:
                 # Insert it at the rightmost side of the list
-                added_element = Element(last, None, obj, self.__ordinal(last, None))
+                added_element = Element(last, None, obj, self._ordinal(last, None))
                 last.next = added_element
 
         # adjust cursors
@@ -69,12 +69,12 @@ class Graph:
 
         return added_element
 
-    def __insert(self, obj:Hashable, current:Element)->Element:
+    def _insert(self, obj:Hashable, current:Element)->Element:
         '''
         Insert object to the left of the current element
         '''
         prev = current.prev
-        element = Element(prev, current, obj, self.__ordinal(prev,current))
+        element = Element(prev, current, obj, self._ordinal(prev,current))
         if prev:
             prev.next = element
         else:
