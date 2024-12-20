@@ -35,7 +35,7 @@ Rete is not without it's own drawbacks. To start with, the algorithm is complex 
 The definitions, below, are used throughout this document and library. Note that they may not necessarily align with industry-standard terminologies.
 
 ### Service 
-A service is the Knowledgenet Rete engine endpoint. Knowledgenet provides a "**execute(...)***" function to trigger rule execution on the Knowledgenet Inference Engine. An application may include multiple services for different types of decision making using different Knowledge Bases.
+A service is the Knowledgenet Rete engine endpoint. Knowledgenet provides a "**execute(...)***" function to trigger rule execution on the Knowledgenet Inference Engine. A service is associated with a rule repository (see **repository** definition below). An application may consist of one or more services.
 
 ### Facts
 Facts are information that represent a "truth". Facts may have attributes (often, referred to as **features**) that describe the characteristics of the fact. In Knowledgenet, facts are instances of a classes and the characteristics are variables of the class. For example: 
@@ -67,15 +67,11 @@ Knowledgenet provides library functions using which the Then function can insert
 Here is an example of a simple rule definition:
 ```python
 Rule(id='determine_if_adult',  
-        when=[  
-            Condition(of_type=Person, matches_exp=lambda ctx: ctx.this.age <21)  
-        ],  
+        when=Condition(of_type=Person, matches_exp=lambda ctx: ctx.this.age <21),  
         then=lambda ctx: insert(Child(...)))  
 
     Rule(id='sell_alcohol_to_adults_only',  
-        when=[  
-            Condition(of_type=Child, matches_exp=lambda ctx: True)  
-        ],  
+        when=Condition(of_type=Child, matches_exp=lambda ctx: True),  
         then=lambda ctx: insert(Sale(allow=False, ...)))
 ```
 
@@ -87,7 +83,7 @@ A ruleset is a collection of rules. For complex applications, the decision makin
 
 ![Rule Flow Example](./Rule-Flow.drawio.png)
 
-With Knowledgenet, one can achieve that by classifying rules into rulesets and specifying the flow. Knowledgenet executes each ruleset in an **execution session**. On completion of a session, the facts from the output session are passed as inputs for the next session in the flow. A *Then* code on a rule in a ruleset can change the normal flow (shown using white arrows) by specifying which ruleset to execute next (show using red arrows). 
+With Knowledgenet, this can be achieved by organizing the rules into rulesets and specifying the flow. Knowledgenet executes each ruleset in an **execution session**. On completion of a session, the facts from the output session are passed as inputs for the next session in the flow. A *Then* code on a rule in a ruleset can change the normal flow (shown using white arrows) by specifying which ruleset to execute next (show using red arrows). 
 
 Example:
 ```python
@@ -95,7 +91,7 @@ Rule(id='end_execution', ruleset='validation_rules'
         when=[  
             Condition(of_type=Validation, matches_exp=lambda ctx: not ctx.this.valid)  
         ],  
-        then=lambda ctx: terminate())  
+        then=lambda ctx: end())  
 ```
 
 ### Repository
@@ -124,80 +120,13 @@ The example below describes how repository can be organized and executed in sequ
 The repository includes software data structures and code - rulesets and rules, that are defined during the development cycle of a project by rule authors. When the application is started, repositories are initialized either programmatically or via configuration (as code) as explained in later.
 
 ### Transaction
-Once a repository is initialized, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts and reference to a repository. The facts and the repository combo is referred to as the **Knowledge Base**. The transaction process uses the knowledge base to come to a decision using the Rete algorithm. The output of this process is a set of (decision/result) facts. A transaction can be denoted as follows:  
+Once a service is initialized with a rule repository, the application is ready to process incoming transactions. Incoming transactions can be triggered by scheduled jobs or via requests received from a message broker, web services endpoints, etc. Each transaction must include a set of facts. The facts and the repository combo is referred to as the **Knowledge Base**. The transaction process uses the knowledge base to come to a decision using the Rete algorithm. The output of this process is a set of (decision/result) facts. A transaction can be denoted as follows:  
 
-> Set\<result_facts> = service.execute(Set\<input_facts\>, Repository)  
+> Set\<result_facts> = Service(Repository).execute(Set\[input_facts\])  
 
 ## Transaction Internals
 Please refer to the diagram below while reading this section. It represents the various data structures and their relationship that Knowledgenet maintains as a part of a transaction.
 
 ![Knowledgenet Entity Relationship](./Knowledgenet-Entity-Relationship.drawio.png)
 
-The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service** module is the entrypoint for initiating a transaction. The pseudocode for the execution is shown below:
-
-```
-    # Handles ruleset execution flow
-    service.execute(repository, facts):
-        for each ruleset in the repository:
-            session = create a session (ruleset, facts)
-            result = session.execute(ruleset, facts) # See the pseudo function below.
-            # Based on result from the above execution, continue to the next ruleset, break out of the loop, continue to another ruleset specified in the result
-            if result contains a terminate directive:
-                break
-            else if result contains a continue_to(ruleset) directive:
-                continue to the ruleset
-            facts = result
-        return facts
-
-    session.execute(ruleset, facts):
-        graph = create an empty graph
-        for each rule in the ruleset:
-            session.add_to_graph(graph, rule, facts) # See the pseudo function below.
-
-        for each node in graph:
-            changes = node.execute(node) # See the pseudo function below.
-
-    node.execute(node):
-        all_match = True
-        all_cached = True
-        for each condition in when:
-            if matches_exp was evaluated earlier:
-                match = cached match result
-                cache = True
-            else:
-                match = execute matching_expo
-                cache = False
-
-            all_match = all_match and match
-            all_cached = any_cached and cached
-
-        if all_cached:
-            return
-        if all_matched:
-            execute the then functions
-            cache results
-            return the results. the result returns the facts that were merged in by the then functions
-                {inserted_facts: [...], updated_facts: [...], deleted_facts: [...]}
- 
-
-    session.add_to_graph(graph, rule, facts):
-        types = get a list of for_types from the conditions on the When part of the rule
-
-        for each type in types:
-            matching_facts = get a list of facts that match the type
-
-        combinations = create a list of all possible combinations
-        # For example:
-        # condition 1 of_type=A and facts [a, b] matches
-        # condition 2 of_type=B and facts [x,y] matches
-        # Then the combinations are:
-        # (a,x), (a,y), (b,x), (b,y)
-
-        for each combination in combinations:
-            node = create a node
-            add node to the graph
-            # The engine determines the positions to insert the node into based on hints provided by the rule and other facts
-```
-
-
-
+The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service** module is the entrypoint for initiating a transaction. 
