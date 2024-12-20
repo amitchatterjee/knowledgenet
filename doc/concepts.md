@@ -1,18 +1,18 @@
 # Knowledgenet Concepts
 This document documents the underlying concepts that are used to construct this project. These concepts are not just implementation details, but are essential for application developers who are using or planning to use this library. **So, it is important for application developers to read this document closely**.
 
-Knowledgenet is a Python Language software library that enables application developers to build applications that make complex decisions based on **facts** supplied to the entrypoint (or **service**) and **rules** developed by **application developers** and **business users**. The individuals or groups that create the rules are referred to as **authors". 
+Knowledgenet is a Python Language software library that enables application developers to build applications that make complex decisions based on **facts** supplied to the service entrypoint and **rules** developed by **application developers** and **business users**. The individuals or groups that create the rules are referred to as **authors". 
 
-At a high level, the service can be denoted as:
+At a high level, the entrypoint can be denoted as:
 
-> Set\<result_facts> = service(Set\<input_facts\>, Collection\<rules\>)  
+> Set\<result_facts> = entrypoint(Set\[input_facts\], List\[rules\])  
   where:  
   - **result_facts** are output(s) returned by the execution of the Knowledgenet engine.  
   - **input_facts** are input(s) to the Knowledgenet engine.  
   - **rules** are the rules coded in Python language that are provided to the Knowledgenet engine and executed by the engine to produce the output.
 
 ## Rete
-Knowledgenet is an implementation of an **Inference Engine** using an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. Rete is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the Rete algorithm produce are more predictable and explainable. It also requires no learning as the algorithm is rule-based, i.e., predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and explainability.
+Knowledgenet is an implementation of an **Inference Engine** using an adaptation of the Rete algorithm designed by **Charles L. Forgy** of Carnegie Melon University. Rete is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the Rete algorithm produce are more predictable and explainable. It also requires no "learning" as the algorithm is rule-based, i.e., predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, Rete is often applied after ML and other statistical algorithms have processed the input data; the results from these process being fed to the Rete algorithm for higher accuracy and explainability.
 
 ### Inferencing
 A Rete execution emulates the process used by humans to come to a decision (or conclusion) based on facts presented to him/her/them. To make the decision, a person takes the facts provided to him/her and applies a set of well-established logic (or rules). For complex decision-making, applying a rule to a set of facts may produce intermediate facts that are then used as input to another set of rules. This process continues until the person reaches a decision. One can think of Rete execution as a network of rules that are applied to facts in a certain order. A very **simplistic** representation of the Rete network execution is shown below.
@@ -129,4 +129,4 @@ Please refer to the diagram below while reading this section. It represents the 
 
 ![Knowledgenet Entity Relationship](./Knowledgenet-Entity-Relationship.drawio.png)
 
-The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service** module is the entrypoint for initiating a transaction. 
+The blue boxes represent the entities that are created during the development phase (or authoring phase) and passed on to a transaction. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to the entrypoint and other execution artifacts created in the process of executing the logic. As mentioned earlier, the **execute** function in the **service.Service** class is the entrypoint for initiating a transaction. 
