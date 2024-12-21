@@ -34,15 +34,6 @@ def ruledef(func):
     wrapped.__wrapped__ = True
     return wrapped
 
-# TODO this module only loads file modules. Need to support installed packages
-'''
-import my_module
-# Get the absolute path of the module
-module_path = my_module.__file__ 
-# Get the directory containing the module
-module_dir = os.path.dirname(module_path)
-
-'''
 
 def _load_rules_from_module(module):
     decorated_methods = []
@@ -65,6 +56,22 @@ def load_rules_from_filepaths(paths:Union[str,list,tuple]):
     paths = to_tuple(paths)
     for path in paths:
         sys.path.append(path)
+        modules = _find_modules(path)
+        for module in modules:
+            _load_rules_from_module(module)
+
+'''
+import my_module
+# Get the absolute path of the module
+module_path = my_module.__file__ 
+# Get the directory containing the module
+module_dir = os.path.dirname(module_path)
+'''
+def load_rules_from_packages(packages:Union[str,list,tuple]):
+    packages = to_tuple(packages)
+    for package in packages:
+        init_module = importlib.__import__(package)
+        path = os.path.dirname(init_module.__file__)
         modules = _find_modules(path)
         for module in modules:
             _load_rules_from_module(module)
