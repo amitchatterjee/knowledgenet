@@ -3,6 +3,8 @@ from typing import TypeVar, Callable, Union
 from collections.abc import Hashable
 import uuid
 
+from tracer import trace
+
 T = TypeVar('T')
 class Element:    
     def __init__(self:T, prev:Union[T,None], next:Union[T,None], obj:Hashable, ord:Decimal):
@@ -19,11 +21,12 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator:Callable, id=uuid.uuid1()):
+    def __init__(self, comparator:Callable, id=str(uuid.uuid1())):
         self.first = None
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator
         self.id = id
+        print(self.id)
 
     def __str__(self):
         return f"Graph({self.id})"
@@ -134,6 +137,7 @@ class Graph:
             return None
         return cursor.obj
     
+    @trace(filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
     def next_element(self, cursor_name='default')->Union[Element,None]:
         cursor = self.cursors[cursor_name]
         if not cursor:

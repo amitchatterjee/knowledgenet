@@ -2,22 +2,21 @@ import logging
 import uuid
 from typing import Union
 
+from tracer import trace
 from perm import combinations
 from node import Node
 from factset import Factset
 from graph import Graph, Element
 from ftypes import Collector
+from ruleset import Ruleset
 
 class Session:
-    def __init__(self, ruleset, facts, id=uuid.uuid1(), global_ctx={}):
+    def __init__(self, ruleset:Ruleset, facts, id=str(uuid.uuid1()), global_ctx={}):
         self.id = id
         self.ruleset = ruleset
         self.rules = ruleset.rules
         self.global_ctx = global_ctx
-        self.factset = Factset()
-        self.graph = Graph(ruleset.comparator, id=id)
-        logging.debug("%s: Initializing graph", self)
-        self._add_facts(facts)
+        self.input_facts = facts
 
     def __str__(self):
         return f"Session({self.id})"
@@ -25,18 +24,20 @@ class Session:
     def __repr__(self):
         return self.__str__()
 
-    def execute(self):
-        self._execute_graph()
-        return self.factset.facts
+    @trace()
+    def execute(self):  
+        self.output_facts = Factset()
+        self.graph = Graph(self.ruleset.comparator, id=self.id)
+        logging.debug("%s: Initializing graph", self)
+        self._add_facts(self.input_facts)
 
-    def _execute_graph(self):
         logging.debug("%s: Executing rules on graph", self)
         #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
         self.graph.new_cursor()
         while element := self.graph.next_element():
             node = element.obj
             # Execute the rule on the node
-            result = node.execute(self.factset)
+            result = node.execute(self.output_facts)
             count = 0
             leftmost = element
             if result:
@@ -50,11 +51,11 @@ class Session:
                     logging.debug("%s: Inserted facts: %s", self, new_facts)
 
                 if 'delete' in node.changes:
-                   deleted_facts = node.changes['delete']
-                   leftmost, chg_count, changed_collectors =  self._delete_facts(deleted_facts, leftmost)
-                   all_updates.update(changed_collectors)
-                   count = count + chg_count
-                   logging.debug("%s: Deleted facts: %s", self, deleted_facts)
+                    deleted_facts = node.changes['delete']
+                    leftmost, chg_count, changed_collectors =  self._delete_facts(deleted_facts, leftmost)
+                    all_updates.update(changed_collectors)
+                    count = count + chg_count
+                    logging.debug("%s: Deleted facts: %s", self, deleted_facts)
 
                 if 'update' in node.changes:
                     all_updates.update(node.changes['update'])
@@ -65,23 +66,25 @@ class Session:
                     logging.debug("%s: Updated facts: %s", self, all_updates)
 
                 if 'break' in node.changes:
-                     logging.debug("%s: Breaking session: destination: next_ruleset", self)
-                     break
+                    logging.debug("%s: Breaking session: destination: next_ruleset", self)
+                    break
                     
                 if 'switch' in node.changes:
                     # Terminate the session execution
                     logging.debug("%s: Ending session: destination: %s", self, node.changes['switch'])
-                    self.factset.add_facts([node.changes['switch']])
+                    self.output_facts.add_facts([node.changes['switch']])
                     break
 
                 logging.debug("%s: After all merges were completed: change count: %d, leftmost changed element: %s, current element: %s", self, count, leftmost, element)
 
                 if element is not leftmost:
                     self.graph.new_cursor(element=leftmost)
+        return self.output_facts.facts
     
+    @trace()
     def _delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)
-        changed_collectors = self.factset.del_facts(deduped_deletes)
+        changed_collectors = self.output_facts.del_facts(deduped_deletes)
         logging.debug("%s: Iterating through graph with deleted facts: %s", self, deduped_deletes)
         cursor_name = 'merge'
         self.graph.new_cursor(cursor_name=cursor_name)
@@ -101,10 +104,11 @@ class Session:
         logging.debug("%s: Deleted fatcs from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count, changed_collectors
 
+    @trace()
     def _update_facts(self, execution_node: Node, updated_facts: Union[set,list], 
                        current_leftmost: Element)->tuple[Element:int]:
         deduped_updates = set(updated_facts) # Remove duplicates
-        changed_collectors = self.factset.update_facts(updated_facts)
+        changed_collectors = self.output_facts.update_facts(updated_facts)
         new_leftmost = current_leftmost
         count = 0
         logging.debug("%s: Iterating through graph with updated facts: %s", self, deduped_updates)
@@ -132,9 +136,10 @@ class Session:
         logging.debug("%s: Updated graph, count: %d, changed_collectors:%s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count
 
+    @trace()
     def _add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
-        new_facts, changed_collectors = self.factset.add_facts(new_facts)
+        new_facts, changed_collectors = self.output_facts.add_facts(new_facts)
 
         new_leftmost = current_leftmost
         count = 0
@@ -148,7 +153,7 @@ class Session:
                 group = None
                 if when.of_type == Collector:
                     group = when.group
-                objs = self.factset.facts_of_type(when.of_type, group=group)
+                objs = self.output_facts.facts_of_type(when.of_type, group=group)
                 if not objs:
                     satisfies = False
                     break

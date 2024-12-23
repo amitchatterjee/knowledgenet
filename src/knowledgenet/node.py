@@ -2,12 +2,16 @@ import logging
 
 from types import SimpleNamespace
 
+from tracer import trace
+
 class Leaf:
-    def __init__(self, rule, when_index):
+    def __init__(self, id, rule, when_index):
+        self.id = id
         self.rule = rule
         self.when_index = when_index
         self.executed = False
 
+    @trace()
     def execute(self, context, this):
         if self.executed:
             # Return the previous result
@@ -16,6 +20,12 @@ class Leaf:
         self.result = self.rule.whens[self.when_index].exp(context, this)
         self.executed = True
         return False, self.result
+    
+    def __str__(self):
+        return f"Leaf({self.id})"
+
+    def __repr__(self):
+        return self.__str__()
 
 class Node:
     def __init__(self, id, rule, rules, global_ctx, when_objs):
@@ -26,12 +36,14 @@ class Node:
         self.when_objs = when_objs
         self.ran = False
         self.context = None
+        self.changes = None
 
         # Create when expression execution context
         self.leaves = []
         for i, when in enumerate(rule.whens):
-            self.leaves.append(Leaf(rule, i))
+            self.leaves.append(Leaf(f"{self.id}[{i}]", rule, i))
 
+    @trace()
     def reset_whens(self, updated_facts:set)->bool:
         found = False
         for i,leaf in enumerate(self.when_objs):
@@ -44,6 +56,7 @@ class Node:
                 return True
         return False
 
+    @trace()
     def execute(self, facts_set:set)->dict:
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
@@ -67,14 +80,18 @@ class Node:
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
         logging.debug("%s: All when clauses satisfied, going to execute the then clauses", self)
-        for then in self.rule.thens:
-            # Execute each function/lambda included in the rule
-            then(self.context)
-        self.changes = self.context._changes
-
+        self.changes = self._execute_thens()
         logging.debug("%s: Result from when execution. Changes:%s", self, self.changes)
         self.ran = True
         return True
+
+    @trace()
+    def _execute_thens(self):
+        for then in self.rule.thens:
+            # Execute each function/lambda included in the rule
+            then(self.context)
+        return self.context._changes
+
     def __str__(self):
         return f"Node({self.id}, rule:{self.rule}, whens:{self.when_objs})"
 

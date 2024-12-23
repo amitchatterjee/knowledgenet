@@ -2,9 +2,17 @@ from session import Session
 from ftypes import Switch
 from time import time
 import logging
+from contextvars import ContextVar
+import json
+import sys
+
+from tracer import trace
+
+trace_buffer = ContextVar('trace_buffer', default=None)
 
 class Service:
-    def __init__(self, repository,  global_ctx={}):
+    def __init__(self, repository, id="knowledgenet", global_ctx={}):
+        self.id = id
         self.repository = repository
         self.global_ctx = global_ctx
 
@@ -19,8 +27,23 @@ class Service:
             if isinstance(fact, Switch):
                 return fact
         return None
-            
-    def execute(self, facts, start_from=None):
+
+    # TODO - temporarily enabled tracer        
+    def execute(self, facts, start_from=None, tracer=sys.stdout):
+        # TODO handle thread-safety
+        buffer = []
+        if tracer:
+            trace_buffer.set(buffer)
+        try:
+            ret = self._execute_service(facts, start_from)
+            return ret
+        finally:
+            if tracer:
+                json.dump(buffer, tracer, indent=2)
+                trace_buffer.set(None)
+ 
+    @trace()
+    def _execute_service(self, facts, start_from):
         service_id = f"{self.repository.id}:{int(round(time() * 1000))}"
         logging.debug("Executing service: %s", service_id)
         resulting_facts = facts
@@ -35,6 +58,6 @@ class Service:
                 resulting_facts.remove(switch_to)
                 if switch_to.ruleset == '_end':
                     break
-                return self.execute(resulting_facts, switch_to.ruleset)
+                return self._execute_service(resulting_facts, switch_to.ruleset)
         logging.debug("Executed service: %s", service_id)
         return resulting_facts

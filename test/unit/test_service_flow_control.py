@@ -1,3 +1,4 @@
+import sys
 from rule import Rule,Condition
 from ruleset import Ruleset
 from repository import Repository
@@ -26,12 +27,12 @@ def test_flow_control_with_end():
     repo = Repository('repo1', [
         Ruleset('rs1', [rule_1_1, rule_1_2, rule_1_3]), 
         Ruleset('rs2', [rule_2_1])])
-    result_facts = Service(repo).execute(facts)
+    result_facts = Service(repo).execute(facts, tracer=sys.stdout)
     matching = find_result_of_type(R1, result_facts)
     assert 0 == len(matching)
 
     facts = [C1(0)]
-    result_facts = Service(repo).execute(facts)
+    result_facts = Service(repo).execute(facts, tracer=sys.stdout)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
     matching.sort(key=lambda e: e.vals[0])
@@ -61,7 +62,7 @@ def test_flow_control_with_switch():
     repo = Repository('repo1', [Ruleset('rs1', [rule_1_1, rule_1_2, rule_1_3]), 
         Ruleset('rs2', [rule_2_1]),
         Ruleset('rs3', [rule_3_1])])
-    result_facts = Service(repo).execute(facts)
+    result_facts = Service(repo).execute(facts, tracer=sys.stdout)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 'r31' == matching[0].vals[0]

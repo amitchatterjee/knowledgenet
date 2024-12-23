@@ -41,6 +41,7 @@ def _load_rules_from_module(module):
         #print(f"{name}:{obj}")
         if inspect.isfunction(obj) and name != 'ruledef':
             if getattr(obj, '__wrapped__', False):
+                # Perform the following action only for functions that have been decorated with @ruledef
                 obj()                
     return decorated_methods
 
