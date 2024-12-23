@@ -11,7 +11,9 @@ def trace(filter=None):
             buffer = trace_buffer.get()
             
             filter_pass = filter(args, kwargs) if filter else True
-            if buffer is not None and filter_pass:            
+            to_trace = buffer is not None and filter_pass
+            if to_trace:
+                # This is a nice trace, but a big memory hog. Devise another type of tracing where the trace is streamed as each of the @trace() calls are done            
                 class_name = f"{args[0].__class__.__module__}.{args[0].__class__.__name__}" if args else 'Unknown'
                 object_id = getattr(args[0], 'id', 'unknown')
                 func_name = func.__name__
@@ -28,10 +30,11 @@ def trace(filter=None):
             try:
                 ret = func(*args, **kwargs)
             except Exception as e:
-                exception_trace = traceback.format_exc()
+                if to_trace:
+                    exception_trace = traceback.format_exc()
                 raise e
             finally:
-                if buffer is not None and filter_pass:
+                if to_trace:
                     trace['end'] = timestamp()
                     trace['ret'] = f"{ret}"
                     if exception_trace:

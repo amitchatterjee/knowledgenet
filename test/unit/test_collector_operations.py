@@ -185,6 +185,39 @@ def test_complex_interactions_with_collectors():
     assert 1 == matching[0].vals[0]
     assert 10+11+12 == matching[0].vals[1]
 
+def test_variance_in_collector():
+    rule_1 = Rule(id='r1',
+                when=Condition(of_type=Collector, group='c1s', matches_exp=lambda ctx,this:assign(ctx, sum=this.sum(), variance=this.variance(), size=len(this.collection))),
+                then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.variance, ctx.size)))
+    facts = [C1(10), C1(20), C1(30), C1(40), C1(50), 
+             Collector(of_type=C1, group='c1s', nvalue=lambda obj: obj.val)]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    assert 150 == matching[0].vals[0]
+    assert 250 == matching[0].vals[1]
+    assert 5 == matching[0].vals[2]
+
+def test_minmax_in_collector():
+    rule_1 = Rule(id='r1',
+                when=Condition(of_type=Collector, group='c1s', 
+                               matches_exp=lambda ctx,this:assign(ctx, sum=this.sum(),
+                               variance=this.variance(), size=len(this.collection), min=this.minimum(), max=this.maximum())),
+                then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.variance, ctx.size, ctx.min, ctx.max)))
+    facts = [C1(10), C1(20), C1(30), C1(40), C1(50), 
+             Collector(of_type=C1, group='c1s', 
+                       nvalue=lambda obj: obj.val, 
+                       key=lambda o: o.val)]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    print(matching)
+    assert 150 == matching[0].vals[0]
+    assert 250 == matching[0].vals[1]
+    assert 5 == matching[0].vals[2]
+    assert facts[0] is matching[0].vals[3]
+    assert facts[-2] is matching[0].vals[4]
+
 def sort_collectors(matching):
     matching.sort(key=lambda e: e.parent.val)
     result = OrderedDict()

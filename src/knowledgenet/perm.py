@@ -1,5 +1,7 @@
-import logging
 
+from tracer import trace
+
+@trace()
 def combinations(hier_list, include_only=[]):
     perms = [[]]
     for child in hier_list:

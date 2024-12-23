@@ -1,4 +1,5 @@
 from ftypes import Collector
+from tracer import trace
 
 class Factset:
     def __init__(self):
@@ -16,6 +17,7 @@ class Factset:
     def get_collectors(self, group:str)->set[Collector]:
         return self._group_to_collectors[group] if group in self._group_to_collectors else None
 
+    @trace()
     def add_facts(self, f):
         new_facts = set(f) - self.facts
         # Initialize the newly-added collectors
@@ -51,6 +53,7 @@ class Factset:
         self.facts.update(new_facts)
         return new_facts, updated_collectors - new_collectors
     
+    @trace()
     def update_facts(self, facts):
         collectors = set()
         updated_collectors = set()
@@ -67,6 +70,7 @@ class Factset:
                         updated_collectors.add(collector)
         return updated_collectors - collectors
 
+    @trace()
     def del_facts(self, facts):
         updated_collectors = set()
         for fact in facts:
@@ -99,6 +103,7 @@ class Factset:
         collectors_list.add(collector)
         self._type_to_collectors[collector.of_type] = collectors_list
 
+    @trace()
     def facts_of_type(self, of_type, group=None, filter=lambda obj:True):
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \
