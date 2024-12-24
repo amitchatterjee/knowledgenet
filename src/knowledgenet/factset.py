@@ -16,6 +16,15 @@ class Factset:
 
     def get_collectors(self, group:str)->set[Collector]:
         return self._group_to_collectors[group] if group in self._group_to_collectors else None
+    
+    # TODO - In order to support polymorphism in conditions, we need to not only add the fact type to type_to_facts dictionary, but also all the base classes. I need to think through this a bit more.
+    def _get_class_hierarchy(self, typ):
+        """Gets the class hierarchy for a given type."""
+        hierarchy = []
+        while typ:
+            hierarchy.append(typ)
+            typ = typ.__base__
+        return hierarchy
 
     @trace()
     def add_facts(self, f):
