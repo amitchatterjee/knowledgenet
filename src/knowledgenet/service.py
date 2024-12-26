@@ -29,7 +29,7 @@ class Service:
         return None
 
     # TODO - temporarily enabled tracer        
-    def execute(self, facts, start_from=None, tracer=sys.stdout):
+    def execute(self, facts, start_from=None, tracer=None):
         # TODO handle thread-safety
         buffer = []
         if tracer:
