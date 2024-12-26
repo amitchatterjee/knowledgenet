@@ -1,4 +1,4 @@
-from ruleset import Ruleset
+from knowledgenet.ruleset import Ruleset
 
 class Repository:
     def __init__(self, id:str, rulesets:list[Ruleset]):

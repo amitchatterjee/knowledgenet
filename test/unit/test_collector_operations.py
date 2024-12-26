@@ -1,12 +1,13 @@
 import sys
 from collections import OrderedDict
-from rule import Rule,Condition
-from ruleset import Ruleset
-from repository import Repository
-from helper import assign
-from controls import insert, delete, update
-from service import Service
-from ftypes import Collector
+
+from knowledgenet.rule import Rule,Condition
+from knowledgenet.ruleset import Ruleset
+from knowledgenet.repository import Repository
+from knowledgenet.helper import assign
+from knowledgenet.controls import insert, delete, update
+from knowledgenet.service import Service
+from knowledgenet.ftypes import Collector
 
 from test_helpers.unit_util import find_result_of_type
 from test_helpers.unit_facts import C1, R1, P1, Ch1
@@ -211,7 +212,6 @@ def test_minmax_in_collector():
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
-    print(matching)
     assert 150 == matching[0].vals[0]
     assert 250 == matching[0].vals[1]
     assert 5 == matching[0].vals[2]

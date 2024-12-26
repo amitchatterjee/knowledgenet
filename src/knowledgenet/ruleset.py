@@ -1,6 +1,8 @@
-from rule import Rule
-from util import to_tuple
 from typing import Union
+
+from knowledgenet.util import to_tuple
+from knowledgenet.rule import Rule
+
 class Ruleset:
     def __init__(self, id:str, rules:Union[Rule,tuple[Rule],list[Rule]], global_ctx={}):
         self.id = id

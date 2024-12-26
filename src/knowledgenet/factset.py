@@ -1,5 +1,5 @@
-from ftypes import Collector
-from tracer import trace
+from knowledgenet.ftypes import Collector
+from knowledgenet.tracer import trace
 
 class Factset:
     def __init__(self):
@@ -114,7 +114,9 @@ class Factset:
 
     @trace()
     def facts_of_type(self, of_type, group=None, filter=lambda obj:True):
+        print('of_type:', of_type)
         if of_type == Collector:
+            print('type Collector')
             return {each for each in self._group_to_collectors[group] if filter(each)} \
                 if group in self._group_to_collectors else None
         else:

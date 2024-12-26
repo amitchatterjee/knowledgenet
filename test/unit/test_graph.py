@@ -1,4 +1,4 @@
-from graph import Graph
+from knowledgenet.graph import Graph
 
 def test_insert():
     comparator = lambda o1, o2: o1 - o2

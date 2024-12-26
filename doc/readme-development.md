@@ -38,8 +38,11 @@ python -m pytest -rPX -vv 'test/UNIT/test_basic.py::test_one_rule_single_when_th
 python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv 
 ```
 
-## Build package:
+## Build and install package:
+Note: For all the commands below, you must cd to the project home directory.  
 ```bash
 python -m build
+pip install --force-reinstall dist/knowledgenet-*.whl
+pip show knowledgenet
 ```
 

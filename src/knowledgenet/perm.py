@@ -1,5 +1,5 @@
 
-from tracer import trace
+from knowledgenet.tracer import trace
 
 @trace()
 def combinations(hier_list, include_only=[]):

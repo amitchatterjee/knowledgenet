@@ -1,12 +1,12 @@
 import logging
 import sys
 
-from rule import Rule,Condition
-from ruleset import Ruleset
-from repository import Repository
-from helper import assign
-from controls import insert
-from service import Service
+from knowledgenet.rule import Rule,Condition
+from knowledgenet.ruleset import Ruleset
+from knowledgenet.repository import Repository
+from knowledgenet.helper import assign
+from knowledgenet.controls import insert
+from knowledgenet.service import Service
 
 from test_helpers.unit_util import find_result_of_type
 from test_helpers.unit_facts import C1, C2, R1

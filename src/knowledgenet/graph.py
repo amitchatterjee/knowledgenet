@@ -3,7 +3,7 @@ from typing import TypeVar, Callable, Union
 from collections.abc import Hashable
 import uuid
 
-from tracer import trace
+from knowledgenet.tracer import trace
 
 T = TypeVar('T')
 class Element:    
@@ -26,7 +26,6 @@ class Graph:
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator
         self.id = id
-        print(self.id)
 
     def __str__(self):
         return f"Graph({self.id})"

@@ -1,7 +1,7 @@
-from scanner import ruledef
-from rule import Rule, Condition
-from controls import insert
-from helper import assign
+from knowledgenet.scanner import ruledef
+from knowledgenet.rule import Rule, Condition
+from knowledgenet.controls import insert
+from knowledgenet.helper import assign
 
 from test_helpers.unit_facts import C1, R1
 

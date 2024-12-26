@@ -1,4 +1,4 @@
-from ftypes import Switch
+from knowledgenet.ftypes import Switch
 
 def _add_key(ctx, key, fact):
     if key not in ctx._changes:

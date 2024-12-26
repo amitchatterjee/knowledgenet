@@ -1,7 +1,7 @@
 from typing import Union
 
-from util import to_tuple
-from ftypes import Collector
+from knowledgenet.util import to_tuple
+from knowledgenet.ftypes import Collector
 
 class Condition:
     def __init__(self, of_type:type, matches_exp:callable, group=None):

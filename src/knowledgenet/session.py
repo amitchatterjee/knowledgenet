@@ -2,13 +2,13 @@ import logging
 import uuid
 from typing import Union
 
-from tracer import trace
-from perm import combinations
-from node import Node
-from factset import Factset
-from graph import Graph, Element
-from ftypes import Collector
-from ruleset import Ruleset
+from knowledgenet.tracer import trace
+from knowledgenet.perm import combinations
+from knowledgenet.node import Node
+from knowledgenet.factset import Factset
+from knowledgenet.graph import Graph, Element
+from knowledgenet.ftypes import Collector
+from knowledgenet.ruleset import Ruleset
 
 class Session:
     def __init__(self, ruleset:Ruleset, facts, id=str(uuid.uuid1()), global_ctx={}):

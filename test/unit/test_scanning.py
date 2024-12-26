@@ -1,7 +1,8 @@
 
 import sys
-from scanner import load_rules_from_filepaths, lookup
-from service import Service
+
+from knowledgenet.scanner import load_rules_from_filepaths, lookup
+from knowledgenet.service import Service
 
 from test_helpers.unit_facts import C1, R1
 from test_helpers.unit_util import find_result_of_type

@@ -7,7 +7,7 @@ def timestamp():
 def trace(filter=None):
     def decorator(func):    
         def wrapper(*args, **kwargs):
-            from service import trace_buffer
+            from knowledgenet.service import trace_buffer
             buffer = trace_buffer.get()
             
             filter_pass = filter(args, kwargs) if filter else True

@@ -3,7 +3,7 @@ from numbers import Number
 import hashlib
 import statistics
 
-from tracer import trace
+from knowledgenet.tracer import trace
 
 class Switch:
     def __init__(self, ruleset:str):

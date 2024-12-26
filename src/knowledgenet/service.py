@@ -1,12 +1,12 @@
-from session import Session
-from ftypes import Switch
 from time import time
 import logging
 from contextvars import ContextVar
 import json
 import sys
 
-from tracer import trace
+from knowledgenet.session import Session
+from knowledgenet.ftypes import Switch
+from knowledgenet.tracer import trace
 
 trace_buffer = ContextVar('trace_buffer', default=None)
 

@@ -3,10 +3,11 @@ import inspect
 import sys
 import os
 import importlib
-from ruleset import Ruleset
-from repository import Repository
-from util import to_tuple
 from typing import Union
+
+from knowledgenet.ruleset import Ruleset
+from knowledgenet.repository import Repository
+from knowledgenet.util import to_tuple
 
 registry={}
 
