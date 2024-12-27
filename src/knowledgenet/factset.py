@@ -72,7 +72,7 @@ class Factset:
                 if type(fact) in self._type_to_collectors:
                     matching_collectors = self._type_to_collectors[type(fact)]
                     for collector in matching_collectors:
-                        if fact in collector.collection and collector.nvalue:
+                        if fact in collector.collection and collector.value:
                             # adjust on the fly stats: sum, etc.
                             collector.remove(fact)
                             collector.add(fact)

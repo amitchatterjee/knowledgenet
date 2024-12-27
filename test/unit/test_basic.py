@@ -13,7 +13,7 @@ from test_helpers.unit_facts import C1, C2, R1
 
 def test_one_rule_single_when_then():
     rule = Rule(id='r1',
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
+                when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
                 then=lambda ctx: insert(ctx, R1(ctx.c1)))
     facts = [C1(1), C1(2)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, tracer=sys.stdout)
@@ -24,8 +24,8 @@ def test_one_rule_single_when_then():
 
 def test_one_rule_multiple_when_thens():
     rule = Rule(id='r1', when=[
-                Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
-                Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this) and this.val != ctx.c1.val and this.val > 1)],
+                Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
+                Condition(of_type=C2, matches=lambda ctx, this: assign(ctx, c2=this) and this.val != ctx.c1.val and this.val > 1)],
                 then=[
                     lambda ctx: logging.info(f"Found match: {(ctx.c1,ctx.c2)}"),
                     lambda ctx: insert(ctx, R1(ctx.c1,ctx.c2))])
@@ -39,10 +39,10 @@ def test_one_rule_multiple_when_thens():
 
 def test_condition_with_python_collection_objs():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=tuple, matches_exp=lambda ctx, this: assign(ctx, l=this) and len(this) >= 2),
+                when=Condition(of_type=tuple, matches=lambda ctx, this: assign(ctx, l=this) and len(this) >= 2),
                 then=lambda ctx: insert(ctx, R1(ctx.l)))
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=frozenset, matches_exp=lambda ctx, this: assign(ctx, d=this) and 'name' in this),
+                when=Condition(of_type=frozenset, matches=lambda ctx, this: assign(ctx, d=this) and 'name' in this),
                 then=lambda ctx: insert(ctx, R1(ctx.d)))
     facts = [(C1(1), C1(2)), frozenset({'name': 'tester'})]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout,)

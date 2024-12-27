@@ -15,13 +15,13 @@ def test_flow_control_with_run_once():
         ctx.c1.val = 0
         update(ctx, ctx.c1)
     rule_1 = Rule(id='r1', run_once=True,
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val > 0 and assign(ctx, c1=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: this.val > 0 and assign(ctx, c1=this)),
                 then=rule_1_then)
     def rule_2_then(ctx):
         ctx.c2.val = 1
         update(ctx, ctx.c2)
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: this.val <= 0 and assign(ctx, c2=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: this.val <= 0 and assign(ctx, c2=this)),
                 then=rule_2_then)    
     facts = [C1(20)]
     Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
@@ -33,13 +33,13 @@ def test_flow_control_with_no_retrigger_on_update():
         ctx.c.val = 0
         update(ctx, ctx.c)
     rule_1 = Rule(id='r1', retrigger_on_update=False,
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c=this)),
                 then=rule_1_then)
     def rule_2_then(ctx):
         ctx.c.val = 10
         update(ctx, ctx.c)
     rule_2 = Rule(id='r2', run_once=True,
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c=this)),
                 then=rule_2_then)
     facts = [C1(20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', 
@@ -52,13 +52,13 @@ def test_flow_control_with_no_retrigger_on_update():
 
 def test_flow_control_with_next_ruleset():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c1=this)),
                 then=lambda ctx: insert(ctx, C2(ctx.c1.val)))
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: this.val > 10),
+                when=Condition(of_type=C2, matches=lambda ctx, this: this.val > 10),
                 then=lambda ctx: next_ruleset(ctx))
     rule_3 = Rule(id='r3', order=1,
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this)),
+                when=Condition(of_type=C2, matches=lambda ctx, this: assign(ctx, c2=this)),
                 then=lambda ctx: insert(ctx, R1(ctx.c2.val)))
     facts = [C1(20)]
     result_facts=Service(Repository('repo1', 

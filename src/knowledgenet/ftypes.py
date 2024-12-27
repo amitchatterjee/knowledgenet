@@ -15,11 +15,11 @@ class Switch:
         
 class Collector:
     def __init__(self, group:str, of_type:type, filter:Callable=None, 
-        nvalue:Callable=None, key:Callable=None, **kwargs):
+        value:Callable=None, key:Callable=None, **kwargs):
         self.of_type = of_type
         self.group = group
         self.filter = filter
-        self.nvalue = nvalue
+        self.value = value
         self.key = key
         for key,value in kwargs.items():
             setattr(self, key, value)
@@ -79,16 +79,16 @@ class Collector:
     
     def sum(self)->Number:
         if self._cached_sum is None:
-            if not self.nvalue:
-                raise Exception("Don't know how to compute sum as nvalue function is not defined")
-            self._cached_sum = sum([self.nvalue(each) for each in self.collection])
+            if not self.value:
+                raise Exception("Don't know how to compute sum as value function is not defined")
+            self._cached_sum = sum([self.value(each) for each in self.collection])
         return self._cached_sum
 
     def variance(self)->Number:
         if self._cached_variance is None:
-            if not self.nvalue:
-                raise Exception("Don't know how to compute variance as nvalue function is not defined")
-            self._cached_variance = statistics.variance([self.nvalue(each) for each in self.collection]) if len(self.collection) >= 2 else 0.0
+            if not self.value:
+                raise Exception("Don't know how to compute variance as value function is not defined")
+            self._cached_variance = statistics.variance([self.value(each) for each in self.collection]) if len(self.collection) >= 2 else 0.0
         return self._cached_variance
 
     def minimum(self)->object:

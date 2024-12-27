@@ -12,16 +12,16 @@ from test_helpers.unit_facts import C1, C2, R1
 
 def test_flow_control_with_end():
     rule_1_1 = Rule(id='r11',
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c1=this)),
                 then=lambda ctx: insert(ctx, C2(ctx.c1.val)))
     rule_1_2 = Rule(id='r12',
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: this.val > 10),
+                when=Condition(of_type=C2, matches=lambda ctx, this: this.val > 10),
                 then=lambda ctx: end(ctx))
     rule_1_3 = Rule(id='r13', order=1,
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: True),
+                when=Condition(of_type=C2, matches=lambda ctx, this: True),
                 then=lambda ctx: insert(ctx, R1('r13')))
     rule_2_1 = Rule(id='r21',
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: True),
+                when=Condition(of_type=C2, matches=lambda ctx, this: True),
                 then=lambda ctx: insert(ctx, R1('r21')))
 
     facts = [C1(20)]
@@ -42,21 +42,21 @@ def test_flow_control_with_end():
 
 def test_flow_control_with_switch():
     rule_1_1 = Rule(id='r11',
-                when=Condition(of_type=C1, matches_exp=lambda ctx, this: assign(ctx, c1=this)),
+                when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, c1=this)),
                 then=lambda ctx: insert(ctx, C2(ctx.c1.val)))
     rule_1_2 = Rule(id='r12',
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: this.val > 10),
+                when=Condition(of_type=C2, matches=lambda ctx, this: this.val > 10),
                 then=lambda ctx: switch(ctx, 'rs3'))
     rule_1_3 = Rule(id='r13', order=1,
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: assign(ctx, c2=this)),
+                when=Condition(of_type=C2, matches=lambda ctx, this: assign(ctx, c2=this)),
                 then=lambda ctx: insert(ctx, R1('r13')))
     
     rule_2_1 = Rule(id='r21',
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: True),
+                when=Condition(of_type=C2, matches=lambda ctx, this: True),
                 then=lambda ctx: insert(ctx, R1('r21')))
     
     rule_3_1 = Rule(id='r31',
-                when=Condition(of_type=C2, matches_exp=lambda ctx, this: True),
+                when=Condition(of_type=C2, matches=lambda ctx, this: True),
                 then=lambda ctx: insert(ctx, R1('r31')))
 
     facts = [C1(20)]
