@@ -118,6 +118,7 @@ class Session:
         logging.debug("%s: Iterating through graph with updated facts: %s", self, deduped_updates)
         cursor_name = 'merge'
         self.graph.new_cursor(cursor_name=cursor_name)
+        node = execution_node
         while element:= self.graph.next_element(cursor_name):
             node = element.obj
             if node == execution_node and not node.rule.retrigger_on_update:
