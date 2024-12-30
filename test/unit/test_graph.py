@@ -1,8 +1,9 @@
+import uuid
 from knowledgenet.graph import Graph
 
 def test_insert():
     comparator = lambda o1, o2: o1 - o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     # Add first element to an empty
     g.add(1)
     # Append at the end of the list
@@ -17,7 +18,7 @@ def test_insert():
     
 def test_delete():
     comparator = lambda o1, o2: o1 - o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     for i in range(0,10):
         g.add(i)
 
@@ -39,7 +40,7 @@ def test_delete():
 
 def test_delete_with_next():
     comparator = lambda o1, o2: o1 > o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     for i in range(0,10):
         g.add(i)
     result = []
@@ -69,7 +70,7 @@ def test_delete_with_next():
 
 def test_return_and_start():
     comparator = lambda o1, o2: o1 - o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     saved_node = None
     for i in range(0,10):
         # Reverse the insertion order, but it should still get ordered correctly
@@ -94,7 +95,7 @@ def test_return_and_start():
 
 def test_ordinal():
     comparator = lambda o1, o2: o1 - o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     for i in range(0,10):
         node = g.add(i)
 
@@ -124,7 +125,7 @@ def test_ordinal():
 
 def test_non_default_cursor():
     comparator = lambda o1, o2: o1 - o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     for i in range(0,10):
         g.add(i)
     # Get a default cursor and iterate through 5 items
@@ -152,7 +153,7 @@ def test_many_inserts_in_between():
     The primary purpose of this test is to make sure that the precision of the graph._ordinal function is good enough for handling high number of facts between two facts
     '''
     comparator = lambda o1, o2: o1 - o2
-    g = Graph(comparator)
+    g = Graph(comparator, str(uuid.uuid4()))
     # Increasing this number slows down the tests. But, I ran with 10000
     high = 100
     g.add(0)

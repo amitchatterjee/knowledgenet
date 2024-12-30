@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import Union
 
 from knowledgenet.tracer import trace
@@ -11,7 +10,7 @@ from knowledgenet.ftypes import Collector
 from knowledgenet.ruleset import Ruleset
 
 class Session:
-    def __init__(self, ruleset:Ruleset, facts, id=str(uuid.uuid1()), global_ctx={}):
+    def __init__(self, ruleset:Ruleset, facts, id, global_ctx={}):
         self.id = id
         self.ruleset = ruleset
         self.rules = ruleset.rules
@@ -144,6 +143,10 @@ class Session:
         new_leftmost = current_leftmost
         count = 0
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
+
+        # TODO - temporary code
+        if not new_facts:
+            return new_leftmost, count, changed_collectors
 
         for rule in self.rules:
             satisfies = True

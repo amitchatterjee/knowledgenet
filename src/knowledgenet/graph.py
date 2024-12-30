@@ -1,7 +1,6 @@
 from decimal import Decimal
 from typing import TypeVar, Callable, Union
 from collections.abc import Hashable
-import uuid
 
 from knowledgenet.tracer import trace
 
@@ -21,7 +20,7 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator:Callable, id=str(uuid.uuid1())):
+    def __init__(self, comparator:Callable, id):
         self.first = None
         self.cursors:dict[str,Element] = {}
         self.comparator = comparator
