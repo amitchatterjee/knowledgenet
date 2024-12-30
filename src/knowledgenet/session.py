@@ -37,24 +37,29 @@ class Session:
             node = element.obj
             # Execute the rule on the node
             result = node.execute(self.output_facts)
+            if node.rule.run_once:
+                element = self.graph.delete_element(element)
+
             count = 0
             leftmost = element
             if result:
+                # If the rule execution resulted in merges (insert, update, delete)
                 all_updates = set()
-                # If all conditions were satisfied and the thens were executed
-                if 'insert' in node.changes:
-                    new_facts = node.changes['insert']
-                    leftmost, chg_count, changed_collectors = self._add_facts(new_facts, leftmost)
-                    all_updates.update(changed_collectors)
-                    count = count + chg_count
-                    logging.debug("%s: Inserted facts: %s", self, new_facts)
 
+                # The delete objects need to be handled first because the application may decided to delete a fact and then insert the same fact 
                 if 'delete' in node.changes:
                     deleted_facts = node.changes['delete']
                     leftmost, chg_count, changed_collectors =  self._delete_facts(deleted_facts, leftmost)
                     all_updates.update(changed_collectors)
                     count = count + chg_count
                     logging.debug("%s: Deleted facts: %s", self, deleted_facts)
+
+                if 'insert' in node.changes:
+                    new_facts = node.changes['insert']
+                    leftmost, chg_count, changed_collectors = self._add_facts(new_facts, leftmost)
+                    all_updates.update(changed_collectors)
+                    count = count + chg_count
+                    logging.debug("%s: Inserted facts: %s", self, new_facts)
 
                 if 'update' in node.changes:
                     all_updates.update(node.changes['update'])
@@ -115,10 +120,6 @@ class Session:
         self.graph.new_cursor(cursor_name=cursor_name)
         while element:= self.graph.next_element(cursor_name):
             node = element.obj
-            if node.rule.run_once and node.ran:
-                # If the rule option is for the node to run only once and the node has executed earlier, skip this node
-                continue # to the next node
-
             if node == execution_node and not node.rule.retrigger_on_update:
                 # if this node updated the object and the rule option is not to retrigger on updare
                 continue
@@ -136,17 +137,16 @@ class Session:
         return new_leftmost, count
 
     @trace()
-    def _add_facts(self, new_facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
+    def _add_facts(self, facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
-        new_facts, changed_collectors = self.output_facts.add_facts(new_facts)
+        new_facts,changed_collectors = self.output_facts.add_facts(facts)
+        # If all the facts are duplicates, then return
+        if not new_facts:
+            return current_leftmost, 0, changed_collectors
 
         new_leftmost = current_leftmost
         count = 0
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
-
-        # TODO - temporary code
-        if not new_facts:
-            return new_leftmost, count, changed_collectors
 
         for rule in self.rules:
             satisfies = True

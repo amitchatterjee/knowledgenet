@@ -33,7 +33,6 @@ class Node:
         self.rules = rules
         self.global_ctx = global_ctx
         self.when_objs = when_objs
-        self.ran = False
         self.context = None
         self.changes = None
 
@@ -81,7 +80,6 @@ class Node:
         logging.debug("%s: All when clauses satisfied, going to execute the then clauses", self)
         self.changes = self._execute_thens()
         logging.debug("%s: Result from when execution. Changes:%s", self, self.changes)
-        self.ran = True
         return True
 
     @trace()
