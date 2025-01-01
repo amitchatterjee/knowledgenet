@@ -133,4 +133,12 @@ Please refer to the diagram below. It represents the various data structures and
 
 ![Knowledgenet Entity Relationship](./Knowledgenet-Entity-Relationship.drawio.png)
 
-The blue boxes represent the entities that are created during the development phase (or authoring phase) and is input to a service. The green box represents a service entrypoint. The red boxes represent the facts that are supplied to a transaction and other execution artifacts created in the process of processing the transaction. As mentioned earlier, the **execute** function in the **service.Service** class is the entrypoint for processing a transaction. It is a synchronous call.
+The blue boxes represent the entities that are created during the development phase (or authoring phase) and is passed as input parameters while creating the service. The green arrow represents a service entrypoint for initiating a transaction once the service is initialzed. The red boxes represent the input facts that are supplied to a transaction and other execution artifacts created in the process of processing the transaction. As mentioned earlier, the **execute** function in the **service.Service** class is the entrypoint for a transaction. It is a synchronous call.  
+
+When the service is initialized, the initialization logic orders the rules in the rulesets based on rule definitions and other activities needed to be ready to process transactions.
+
+### Service Execution
+For every service.Service.execute() invocation, knowledgenet executes rules that are a part of the first ruleset. The facts thast are passed as argument to the execute() function is passed in as the input. The facts that were generated from the execution of the first ruleset are then passed on to the next ruleset (or another ruleset indicated by a RHS of the rule within the ruleset - this will be explained later). This process continues till the desired rulesets are executed. The resulting facts are returned to the caller.
+
+### Ruleset Execution
+TODO

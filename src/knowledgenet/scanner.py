@@ -17,8 +17,6 @@ def lookup(repository:str)->Repository:
     rulesets=[]
     for ruleset_id, rules in registry[repository].items():
         rulesets.append(Ruleset(ruleset_id, rules))
-    # Sort by id. The assumption is that the ids are defined in such a way that order can be determined. For example: 001-validation-rules, 002-business-rules, etc.
-    rulesets.sort(key=lambda e: e.id)
     return Repository(repository, rulesets)
 
 def ruledef(func):
