@@ -1,4 +1,5 @@
 from typing import Union
+import uuid
 
 from knowledgenet.util import to_tuple
 from knowledgenet.ftypes import Collector
@@ -13,10 +14,12 @@ class Condition:
         self.group = group
 
 class Rule:
-    def __init__(self, id:str, when:Union[list[Condition],tuple[Condition],Condition], 
-                 then:Union[list[callable],tuple[callable],callable], 
+    def __init__(self, id:str=None, when:Union[list[Condition],tuple[Condition],Condition]=(), 
+                 then:Union[list[callable],tuple[callable],callable]=lambda ctx: None, 
                  order=0, merges:list[type]=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):
+        if not id:
+            id = uuid.uuid4()
         self.id = id
         self.order = order
         self.merges = merges

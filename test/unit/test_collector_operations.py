@@ -17,7 +17,7 @@ def test_collector_in_input_facts():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 20 == matching[0].vals[0]
@@ -28,7 +28,7 @@ def test_collector_filter():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', filter=lambda this, obj: obj.val > 10, value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 0 == len(matching)
  
@@ -40,7 +40,7 @@ def test_collector_changes_on_fact_insertion():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 31 == matching[0].vals[0]
@@ -54,7 +54,7 @@ def test_collector_changes_on_fact_insertion():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
     matching.sort(key=lambda o: o.vals[1])
@@ -71,7 +71,7 @@ def test_collector_changes_on_fact_deletion():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 10 == matching[0].vals[0]
@@ -84,7 +84,7 @@ def test_collector_changes_on_fact_deletion():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
     matching.sort(key=lambda o: o.vals[1])
@@ -104,7 +104,7 @@ def test_collector_changes_on_fact_updates():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 30 == matching[0].vals[0]
@@ -117,7 +117,7 @@ def test_collector_changes_on_fact_updates():
                 when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
     matching.sort(key=lambda o: o.vals[0], reverse=True)
@@ -138,7 +138,7 @@ def test_collector_insert_from_rule():
     p1 = P1(1)
     p2 = P1(2)
     facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,20), Ch1(p2,21)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(Collector, result_facts)
     assert 2 == len(matching)
     result = sort_collectors(matching)
@@ -175,7 +175,7 @@ def test_complex_interactions_with_collectors():
                               matches=lambda ctx, this: this.parent == ctx.p and len(this.collection) >=3  and assign(ctx, collector=this))],
                 then=lambda ctx: insert(ctx, R1(ctx.p.val, ctx.collector.sum())))
     facts = [P1(1), P1(2)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts)
     matching = find_result_of_type(Collector, result_facts)
     assert 2 == len(matching)
     result = sort_collectors(matching)
@@ -192,7 +192,7 @@ def test_variance_in_collector():
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.variance, ctx.size)))
     facts = [C1(10), C1(20), C1(30), C1(40), C1(50), 
              Collector(of_type=C1, group='c1s', value=lambda obj: obj.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 150 == matching[0].vals[0]
@@ -209,7 +209,7 @@ def test_minmax_in_collector():
              Collector(of_type=C1, group='c1s', 
                        value=lambda obj: obj.val, 
                        key=lambda o: o.val)]
-    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts, tracer=sys.stdout)
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 150 == matching[0].vals[0]

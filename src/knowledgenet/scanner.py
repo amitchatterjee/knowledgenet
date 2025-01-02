@@ -5,6 +5,7 @@ import os
 import importlib
 from typing import Union
 
+from knowledgenet.rule import Rule
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.util import to_tuple
@@ -13,17 +14,25 @@ registry={}
 
 def lookup(repository:str)->Repository:
     if repository not in registry:
+        print(f"Registry: {registry}")
         raise Exception('repository not found')
     rulesets=[]
-    for ruleset_id, rules in registry[repository].items():
+    for ruleset_id,rules in registry[repository].items():
         rulesets.append(Ruleset(ruleset_id, rules))
     return Repository(repository, rulesets)
 
 def ruledef(func):
     def wrapped(*args, **kwargs):
         rule = func(*args, **kwargs)
-        if not rule.repository or not rule.ruleset:
-            raise Exception('Both "repository" and "ruleset" must be specified')
+      
+         # Override the rule ruleset and repository ids
+        rule.id = func.__name__
+        rule_path = os.path.dirname(inspect.getfile(func))
+        splits = rule_path.split(os.sep)
+        rule.ruleset = splits[-1]
+        rule.repository = splits[-2]
+        # print(f"Rule: {rule.id}, {rule.repository}, {rule.ruleset}")
+        
         if rule.repository not in registry:
             registry[rule.repository] = {}
         if rule.ruleset not in registry[rule.repository]:
@@ -33,17 +42,16 @@ def ruledef(func):
     wrapped.__wrapped__ = True
     return wrapped
 
-
 def _load_rules_from_module(module):
-    decorated_methods = []
     for name,obj in inspect.getmembers(module):
         #print(f"{name}:{obj}")
         if inspect.isfunction(obj) and name != 'ruledef':
             if getattr(obj, '__wrapped__', False):
                 # Perform the following action only for functions that have been decorated with @ruledef
-                obj()                
-    return decorated_methods
-
+                rule = obj()
+                if type(rule) is not Rule:
+                    raise Exception(f"Function {name} must return a Rule object")
+                
 def _find_modules(path):
     modules = []
     for file in os.listdir(path):

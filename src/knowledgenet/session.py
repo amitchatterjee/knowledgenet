@@ -137,6 +137,19 @@ class Session:
         logging.debug("%s: Updated graph, count: %d, changed_collectors:%s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count
 
+    def _get_matching_objs(self, rule):
+        when_objs = []
+        # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
+        for when in rule.whens:
+            group = None
+            if when.of_type == Collector:
+                group = when.group
+            objs = self.output_facts.facts_of_type(when.of_type, group=group)
+            if not objs:
+                return None
+            when_objs.append(objs)
+        return when_objs
+
     @trace()
     def _add_facts(self, facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
@@ -150,20 +163,8 @@ class Session:
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
 
         for rule in self.rules:
-            satisfies = True
-            when_objs = []
-            # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
-            for when in rule.whens:
-                group = None
-                if when.of_type == Collector:
-                    group = when.group
-                objs = self.output_facts.facts_of_type(when.of_type, group=group)
-                if not objs:
-                    satisfies = False
-                    break
-                when_objs.append(objs)
-
-            if satisfies:
+            when_objs = self._get_matching_objs(rule)
+            if when_objs:
                 # Get all the permutations associated with the objects
                 perms = combinations(when_objs, new_facts)                
                 logging.debug("%s: %s, permutations: %s", self, rule, perms)

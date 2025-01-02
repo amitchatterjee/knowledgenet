@@ -6,12 +6,27 @@ from knowledgenet.service import Service
 
 from test_helpers.unit_facts import C1, R1
 from test_helpers.unit_util import find_result_of_type
+import pytest
 
-def test_scanning():
+@pytest.fixture(scope="module", autouse=True)
+def setup():
     load_rules_from_filepaths('test/unit/scanner_rules')
-    repository = lookup('repo1')
+
+def test_rule_override():
+    repository = lookup('unit')
+    assert 'unit' == repository.id
+    assert 1 == len(repository.rulesets)
+    assert 'scanner_rules' == repository.rulesets[0].id
+    assert 2 == len(repository.rulesets[0].rules)
+    rules = list(repository.rulesets[0].rules)
+    rules.sort(key=lambda e: e.id)
+    assert 'rule1' == repository.rulesets[0].rules[0].id
+    assert 'rule2' == repository.rulesets[0].rules[1].id
+
+def test_scanning_from_filepath():
+    repository = lookup('unit')
     facts = [C1(5), C1(15)]
-    result_facts = Service(repository).execute(facts, tracer=sys.stdout)
+    result_facts = Service(repository).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     # Sort by the description. possible descriptions are [small, large] - see the rules
     matching.sort(key=lambda e: e.vals[1])
