@@ -29,6 +29,8 @@ class Rule:
             setattr(self, key, value)
         # TODO add validations
 
+        self.ordinal = 0
+
     def __str__(self):
         return f"Rule({self.id}, order:{self.order})"
     
