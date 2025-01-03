@@ -53,3 +53,14 @@ def test_condition_with_python_collection_objs():
     assert facts[0] == matching[0].vals[0]
     assert 1 == len(matching[1].vals)
     assert facts[1] == matching[1].vals[0]
+
+def test_rule_with_when_var():
+    rule = Rule(id='r1',
+                when=Fact(of_type=C1, var='c1', matches=lambda ctx, this: this.val > 1),
+                then=lambda ctx: insert(ctx, R1(ctx.c1)))
+    facts = [C1(1), C1(2)]
+    result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1== len(matching)
+    assert 1 == len(matching[0].vals)
+    assert facts[1] == matching[0].vals[0]

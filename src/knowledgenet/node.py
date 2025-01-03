@@ -16,7 +16,9 @@ class Leaf:
             # Return the previous result
             return True, self.result
         # Else, evaluate the expression
-        self.result = self.rule.whens[self.when_index].exp(context, this)
+        if self.rule.whens[self.when_index].var:
+            setattr(context, self.rule.whens[self.when_index].var, this)
+        self.result = self.rule.whens[self.when_index].matches(context, this)
         self.executed = True
         return False, self.result
     

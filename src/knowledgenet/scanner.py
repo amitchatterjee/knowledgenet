@@ -14,12 +14,14 @@ registry={}
 
 def lookup(repository:str)->Repository:
     if repository not in registry:
-        print(f"Registry: {registry}")
         raise Exception('repository not found')
-    rulesets=[]
+    ruleset=[]
     for ruleset_id,rules in registry[repository].items():
-        rulesets.append(Ruleset(ruleset_id, rules))
-    return Repository(repository, rulesets)
+        ruleset.append(Ruleset(ruleset_id, rules))
+    
+    # Sort by id. The assumption is that the ids are defined in alphabetical order. For example: 001-validation-rules, 002-business-rules, etc.
+    ruleset.sort(key=lambda r: r.id)
+    return Repository(repository, ruleset)
 
 def ruledef(func):
     def wrapped(*args, **kwargs):
