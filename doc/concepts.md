@@ -67,11 +67,11 @@ Knowledgenet provides library functions using which the Then function can insert
 Here is an example of a simple rule definition:
 ```python
 Rule(id='determine_if_adult',  
-        when=Condition(of_type=Person, matches=lambda ctx, this: this.age <21),  
+        when=Fact(of_type=Person, matches=lambda ctx, this: this.age <21),  
         then=lambda ctx: insert(Child(...)))  
 
     Rule(id='sell_alcohol_to_adults_only',  
-        when=Condition(of_type=Child, matches=lambda ctx: True),  
+        when=Fact(of_type=Child, matches=lambda ctx: True),  
         then=lambda ctx: insert(Sale(allow=False, ...)))
 ```
 
@@ -88,7 +88,7 @@ Example:
 ```python
 Rule(id='end_execution', ruleset='validation_rules'  
         when=[  
-            Condition(of_type=Validation, matches=lambda ctx, this: not this.valid())  
+            Fact(of_type=Validation, matches=lambda ctx, this: not this.valid())  
         ],  
         then=lambda ctx: end())  
 ```

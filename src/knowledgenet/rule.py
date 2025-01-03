@@ -2,9 +2,9 @@ from typing import Union
 import uuid
 
 from knowledgenet.util import to_tuple
-from knowledgenet.ftypes import Collector
+from knowledgenet.collector import Collector
 
-class Condition:
+class Fact:
     def __init__(self, of_type:type, matches:callable, group=None):
         if of_type == Collector and not group:
             raise Exception("when of_type is Collector, id must be specified")
@@ -14,13 +14,12 @@ class Condition:
         self.group = group
 
 class Rule:
-    def __init__(self, id:str=None, when:Union[list[Condition],tuple[Condition],Condition]=(), 
+    def __init__(self, id:str=None, when:Union[list[Fact],tuple[Fact],Fact]=(), 
                  then:Union[list[callable],tuple[callable],callable]=lambda ctx: None, 
                  order=0, merges:list[type]=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):
-        if not id:
-            id = uuid.uuid4()
-        self.id = id
+        # TODO add validations
+        self.id = id if id else uuid.uuid4()
         self.order = order
         self.merges = merges
         self.whens = to_tuple(when)
@@ -30,7 +29,6 @@ class Rule:
         # The following properties are for external rule management entities like scanner, etc.
         for key,value in kwargs.items():
             setattr(self, key, value)
-        # TODO add validations
 
         self.ordinal = 0
 

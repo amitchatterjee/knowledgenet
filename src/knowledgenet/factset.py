@@ -1,4 +1,4 @@
-from knowledgenet.ftypes import Collector
+from knowledgenet.collector import Collector
 from knowledgenet.tracer import trace
 
 class Factset:

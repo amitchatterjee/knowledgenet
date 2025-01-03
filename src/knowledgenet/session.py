@@ -6,7 +6,7 @@ from knowledgenet.perm import combinations
 from knowledgenet.node import Node
 from knowledgenet.factset import Factset
 from knowledgenet.graph import Graph, Element
-from knowledgenet.ftypes import Collector
+from knowledgenet.collector import Collector
 from knowledgenet.ruleset import Ruleset
 
 class Session:

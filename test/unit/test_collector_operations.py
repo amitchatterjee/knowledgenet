@@ -1,20 +1,20 @@
 import sys
 from collections import OrderedDict
 
-from knowledgenet.rule import Rule,Condition
+from knowledgenet.rule import Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.helper import assign
 from knowledgenet.controls import insert, delete, update
 from knowledgenet.service import Service
-from knowledgenet.ftypes import Collector
+from knowledgenet.collector import Collector
 
 from test_helpers.unit_util import find_result_of_type
 from test_helpers.unit_facts import C1, R1, P1, Ch1
 
 def test_collector_in_input_facts():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
@@ -25,7 +25,7 @@ def test_collector_in_input_facts():
 
 def test_collector_filter():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', filter=lambda this, obj: obj.val > 10, value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
@@ -34,10 +34,10 @@ def test_collector_filter():
  
 def test_collector_changes_on_fact_insertion():
     rule_1 = Rule(id='r1',
-                  when=Condition(of_type=C1, matches=lambda ctx, this: this.val > 10),
+                  when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
@@ -48,10 +48,10 @@ def test_collector_changes_on_fact_insertion():
 
     # Change the order and this time, it should produce two results as rule 2 should run twice
     rule_1 = Rule(id='r1', order=1,
-                  when=Condition(of_type=C1, matches=lambda ctx, this: this.val > 10),
+                  when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
@@ -65,10 +65,10 @@ def test_collector_changes_on_fact_insertion():
 
 def test_collector_changes_on_fact_deletion():
     rule_1 = Rule(id='r1',
-                  when=Condition(of_type=C1, matches=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
+                  when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
                   then=lambda ctx: delete(ctx, ctx.obj))
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
@@ -78,10 +78,10 @@ def test_collector_changes_on_fact_deletion():
     assert 1 == matching[0].vals[1]
 
     rule_1 = Rule(id='r1', order=1,
-                  when=Condition(of_type=C1, matches=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
+                  when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
                   then=lambda ctx: delete(ctx, ctx.obj))
     rule_2 = Rule(id='r2',
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
@@ -98,10 +98,10 @@ def test_collector_changes_on_fact_updates():
         ctx.obj.val = ctx.obj.val // 2
         update(ctx, ctx.obj)
     rule_1 = Rule(id='r1', retrigger_on_update=False,
-                  when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, obj=this)),
+                  when=Fact(of_type=C1, matches=lambda ctx, this: assign(ctx, obj=this)),
                   then=divide_by_2)
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
@@ -111,10 +111,10 @@ def test_collector_changes_on_fact_updates():
     assert 2 == matching[0].vals[1]
 
     rule_1 = Rule(id='r1', retrigger_on_update=False, order=1,
-                  when=Condition(of_type=C1, matches=lambda ctx, this: assign(ctx, obj=this)),
+                  when=Fact(of_type=C1, matches=lambda ctx, this: assign(ctx, obj=this)),
                   then=divide_by_2)
     rule_2 = Rule(id='r2', 
-                when=Condition(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='sum_of_c1s', matches=lambda ctx, this:  assign(ctx, sum=this.sum(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
@@ -133,7 +133,7 @@ def test_collector_insert_from_rule():
     For each object of type P1, create a collector that keeps track of all objects of type Ch1 that refers to it
     '''
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
+                when=Fact(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
                 then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
     p1 = P1(1)
     p2 = P1(2)
@@ -149,7 +149,7 @@ def test_complex_interactions_with_collectors():
     For each object of type P1, create a collector that keeps track of all objects of type Ch1 that refers to it
     '''
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=P1, matches=lambda ctx,this: assign(ctx, parent=this)),
+                when=Fact(of_type=P1, matches=lambda ctx,this: assign(ctx, parent=this)),
                 then=lambda ctx: insert(ctx, 
                                         Collector(of_type=Ch1, group='child', parent=ctx.parent, 
                                             filter=lambda this,child: child.parent == this.parent, 
@@ -162,7 +162,7 @@ def test_complex_interactions_with_collectors():
     For each object of type P1, add 3 objects of type Ch1 that refers to it. Note the order.
     '''
     rule_2 = Rule(id='r2', order=1,
-                when=Condition(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
+                when=Fact(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
                 then=add_3_children)
     
     '''
@@ -170,8 +170,8 @@ def test_complex_interactions_with_collectors():
     '''
     rule_3 = Rule(id='r3',
                 when=[
-                    Condition(of_type=P1, matches=lambda ctx, this: this.val == 1 and assign(ctx, p=this)),
-                    Condition(of_type=Collector, group='child', 
+                    Fact(of_type=P1, matches=lambda ctx, this: this.val == 1 and assign(ctx, p=this)),
+                    Fact(of_type=Collector, group='child', 
                               matches=lambda ctx, this: this.parent == ctx.p and len(this.collection) >=3  and assign(ctx, collector=this))],
                 then=lambda ctx: insert(ctx, R1(ctx.p.val, ctx.collector.sum())))
     facts = [P1(1), P1(2)]
@@ -188,7 +188,7 @@ def test_complex_interactions_with_collectors():
 
 def test_variance_in_collector():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=Collector, group='c1s', matches=lambda ctx,this:assign(ctx, sum=this.sum(), variance=this.variance(), size=len(this.collection))),
+                when=Fact(of_type=Collector, group='c1s', matches=lambda ctx,this:assign(ctx, sum=this.sum(), variance=this.variance(), size=len(this.collection))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.variance, ctx.size)))
     facts = [C1(10), C1(20), C1(30), C1(40), C1(50), 
              Collector(of_type=C1, group='c1s', value=lambda obj: obj.val)]
@@ -201,7 +201,7 @@ def test_variance_in_collector():
 
 def test_minmax_in_collector():
     rule_1 = Rule(id='r1',
-                when=Condition(of_type=Collector, group='c1s', 
+                when=Fact(of_type=Collector, group='c1s', 
                                matches=lambda ctx,this:assign(ctx, sum=this.sum(),
                                variance=this.variance(), size=len(this.collection), min=this.minimum(), max=this.maximum())),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.variance, ctx.size, ctx.min, ctx.max)))
