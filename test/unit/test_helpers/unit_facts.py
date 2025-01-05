@@ -38,3 +38,13 @@ class Ch1:
         return f"Ch1({self.val}, parent={self.parent})"
     def __repr__(self):
         return self.__str__()
+    
+class K1:
+    def __init__(self, val, **kwargs):
+        self.val = val
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    def __str__(self):
+        return f"K1({self.val})"
+    def __repr__(self):
+        return self.__str__()

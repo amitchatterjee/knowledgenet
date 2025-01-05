@@ -5,9 +5,7 @@ from knowledgenet.rule import Rule
 
 class Ruleset:
     def __init__(self, id:str, rules:Union[Rule,tuple[Rule],list[Rule]], global_ctx={}):
-        # TODO add rule validations
         self.id = id
-
         self._order_rules(rules)
         self.global_ctx = global_ctx
 

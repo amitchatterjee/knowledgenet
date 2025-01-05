@@ -218,7 +218,7 @@ def test_minmax_in_collector():
     assert facts[0] is matching[0].vals[3]
     assert facts[-2] is matching[0].vals[4]
 
-def test_collector_when_collection():
+def test_collector_when_collection_syntax():
     rule_1 = Rule(id='r1',
                   when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))

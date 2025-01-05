@@ -29,7 +29,7 @@ class Service:
         return None
 
     def execute(self, facts, start_from=None, tracer=None):
-        # TODO handle thread-safety
+        # TODO handle thread-safety of trace buffers. Basically, we have to make sure that the trace_buffer is unique for each execution. Maybe, each execute() needs to run on separate threads
         buffer = []
         if tracer:
             trace_buffer.set(buffer)

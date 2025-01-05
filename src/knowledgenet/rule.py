@@ -30,7 +30,6 @@ class Fact:
     def __init__(self, of_type:type, matches:callable=lambda ctx,this:True, group=None, var:str=None):
         if of_type == Collector and not group:
             raise Exception("when of_type is Collector, group must be specified")
-        # TODO add more validations
         self.of_type = of_type
         self.matches = matches
         self.group = group
@@ -42,7 +41,6 @@ class Rule:
                  then:Union[list[callable],tuple[callable],callable]=lambda ctx: None, 
                  order=0, merges:list[type]=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):
-        # TODO add validations
         self.id = id if id else uuid.uuid4()
         self.order = order
         self.merges = merges
@@ -61,6 +59,8 @@ class Rule:
         for i, when in enumerate(whens):
             if type(when) == Collection:
                 whens[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
+            elif type(when) != Fact:
+                raise Exception('When clause must only contain Fact and Collection types')
         return to_tuple(whens) 
 
     def __str__(self):

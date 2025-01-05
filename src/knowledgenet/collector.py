@@ -7,6 +7,8 @@ from knowledgenet.tracer import trace
 class Collector:
     def __init__(self, group:str, of_type:type, filter:Callable=None, 
         value:Callable=None, key:Callable=None, **kwargs):
+        if of_type == Collector:
+            raise Exception('Nested collectors are not supported')
         self.of_type = of_type
         self.group = group
         self.filter = filter
@@ -92,7 +94,7 @@ class Collector:
     def maximum(self)->object:
         if self._cached_max is None:
             if not self.key:
-                raise Exception("Don't know how to compute min as key function is not defined")
+                raise Exception("Don't know how to compute max as key function is not defined")
             self._cached_max = max(self.collection, key=self.key)
         return self._cached_max
         

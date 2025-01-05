@@ -28,9 +28,12 @@ class Factset:
 
     @trace()
     def add_facts(self, f):
+        # Dedup
         new_facts = set(f) - self.facts
-        # Initialize the newly-added collectors
+        
         new_collectors = set()
+
+        # Handle addition of a collector fact
         for collector in new_facts:
             if type(collector) == Collector:
                 new_collectors.add(collector)
@@ -42,7 +45,7 @@ class Factset:
                 if collector.of_type in self._type_to_facts:
                     matching_facts = self._type_to_facts[collector.of_type]
                     for matching_fact in matching_facts:
-                        # add all the facts of the same type. The filter and other functions passed to the collector, will decide whether to add it or not 
+                        # add all the facts of the same type. The filter and other functions passed to the collector, will decide whether to add it or not
                         collector.add(matching_fact)
 
         # Initialize the newly-added facts
