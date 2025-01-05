@@ -1,6 +1,6 @@
-import sys
 from collections import OrderedDict
 
+import sys
 from knowledgenet.rule import Collection, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
@@ -9,7 +9,7 @@ from knowledgenet.controls import insert, delete, update
 from knowledgenet.service import Service
 from knowledgenet.collector import Collector
 
-from test_helpers.unit_util import find_result_of_type
+from test_helpers.unit_util import find_result_of_type, sort_collectors
 from test_helpers.unit_facts import C1, R1, P1, Ch1
 
 def test_collector_in_input_facts():
@@ -217,13 +217,3 @@ def test_minmax_in_collector():
     assert 5 == matching[0].vals[2]
     assert facts[0] is matching[0].vals[3]
     assert facts[-2] is matching[0].vals[4]
-
-def sort_collectors(matching):
-    matching.sort(key=lambda e: e.parent.val)
-    result = OrderedDict()
-    for each in matching:
-        l = list(each.collection)
-        l.sort(key=lambda e: e.val)
-        l = [i.val for i in l]
-        result[each.parent.val] = l
-    return result

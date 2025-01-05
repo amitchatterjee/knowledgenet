@@ -41,13 +41,3 @@ def test_multiple_matches_syntax():
     assert 1 == len(matching)
     assert 31 == matching[0].vals[0]
     assert 3 == matching[0].vals[1]
-
-def sort_collectors(matching):
-    matching.sort(key=lambda e: e.parent.val)
-    result = OrderedDict()
-    for each in matching:
-        l = list(each.collection)
-        l.sort(key=lambda e: e.val)
-        l = [i.val for i in l]
-        result[each.parent.val] = l
-    return result
