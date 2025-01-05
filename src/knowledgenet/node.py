@@ -18,7 +18,11 @@ class Leaf:
         # Else, evaluate the expression
         if self.rule.whens[self.when_index].var:
             setattr(context, self.rule.whens[self.when_index].var, this)
-        self.result = self.rule.whens[self.when_index].matches(context, this)
+        self.result = True 
+        for each_exp in self.rule.whens[self.when_index].matches:
+            self.result = self.result and each_exp(context, this)
+            if not self.result:
+                break
         self.executed = True
         return False, self.result
     

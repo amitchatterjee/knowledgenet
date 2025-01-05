@@ -8,10 +8,10 @@ class Wrapper:
     # TODO - implement a wrapper engine and support for this class.
     '''Wrapper class for Facts. When dealing with large fact objects - having all the large facts in memory may not be a viable option. To deal with this problem, we can use a wrapper. The wrapper stores a uniqueue id only instead of the whole object. The wrapper engine associated with the rule engine will be responsible for fetching and writing the object when needed.
     '''
-    def __init__(self, of_type:type, id:str, matches:callable=lambda ctx,this:True, var:str=None):
+    def __init__(self, of_type:type, id:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
         self.of_type = of_type
         self.id = id
-        self.matches = matches
+        self.matches = to_tuple(matches)
         self.var = var
 
     def __str__(self):
@@ -21,17 +21,17 @@ class Wrapper:
         return self.__str__()
 
 class Collection:
-    def __init__(self, group:str, matches:callable=lambda ctx,this:True, var:str=None):
+    def __init__(self, group:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
         self.group = group
-        self.matches = matches
+        self.matches = to_tuple(matches)
         self.var = var
 
 class Fact:
-    def __init__(self, of_type:type, matches:callable=lambda ctx,this:True, group=None, var:str=None):
+    def __init__(self, of_type:type, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, group=None, var:str=None):
         if of_type == Collector and not group:
             raise Exception("when of_type is Collector, group must be specified")
         self.of_type = of_type
-        self.matches = matches
+        self.matches = to_tuple(matches)
         self.group = group
         self.var = var
 
