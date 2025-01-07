@@ -141,10 +141,10 @@ class Session:
         when_objs = []
         # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
         for when in rule.whens:
-            group = None
             if when.of_type == Collector:
-                group = when.group
-            objs = self.output_facts.facts_of_type(when.of_type, group=group)
+                objs = self.output_facts.facts_of_type(when.of_type, group=when.group)
+            else:
+                objs = self.output_facts.facts_of_type(when.of_type)
             if not objs:
                 return None
             when_objs.append(objs)
@@ -171,12 +171,11 @@ class Session:
                 # insert to the graph
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
-                    node = Node(node_id, rule, self.rules, self.global_ctx, each)
+                    node = Node(node_id, rule, self.graph, self.global_ctx, each)
                     element = self.graph.add(node)
                     logging.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)
                     count = count+1
-                    
         logging.debug("%s: Inserted into graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count, changed_collectors
     

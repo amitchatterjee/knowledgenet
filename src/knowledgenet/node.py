@@ -33,10 +33,10 @@ class Leaf:
         return self.__str__()
 
 class Node:
-    def __init__(self, id, rule, rules, global_ctx, when_objs):
+    def __init__(self, id, rule, graph, global_ctx, when_objs):
         self.id = id
         self.rule = rule
-        self.rules = rules
+        self.graph = graph
         self.global_ctx = global_ctx
         self.when_objs = when_objs
         self.context = None
@@ -66,7 +66,7 @@ class Node:
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
 
         if not self.context:
-            self.context = SimpleNamespace(_facts=facts_set, _rule=self.rule, _rules=self.rules, _global=self.global_ctx)
+            self.context = SimpleNamespace(_facts=facts_set, _node=self, _graph=self.graph, _global=self.global_ctx)
         self.context._changes={}
         
         all_cached = True

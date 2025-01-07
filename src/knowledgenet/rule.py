@@ -4,21 +4,12 @@ import uuid
 from knowledgenet.util import to_list, to_tuple
 from knowledgenet.collector import Collector
 
-class Wrapper:
-    # TODO - implement a wrapper engine and support for this class.
-    '''Wrapper class for Facts. When dealing with large fact objects - having all the large facts in memory may not be a viable option. To deal with this problem, we can use a wrapper. The wrapper stores a uniqueue id only instead of the whole object. The wrapper engine associated with the rule engine will be responsible for fetching and writing the object when needed.
-    '''
-    def __init__(self, of_type:type, id:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
+class Absent:
+    def __init__(self, of_type:type, matching:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
+        if of_type == Collector:
+            raise Exception('of_type = Collector is not supported')
         self.of_type = of_type
-        self.id = id
-        self.matches = to_tuple(matches)
-        self.var = var
-
-    def __str__(self):
-        return str(self.id)
-    
-    def __repr__(self):
-        return self.__str__()
+        self.matching = to_list(matching)
 
 class Collection:
     def __init__(self, group:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
@@ -27,17 +18,19 @@ class Collection:
         self.var = var
 
 class Fact:
-    def __init__(self, of_type:type, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, group=None, var:str=None):
+    def __init__(self, of_type:type, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, group=None, var:str=None, **kwargs):
         if of_type == Collector and not group:
             raise Exception("when of_type is Collector, group must be specified")
         self.of_type = of_type
         self.matches = to_tuple(matches)
         self.group = group
         self.var = var
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 class Rule:
     def __init__(self, id:str=None, 
-                 when:Union[list[Union[Fact,Collection]],tuple[Union[Fact,Collection]],Union[Fact, Collection]]=(), 
+                 when:Union[list[Union[Fact,Collection,Absent]],tuple[Union[Fact,Collection,Absent]],Union[Fact,Collection,Absent]]=(), 
                  then:Union[list[callable],tuple[callable],callable]=lambda ctx: None, 
                  order=0, merges:list[type]=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):

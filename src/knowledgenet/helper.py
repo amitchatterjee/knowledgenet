@@ -1,4 +1,7 @@
 from types import SimpleNamespace
+
+from knowledgenet.factset import Factset
+from knowledgenet.node import Node
 def assign(ctx: SimpleNamespace, **kwargs)->True:
     for key, value in kwargs.items():
         setattr(ctx, key, value)
@@ -7,5 +10,8 @@ def assign(ctx: SimpleNamespace, **kwargs)->True:
 def global_ctx(ctx:SimpleNamespace)->object:
     return ctx._global
 
-def factset(ctx:SimpleNamespace)->set:
+def node(ctx:SimpleNamespace)->Node:
+    return ctx._node
+
+def factset(ctx:SimpleNamespace)->Factset:
     return ctx._facts

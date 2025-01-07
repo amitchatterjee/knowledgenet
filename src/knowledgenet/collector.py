@@ -1,17 +1,18 @@
-from typing import Callable
+from typing import Callable, Union
 from numbers import Number
 import hashlib
 import statistics
 
 from knowledgenet.tracer import trace
+from knowledgenet.util import to_tuple
 class Collector:
-    def __init__(self, group:str, of_type:type, filter:Callable=None, 
+    def __init__(self, group:str, of_type:type, filter:Union[list[Callable], tuple[Callable], Callable]=lambda this,child:True, 
         value:Callable=None, key:Callable=None, **kwargs):
         if of_type == Collector:
             raise Exception('Nested collectors are not supported')
         self.of_type = of_type
         self.group = group
-        self.filter = filter
+        self.filter = to_tuple(filter)
         self.value = value
         self.key = key
         for key,value in kwargs.items():
@@ -44,13 +45,19 @@ class Collector:
         self._cached_min = None
         self._cached_max = None
 
+    def _filter_obj(self, obj):
+        for each_filter in self.filter:
+            if not each_filter(self, obj):
+                return False
+        return True
+
     @trace()
     def add(self, obj:object)->bool:
         if type(obj) != self.of_type:
             return False
         if obj in self.collection:
             return False
-        if self.filter and not self.filter(self, obj):
+        if not self._filter_obj(obj):
             return False
         
         self.collection.add(obj)
@@ -63,7 +70,7 @@ class Collector:
             return False
         if obj not in self.collection:
             return False
-        if self.filter and not self.filter(self, obj):
+        if not self._filter_obj(obj):
             return False
         
         self.collection.remove(obj)

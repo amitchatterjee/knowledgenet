@@ -1,6 +1,5 @@
 from collections import OrderedDict
 
-import sys
 from knowledgenet.rule import Collection, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
@@ -134,7 +133,7 @@ def test_collector_insert_from_rule():
     '''
     rule_1 = Rule(id='r1',
                 when=Fact(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
-                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this, child: child.parent == this.parent)))
+                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this,child: child.parent == this.parent)))
     p1 = P1(1)
     p2 = P1(2)
     facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,20), Ch1(p2,21)]
