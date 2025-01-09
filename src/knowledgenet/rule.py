@@ -1,8 +1,14 @@
 from typing import Union
 import uuid
 
+from knowledgenet.ftypes import Eval
 from knowledgenet.util import to_list, to_tuple
 from knowledgenet.collector import Collector
+
+class Evaluator:
+    def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type],
+                 matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
+        self.of_types = of_types
 
 class Collection:
     def __init__(self, group:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
@@ -45,6 +51,8 @@ class Rule:
         for i, when in enumerate(whens):
             if type(when) == Collection:
                 whens[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
+            elif type(when) == Evaluator:
+                whens[i] == Fact(of_type=Eval, of_types=when.of_types, matches=when.matches)
             elif type(when) != Fact:
                 raise Exception('When clause must only contain Fact and Collection types')
         return to_tuple(whens) 

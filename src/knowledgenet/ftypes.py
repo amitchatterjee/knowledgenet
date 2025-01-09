@@ -1,6 +1,6 @@
 from typing import Callable, Union
 
-from knowledgenet.util import to_tuple
+from knowledgenet.util import to_frozenset, to_tuple
 
 class Switch:
     def __init__(self, ruleset:str):
@@ -11,21 +11,23 @@ class Switch:
         return self.__str__()
 
 class Eval:
-    def __init__(self, group:str, of_types:Union[list[type],tuple[type],type]):
-        self.group = group
-        self.of_types = of_types
+    def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type]):
+        self.of_types = to_frozenset(of_types)
     def __str__(self):
-        return f"Exists({self.group}, types=of_types)"
+        return f"Eval({self.of_types})"
     def __repr__(self):
         return self.__str__()
-    def __hash__(self):
-        return hash((self.group, self.of_types))
+    def __eq__(self, other):
+        if isinstance(other, Eval):
+            return self.of_types == other.of_types
+        return False
 
 class Wrapper:
     # TODO - implement a wrapper engine and support for this class.
     '''Wrapper class for Facts. When dealing with large fact objects - having all the large facts in memory may not be a viable option. To deal with this problem, we can use a wrapper. The wrapper stores a uniqueue id only instead of the whole object. The wrapper engine associated with the rule engine will be responsible for fetching and writing the object when needed.
     '''
-    def __init__(self, of_type:type, id:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
+    def __init__(self, of_type:type, id:str, var:str=None,
+                 matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
         self.of_type = of_type
         self.id = id
         self.matches = to_tuple(matches)

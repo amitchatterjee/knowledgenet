@@ -1,4 +1,5 @@
 from knowledgenet.collector import Collector
+from knowledgenet.ftypes import Eval
 from knowledgenet.tracer import trace
 
 class Factset:
@@ -7,6 +8,7 @@ class Factset:
         self._type_to_facts:dict[type,set[object]] = {}
         self._type_to_collectors:dict[type,set[Collector]] = {}
         self._group_to_collectors:dict[str,set[Collector]] = {}
+        self.type_to_eval:dict[type,set[Eval]] = {}
 
     def __str__(self):
         return f"Factset({self.facts})"
