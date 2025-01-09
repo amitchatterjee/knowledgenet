@@ -21,4 +21,4 @@ def switch(ctx, ruleset):
     ctx._changes['switch'] = Switch(ruleset)
 
 def end(ctx):
-    switch(ctx, '_end')
+    switch(ctx, None)

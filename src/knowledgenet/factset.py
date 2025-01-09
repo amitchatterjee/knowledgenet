@@ -116,10 +116,10 @@ class Factset:
         self._type_to_collectors[collector.of_type] = collectors_list
 
     @trace()
-    def facts_of_type(self, of_type, group=None, filter=lambda obj:True):
+    def find(self, of_type, group=None, filter=lambda obj:True):
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \
-                if group in self._group_to_collectors else None
+                if group in self._group_to_collectors else ()
         else:
             return {each for each in self._type_to_facts[of_type] if filter(each)} \
-                if of_type in self._type_to_facts else None
+                if of_type in self._type_to_facts else ()

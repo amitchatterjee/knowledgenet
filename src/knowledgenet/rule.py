@@ -4,13 +4,6 @@ import uuid
 from knowledgenet.util import to_list, to_tuple
 from knowledgenet.collector import Collector
 
-class Absent:
-    def __init__(self, of_type:type, matching:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
-        if of_type == Collector:
-            raise Exception('of_type = Collector is not supported')
-        self.of_type = of_type
-        self.matching = to_list(matching)
-
 class Collection:
     def __init__(self, group:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
         self.group = group
@@ -30,7 +23,7 @@ class Fact:
 
 class Rule:
     def __init__(self, id:str=None, 
-                 when:Union[list[Union[Fact,Collection,Absent]],tuple[Union[Fact,Collection,Absent]],Union[Fact,Collection,Absent]]=(), 
+                 when:Union[list[Union[Fact,Collection]],tuple[Union[Fact,Collection]],Union[Fact,Collection]]=(), 
                  then:Union[list[callable],tuple[callable],callable]=lambda ctx: None, 
                  order=0, merges:list[type]=None, 
                  run_once=False, retrigger_on_update=True, **kwargs):

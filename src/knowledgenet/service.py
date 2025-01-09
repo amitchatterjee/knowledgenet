@@ -55,7 +55,7 @@ class Service:
             logging.debug("Executed session: %s", session)
             if switch_to := self._find_switch(resulting_facts):
                 resulting_facts.remove(switch_to)
-                if switch_to.ruleset == '_end':
+                if not switch_to.ruleset:
                     break
                 return self._execute_service(resulting_facts, switch_to.ruleset)
         logging.debug("Executed service: %s", service_id)
