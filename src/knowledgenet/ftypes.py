@@ -14,7 +14,7 @@ class Eval:
     def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type]):
         self.of_types = to_frozenset(of_types)
     def __str__(self):
-        return f"Eval({self.of_types})"
+        return f"Eval({[each.__name__ for each in self.of_types]})"
     def __repr__(self):
         return self.__str__()
     def __hash__(self):

@@ -1,3 +1,4 @@
+import logging
 from typing import Union
 
 from knowledgenet.util import to_list, to_tuple
@@ -8,6 +9,7 @@ class Ruleset:
         self.id = id
         self._order_rules(rules)
         self.global_ctx = global_ctx
+        logging.debug("%s - added %d rules", self, len(self.rules))
 
     def _order_rules(self, rules):
         rules_list = to_list(rules)

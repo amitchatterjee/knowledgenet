@@ -30,11 +30,11 @@ class Session:
         self.graph = Graph(self.ruleset.comparator, id=self.id)
         logging.debug("%s: Initializing graph", self)
         self._add_facts(self.input_facts)
-
         logging.debug("%s: Executing rules on graph", self)
-        #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
+        
         self.graph.new_cursor()
         while element := self.graph.next_element():
+            #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
             node = element.obj
             # Execute the rule on the node
             result = node.execute(self.output_facts)

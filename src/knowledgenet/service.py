@@ -2,7 +2,6 @@ from time import time
 import logging
 from contextvars import ContextVar
 import json
-import sys
 
 from knowledgenet.session import Session
 from knowledgenet.ftypes import Switch
