@@ -39,7 +39,7 @@ class Collector:
     def __hash__(self):
         return self.__int_hash
 
-    def _reset_cache(self):
+    def reset_cache(self):
         self._cached_sum = None
         self._cached_variance = None
         self._cached_min = None
@@ -61,7 +61,7 @@ class Collector:
             return False
         
         self.collection.add(obj)
-        self._reset_cache()
+        self.reset_cache()
         return True
 
     @trace()
@@ -74,7 +74,7 @@ class Collector:
             return False
         
         self.collection.remove(obj)
-        self._reset_cache()
+        self.reset_cache()
         return True
     
     def sum(self)->Number:
@@ -103,5 +103,4 @@ class Collector:
             if not self.key:
                 raise Exception("Don't know how to compute max as key function is not defined")
             self._cached_max = max(self.collection, key=self.key)
-        return self._cached_max
-        
+        return self._cached_max    

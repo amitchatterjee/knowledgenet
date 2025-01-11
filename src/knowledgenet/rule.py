@@ -52,9 +52,11 @@ class Rule:
             if type(when) == Collection:
                 whens[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
             elif type(when) == Evaluator:
+                if Collector in when.of_types or Eval in when.of_types:
+                    raise Exception("Evaluator of_types cannot contain Collector or Eval")
                 whens[i] == Fact(of_type=Eval, of_types=when.of_types, matches=when.matches)
             elif type(when) != Fact:
-                raise Exception('When clause must only contain Fact and Collection types')
+                raise Exception('When clause must only contain Fact, Eval and Collection types')
         return to_tuple(whens) 
 
     def __str__(self):

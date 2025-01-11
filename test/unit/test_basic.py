@@ -74,7 +74,7 @@ def test_multiple_matches_syntax():
 
 def test_tracer():
     rule = Rule(id='r1',
-                when=Fact(of_type=C1, matches=lambda ctx, this: assign(ctx, c1=this) and this.val > 1),
+                when=Fact(of_type=C1, var='c1', matches=lambda ctx, this: this.val > 1),
                 then=lambda ctx: insert(ctx, R1(ctx.c1)))
     facts = [C1(1), C1(2)]
     with io.StringIO() as stream:
@@ -84,5 +84,3 @@ def test_tracer():
         assert list == type(parsed)
         assert 1 == len(parsed)
         assert dict == type(parsed[0])
-    
-    

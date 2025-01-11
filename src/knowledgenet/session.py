@@ -49,15 +49,15 @@ class Session:
                 # The delete objects need to be handled first because the application may decided to delete a fact and then insert the same fact 
                 if 'delete' in node.changes:
                     deleted_facts = node.changes['delete']
-                    leftmost, chg_count, changed_collectors =  self._delete_facts(deleted_facts, leftmost)
-                    all_updates.update(changed_collectors)
+                    leftmost, chg_count, updated_facts =  self._delete_facts(deleted_facts, leftmost)
+                    all_updates.update(updated_facts)
                     count = count + chg_count
                     logging.debug("%s: Deleted facts: %s", self, deleted_facts)
 
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
-                    leftmost, chg_count, changed_collectors = self._add_facts(new_facts, leftmost)
-                    all_updates.update(changed_collectors)
+                    leftmost, chg_count, updated_facts = self._add_facts(new_facts, leftmost)
+                    all_updates.update(updated_facts)
                     count = count + chg_count
                     logging.debug("%s: Inserted facts: %s", self, new_facts)
 
@@ -112,7 +112,7 @@ class Session:
     def _update_facts(self, execution_node: Node, updated_facts: Union[set,list], 
                        current_leftmost: Element)->tuple[Element:int]:
         deduped_updates = set(updated_facts) # Remove duplicates
-        changed_collectors = self.output_facts.update_facts(updated_facts)
+        updated_facts = self.output_facts.update_facts(updated_facts)
         new_leftmost = current_leftmost
         count = 0
         logging.debug("%s: Iterating through graph with updated facts: %s", self, deduped_updates)
@@ -129,12 +129,12 @@ class Session:
                 new_leftmost = self._minimum(new_leftmost, element)
                 count = count+1
 
-        if len(changed_collectors) > 0:
-            logging.debug("%s: An update resulted in changes to collectors: %s", self, changed_collectors)
+        if len(updated_facts) > 0:
+            logging.debug("%s: An update resulted in changes to collectors: %s", self, updated_facts)
             # As a part of updated, additional collectors may have been affected, update the graph accordingly
-            new_leftmost, chg_count = self._update_facts(node, changed_collectors, new_leftmost)
+            new_leftmost, chg_count = self._update_facts(node, updated_facts, new_leftmost)
             count = count + chg_count
-        logging.debug("%s: Updated graph, count: %d, changed_collectors:%s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
+        logging.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, count, updated_facts, new_leftmost)
         return new_leftmost, count
 
     def _get_matching_objs(self, rule):
@@ -153,10 +153,10 @@ class Session:
     @trace()
     def _add_facts(self, facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
-        new_facts,changed_collectors = self.output_facts.add_facts(facts)
+        new_facts,updated_facts = self.output_facts.add_facts(facts)
         # If all the facts are duplicates, then return
         if not new_facts:
-            return current_leftmost, 0, changed_collectors
+            return current_leftmost, 0, updated_facts
 
         new_leftmost = current_leftmost
         count = 0
@@ -176,8 +176,8 @@ class Session:
                     logging.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)
                     count = count+1
-        logging.debug("%s: Inserted into graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
-        return new_leftmost, count, changed_collectors
+        logging.debug("%s: Inserted into graph, count: %d, update_facts: %s, new leftmost: %s", self, count, updated_facts, new_leftmost)
+        return new_leftmost, count, updated_facts
     
     def _minimum(self, element1:Element, element2:Element)->Element:
         if not element1:

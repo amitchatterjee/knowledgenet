@@ -5,19 +5,22 @@ from knowledgenet.tracer import trace
 class Factset:
     def __init__(self):
         self.facts = set()
+        self._init_dictionaries()
+
+    def _init_dictionaries(self):
         self._type_to_facts:dict[type,set[object]] = {}
+
         self._type_to_collectors:dict[type,set[Collector]] = {}
         self._group_to_collectors:dict[str,set[Collector]] = {}
-        self.type_to_eval:dict[type,set[Eval]] = {}
+
+        self._types_to_eval:dict[frozenset[type],set[Eval]] = {}
+        self._type_to_evals:dict[type,set[Eval]] = {}
 
     def __str__(self):
         return f"Factset({self.facts})"
     
     def __repr__(self):
         return self.__str__()
-
-    def get_collectors(self, group:str)->set[Collector]:
-        return self._group_to_collectors[group] if group in self._group_to_collectors else None
     
     # TODO - In order to support polymorphism in conditions, we need to not only add the fact type to type_to_facts dictionary, but also all the base classes. I need to think through this a bit more.
     def _get_class_hierarchy(self, typ):
@@ -34,94 +37,124 @@ class Factset:
         new_facts = set(f) - self.facts
         
         new_collectors = set()
-
-        # Handle addition of a collector fact
-        for collector in new_facts:
-            if type(collector) == Collector:
-                new_collectors.add(collector)
-                self._add_to_collector_facts_dict(collector)
-                cset = self._group_to_collectors[collector.group] if collector.group in self._group_to_collectors else set()
-                cset.add(collector)
-                self._group_to_collectors[collector.group] = cset
+        # Handle addition of a collector facts first. The next loop may use the collectors added here
+        for fact in new_facts:
+            if type(fact) == Collector:
+                new_collectors.add(fact)
+                self._add_to_collector_facts_dict(fact)
+                cset = self._group_to_collectors[fact.group] if fact.group in self._group_to_collectors else set()
+                cset.add(fact)
+                self._group_to_collectors[fact.group] = cset
                 # Initialize the newly-added collectors with facts that are already in the factset 
-                if collector.of_type in self._type_to_facts:
-                    matching_facts = self._type_to_facts[collector.of_type]
+                if fact.of_type in self._type_to_facts:
+                    matching_facts = self._type_to_facts[fact.of_type]
                     for matching_fact in matching_facts:
                         # add all the facts of the same type. The filter and other functions passed to the collector, will decide whether to add it or not
-                        collector.add(matching_fact)
+                        fact.add(matching_fact)
 
         # Initialize the newly-added facts
-        updated_collectors = set()
-        for fact in new_facts:
-            if type(fact) != Collector:
-                self._add_to_type_facts_dict(fact)
+        updated_facts = set()
 
-                # If this type of this fact matches one or more collectors that are interested in this type 
-                if type(fact) in self._type_to_collectors:
-                    matching_collectors = self._type_to_collectors[type(fact)]
-                    for collector in matching_collectors:
-                        if collector.add(fact):
-                            updated_collectors.add(collector)
+        for fact in new_facts:
+            if type(fact) == Eval:
+                self._types_to_eval[fact.of_types] = fact
+                self._add_to_type_evals_dict(fact)
+                continue
+
+        for fact in new_facts:
+            if type(fact) in (Eval,Collector):
+                # Handled above, skip
+                continue
+
+            # Handle application-defined facts
+            self._add_to_type_facts_dict(fact)
+            # If this type of this fact matches one or more collectors that are interested in this type 
+            if type(fact) in self._type_to_collectors:
+                matching_collectors = self._type_to_collectors[type(fact)]
+                for collector in matching_collectors:
+                    if collector.add(fact):
+                        updated_facts.add(collector)
+
+            # If this type of this fact matches one or more evals that are interested in this type 
+            if type(fact) in self._type_to_evals:
+                updated_facts.update(self._type_to_evals[type(fact)])
 
          # Update the factset
         self.facts.update(new_facts)
-        return new_facts, updated_collectors - new_collectors
+        return new_facts, updated_facts - new_collectors
     
     @trace()
     def update_facts(self, facts):
-        collectors = set()
-        updated_collectors = set()
+        updated_facts = set()
         for fact in facts:
             typ = type(fact)
-            if typ != Collector:
+            if typ not in (Collector,Eval):
                 if type(fact) in self._type_to_collectors:
                     matching_collectors = self._type_to_collectors[type(fact)]
                     for collector in matching_collectors:
                         if fact in collector.collection and collector.value:
-                            # adjust on the fly stats: sum, etc.
-                            collector.remove(fact)
-                            collector.add(fact)
-                        updated_collectors.add(collector)
-        return updated_collectors - collectors
+                            collector.reset_cache()
+                        updated_facts.add(collector)
+                if type(fact) in self._type_to_evals:
+                    matching_evals = self._type_to_evals[type(fact)]
+                    for eval_fact in matching_evals:
+                        updated_facts.add(eval_fact)
+        return updated_facts
 
     @trace()
     def del_facts(self, facts):
-        updated_collectors = set()
+        updated_facts = set()
         for fact in facts:
             self.facts.remove(fact)
             typ = type(fact)
-            if typ != Collector:
-                flist = self._type_to_facts[typ]
-                flist.remove(fact)
-                if type(fact) in self._type_to_collectors:
-                    matching_collectors = self._type_to_collectors[type(fact)]
-                    for collector in matching_collectors:
-                        if collector.remove(fact):
-                            updated_collectors.add(collector)
-            else:
+
+            if typ == Collector:
                 flist = self._type_to_collectors[typ]
                 flist.remove(fact)
                 cset = self._group_to_collectors[fact.group]
                 cset.remove(fact)
                 if len(cset) == 0:
                     del self._group_to_collectors[fact.group]
-        return updated_collectors
+                continue
+            
+            # For other application facts
+            flist = self._type_to_facts[typ]
+            flist.remove(fact)
+            if type(fact) in self._type_to_collectors:
+                matching_collectors = self._type_to_collectors[type(fact)]
+                for collector in matching_collectors:
+                    if collector.remove(fact):
+                        updated_facts.add(collector)
+        return updated_facts
 
     def _add_to_type_facts_dict(self, fact):
-        facts_list = self._type_to_facts[type(fact)] if type(fact) in self._type_to_facts else set()
+        facts_list = self._type_to_facts[type(fact)] \
+            if type(fact) in self._type_to_facts else set()
         facts_list.add(fact)
         self._type_to_facts[type(fact)] = facts_list
 
     def _add_to_collector_facts_dict(self, collector):
-        collectors_list = self._type_to_collectors[collector.of_type] if collector.of_type in self._type_to_collectors else set()
+        collectors_list = self._type_to_collectors[collector.of_type] \
+            if collector.of_type in self._type_to_collectors else set()
         collectors_list.add(collector)
         self._type_to_collectors[collector.of_type] = collectors_list
 
+    def _add_to_type_evals_dict(self, eval_fact):
+        for typ in eval_fact.of_types:
+            evals_list = self._type_to_evals[typ] \
+                if typ in self._type_to_evals else set()
+            evals_list.add(eval_fact)
+            self._type_to_evals[typ] = evals_list
+
     @trace()
-    def find(self, of_type, group=None, filter=lambda obj:True):
+    def find(self, of_type, group=None, filter=lambda obj:True, of_types=None):
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \
-                if group in self._group_to_collectors else ()
-        else:
-            return {each for each in self._type_to_facts[of_type] if filter(each)} \
-                if of_type in self._type_to_facts else ()
+                if group in self._group_to_collectors else set()
+        
+        if of_type == Eval:
+            return set(self._types_to_eval[of_types]) \
+                if of_types in self._types_to_eval else set()
+        
+        return {each for each in self._type_to_facts[of_type] if filter(each)} \
+            if of_type in self._type_to_facts else set()
