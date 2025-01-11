@@ -29,7 +29,9 @@ Note: For all the commands below, you must cd to the project home directory.
 # With code coverage:  
 python -m pytest -rPX -vv --cov  
 # Without code coverage:  
-python -m pytest -rPX -vv  
+python -m pytest -rPX -vv
+# Run with DEBUG log level
+python -m pytest -rPX -vv --log-level=DEBUG
 # Run all tests on a pytest file:  
 python -m pytest -rPX -vv 'test/UNIT/test_basic.py'  
 # Run a single test:  

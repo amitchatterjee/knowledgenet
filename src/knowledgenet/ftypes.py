@@ -17,6 +17,8 @@ class Eval:
         return f"Eval({self.of_types})"
     def __repr__(self):
         return self.__str__()
+    def __hash__(self):
+        return hash(self.of_types)
     def __eq__(self, other):
         if isinstance(other, Eval):
             return self.of_types == other.of_types

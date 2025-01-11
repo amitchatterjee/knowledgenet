@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from knowledgenet.rule import Collection, Rule,Fact
+from knowledgenet.rule import Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.helper import assign
@@ -216,3 +216,5 @@ def test_minmax_in_collector():
     assert 5 == matching[0].vals[2]
     assert facts[0] is matching[0].vals[3]
     assert facts[-2] is matching[0].vals[4]
+
+# TODO: add tests for collection deletion

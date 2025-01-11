@@ -2,13 +2,14 @@ from typing import Union
 import uuid
 
 from knowledgenet.ftypes import Eval
-from knowledgenet.util import to_list, to_tuple
+from knowledgenet.util import to_frozenset, to_list, to_tuple
 from knowledgenet.collector import Collector
 
 class Evaluator:
     def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type],
                  matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
-        self.of_types = of_types
+        self.of_types = to_frozenset(of_types)
+        self.matches = matches
 
 class Collection:
     def __init__(self, group:str, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None):
@@ -54,7 +55,7 @@ class Rule:
             elif type(when) == Evaluator:
                 if Collector in when.of_types or Eval in when.of_types:
                     raise Exception("Evaluator of_types cannot contain Collector or Eval")
-                whens[i] == Fact(of_type=Eval, of_types=when.of_types, matches=when.matches)
+                whens[i] = Fact(of_type=Eval, of_types=when.of_types, matches=when.matches)
             elif type(when) != Fact:
                 raise Exception('When clause must only contain Fact, Eval and Collection types')
         return to_tuple(whens) 

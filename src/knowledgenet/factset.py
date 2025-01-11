@@ -1,3 +1,4 @@
+import logging
 from knowledgenet.collector import Collector
 from knowledgenet.ftypes import Eval
 from knowledgenet.tracer import trace
@@ -13,7 +14,7 @@ class Factset:
         self._type_to_collectors:dict[type,set[Collector]] = {}
         self._group_to_collectors:dict[str,set[Collector]] = {}
 
-        self._types_to_eval:dict[frozenset[type],set[Eval]] = {}
+        self._types_to_eval:dict[frozenset[type],Eval] = {}
         self._type_to_evals:dict[type,set[Eval]] = {}
 
     def __str__(self):
@@ -55,6 +56,7 @@ class Factset:
         # Initialize the newly-added facts
         updated_facts = set()
 
+        # Handle addition of a Eval facts next. The next loop may use the Evals added here
         for fact in new_facts:
             if type(fact) == Eval:
                 self._types_to_eval[fact.of_types] = fact
@@ -88,43 +90,63 @@ class Factset:
         updated_facts = set()
         for fact in facts:
             typ = type(fact)
-            if typ not in (Collector,Eval):
-                if type(fact) in self._type_to_collectors:
-                    matching_collectors = self._type_to_collectors[type(fact)]
-                    for collector in matching_collectors:
-                        if fact in collector.collection and collector.value:
-                            collector.reset_cache()
-                        updated_facts.add(collector)
-                if type(fact) in self._type_to_evals:
-                    matching_evals = self._type_to_evals[type(fact)]
-                    for eval_fact in matching_evals:
-                        updated_facts.add(eval_fact)
+            if typ == Collector:
+                continue
+
+            if type == Eval:
+                continue
+
+            # For application-defined facts
+            if type(fact) in self._type_to_collectors:
+                matching_collectors = self._type_to_collectors[type(fact)]
+                for collector in matching_collectors:
+                    if fact in collector.collection and collector.value:
+                        collector.reset_cache()
+                    updated_facts.add(collector)
+            if type(fact) in self._type_to_evals:
+                matching_evals = self._type_to_evals[type(fact)]
+                for eval_fact in matching_evals:
+                    updated_facts.add(eval_fact)
         return updated_facts
 
     @trace()
     def del_facts(self, facts):
         updated_facts = set()
         for fact in facts:
+            if fact not in facts:
+                logging.warning("Fact: %s not found", fact)
+                continue
+
             self.facts.remove(fact)
             typ = type(fact)
 
             if typ == Collector:
-                flist = self._type_to_collectors[typ]
-                flist.remove(fact)
-                cset = self._group_to_collectors[fact.group]
-                cset.remove(fact)
-                if len(cset) == 0:
-                    del self._group_to_collectors[fact.group]
+                if fact in self._group_to_collectors[fact.group]:
+                    self._group_to_collectors[fact.group].remove(fact)
+                for key,value in list(self._type_to_collectors.items()):  # Create a copy to iterate safely
+                    if value == fact:
+                        del self._type_to_collectors[key]
+                continue
+
+            if typ == Eval:
+                del self._types_to_eval[fact]
+                for key,value in list(self._type_to_evals.items()):  # Create a copy to iterate safely
+                    if value == fact:
+                        del self._type_to_evals[key]
                 continue
             
-            # For other application facts
+            # For application-defined facts
             flist = self._type_to_facts[typ]
             flist.remove(fact)
-            if type(fact) in self._type_to_collectors:
-                matching_collectors = self._type_to_collectors[type(fact)]
+            typ = type(fact)
+            if typ in self._type_to_collectors:
+                matching_collectors = self._type_to_collectors[typ]
                 for collector in matching_collectors:
                     if collector.remove(fact):
+                        # If the fact matched the filter and other criteria
                         updated_facts.add(collector)
+            if typ in self._type_to_evals:
+                updated_facts.update(self._type_to_evals[typ])
         return updated_facts
 
     def _add_to_type_facts_dict(self, fact):
@@ -153,7 +175,7 @@ class Factset:
                 if group in self._group_to_collectors else set()
         
         if of_type == Eval:
-            return set(self._types_to_eval[of_types]) \
+            return {self._types_to_eval[of_types]} \
                 if of_types in self._types_to_eval else set()
         
         return {each for each in self._type_to_facts[of_type] if filter(each)} \

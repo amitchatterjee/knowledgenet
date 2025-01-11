@@ -1,6 +1,7 @@
 import logging
 from typing import Union
 
+from knowledgenet.ftypes import Eval
 from knowledgenet.tracer import trace
 from knowledgenet.perm import combinations
 from knowledgenet.node import Node
@@ -143,6 +144,8 @@ class Session:
         for when in rule.whens:
             if when.of_type == Collector:
                 objs = self.output_facts.find(when.of_type, group=when.group)
+            elif when.of_type == Eval:
+                 objs = self.output_facts.find(when.of_type, of_types=when.of_types)
             else:
                 objs = self.output_facts.find(when.of_type)
             if not objs:
