@@ -85,4 +85,49 @@ def test_eval_with_fact_deletes():
     assert 1 == len(matching[2].vals)
     assert 25 == matching[2].vals[0]
 
-# Test with Eval updates and deletes
+def test_eval_with_eval_insert():
+    rule_1 = Rule(id='r1',
+                when=Evaluator(of_types=C1, 
+                               matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
+                then=lambda ctx: insert(ctx, R1(ctx.sum)))
+    rule_2 = Rule(id='r1', order=1,
+                when=Fact(of_type=int), then=lambda ctx: insert(ctx, Eval(of_types=C1)))
+    facts = [C1(10), C1(15), 5]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    assert 1 == len(matching[0].vals)
+    assert 25 == matching[0].vals[0]
+
+
+def test_eval_with_eval_update():
+    rule_1 = Rule(id='r1',
+                when=Evaluator(of_types=C1,
+                               matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
+                then=lambda ctx: insert(ctx, R1(ctx.sum)))
+    rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
+                when=Evaluator(of_types=C1, var='e1'), then=lambda ctx: update(ctx, ctx.e1))
+    facts = [C1(10), C1(15), Eval(of_types=C1)]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 2 == len(matching)
+    assert 1 == len(matching[0].vals)
+    assert 25 == matching[0].vals[0]
+    assert 1 == len(matching[1].vals)
+    assert 25 == matching[1].vals[0]
+
+def test_eval_with_eval_delete():
+    rule_1 = Rule(id='r1',
+                when=Evaluator(of_types=C1,
+                               matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
+                then=lambda ctx: insert(ctx, R1(ctx.sum)))
+    rule_2 = Rule(id='r2', order=1,
+                when=Evaluator(of_types=C1, var='e1'), then=lambda ctx: delete(ctx, ctx.e1))
+    rule_3 = Rule(id='r3', order=2, retrigger_on_update=False,
+                when=Fact(of_type=C1, var='c1'), then=lambda ctx: update(ctx, ctx.c1))
+    facts = [C1(10), C1(15), Eval(of_types=C1)]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    assert 1 == len(matching[0].vals)
+    assert 25 == matching[0].vals[0]

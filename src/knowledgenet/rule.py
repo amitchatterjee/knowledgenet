@@ -7,8 +7,9 @@ from knowledgenet.collector import Collector
 
 class Evaluator:
     def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type],
-                 matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
+                 matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None,):
         self.of_types = to_frozenset(of_types)
+        self.var = var
         self.matches = matches
 
 class Collection:
@@ -55,7 +56,7 @@ class Rule:
             elif type(when) == Evaluator:
                 if Collector in when.of_types or Eval in when.of_types:
                     raise Exception("Evaluator of_types cannot contain Collector or Eval")
-                whens[i] = Fact(of_type=Eval, of_types=when.of_types, matches=when.matches)
+                whens[i] = Fact(of_type=Eval, of_types=when.of_types, matches=when.matches, var=when.var)
             elif type(when) != Fact:
                 raise Exception('When clause must only contain Fact, Eval and Collection types')
         return to_tuple(whens) 

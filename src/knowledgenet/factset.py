@@ -129,7 +129,9 @@ class Factset:
                 continue
 
             if typ == Eval:
-                del self._types_to_eval[fact]
+                for key,value in list(self._types_to_eval.items()):  # Create a copy to iterate safely
+                    if value == fact:
+                        del self._types_to_eval[key]
                 for key,value in list(self._type_to_evals.items()):  # Create a copy to iterate safely
                     if value == fact:
                         del self._type_to_evals[key]

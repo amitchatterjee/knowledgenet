@@ -11,16 +11,16 @@ class Leaf:
         self.executed = False
 
     @trace()
-    def execute(self, context, this):
+    def execute(self, context, fact):
         if self.executed:
             # Return the previous result
             return True, self.result
         # Else, evaluate the expression
         if self.rule.whens[self.when_index].var:
-            setattr(context, self.rule.whens[self.when_index].var, this)
+            setattr(context, self.rule.whens[self.when_index].var, fact)
         self.result = True 
         for each_exp in self.rule.whens[self.when_index].matches:
-            self.result = self.result and each_exp(context, this)
+            self.result = self.result and each_exp(context, fact)
             if not self.result:
                 break
         self.executed = True

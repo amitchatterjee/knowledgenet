@@ -11,8 +11,10 @@ class Switch:
         return self.__str__()
 
 class Eval:
-    def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type]):
+    def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type], **kwargs):
         self.of_types = to_frozenset(of_types)
+        for key,value in kwargs.items():
+            setattr(self, key, value)
     def __str__(self):
         return f"Eval({[each.__name__ for each in self.of_types]})"
     def __repr__(self):
