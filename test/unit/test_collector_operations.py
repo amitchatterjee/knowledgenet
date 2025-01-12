@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from knowledgenet.rule import Rule,Fact
+from knowledgenet.rule import Collection, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.helper import assign
@@ -133,7 +133,8 @@ def test_collector_insert_from_rule():
     '''
     rule_1 = Rule(id='r1',
                 when=Fact(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
-                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, filter=lambda this,child: child.parent == this.parent)))
+                then=lambda ctx: insert(ctx, Collector(of_type=Ch1, group='child', parent=ctx.parent, 
+                                                       filter=lambda this,child: child.parent == this.parent)))
     p1 = P1(1)
     p2 = P1(2)
     facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,20), Ch1(p2,21)]
@@ -217,4 +218,40 @@ def test_minmax_in_collector():
     assert facts[0] is matching[0].vals[3]
     assert facts[-2] is matching[0].vals[4]
 
-# TODO: add tests for collection deletion
+def test_collector_update():
+    rule_1 = Rule(id='r1',
+                when=Collection(group='c1s', var='c1s'),
+                then=lambda ctx: insert(ctx, R1(ctx.c1s.calls)))
+    def update_call_count(ctx):
+        ctx.c1s.calls = ctx.c1s.calls+1
+        update(ctx, ctx.c1s)
+    rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
+                  when=(Fact(of_type=int), 
+                        Collection(group='c1s', var='c1s')),
+                    then=update_call_count)
+    facts = [C1(1), C1(2), 10,
+             Collector(of_type=C1, group='c1s', calls=0)]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 2 == len(matching)
+    matching.sort(key=lambda r1: r1.vals[0])
+    assert 1 == len(matching[0].vals)
+    assert 0 == matching[0].vals[0]
+    assert 1 == len(matching[1].vals)
+    assert 1 == matching[1].vals[0]
+
+def test_collector_delete():
+    rule_1 = Rule(id='r1',
+                when=Collection(group='c1s', var='c1s'),
+                then=lambda ctx: insert(ctx, R1(len(ctx.c1s.collection))))
+    rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
+                  when=(Fact(of_type=int), 
+                        Collection(group='c1s', var='c1s')),
+                    then=lambda ctx: delete(ctx, ctx.c1s))
+    facts = [C1(1), C1(2), 10,
+             Collector(of_type=C1, group='c1s')]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    assert 1 == len(matching[0].vals)
+    assert 2 == matching[0].vals[0]
