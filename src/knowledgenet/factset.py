@@ -2,6 +2,7 @@ import logging
 from knowledgenet.collector import Collector
 from knowledgenet.ftypes import Eval
 from knowledgenet.tracer import trace
+from knowledgenet.util import to_frozenset
 
 class Factset:
     def __init__(self):
@@ -133,8 +134,9 @@ class Factset:
                     if value == fact:
                         del self._types_to_eval[key]
                 for key,value in list(self._type_to_evals.items()):  # Create a copy to iterate safely
-                    if value == fact:
-                        del self._type_to_evals[key]
+                    for each in list(value):
+                        if each == fact:
+                            self._type_to_evals[key].remove(each)
                 continue
             
             # For application-defined facts
@@ -177,6 +179,7 @@ class Factset:
                 if group in self._group_to_collectors else set()
         
         if of_type == Eval:
+            of_types = to_frozenset(of_types)
             return {self._types_to_eval[of_types]} \
                 if of_types in self._types_to_eval else set()
         

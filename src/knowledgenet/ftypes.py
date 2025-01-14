@@ -11,7 +11,7 @@ class Switch:
         return self.__str__()
 
 class Eval:
-    def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type], **kwargs):
+    def __init__(self, of_types:Union[list[type],tuple[type],set[type],frozenset[type],type], **kwargs):
         self.of_types = to_frozenset(of_types)
         for key,value in kwargs.items():
             setattr(self, key, value)
@@ -23,7 +23,7 @@ class Eval:
         return hash(self.of_types)
     def __eq__(self, other):
         if isinstance(other, Eval):
-            return self.of_types == other.of_types
+            return self.__hash__() == other.__hash__()
         return False
 
 class Wrapper:

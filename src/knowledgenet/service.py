@@ -48,7 +48,7 @@ class Service:
         for ruleset in self.repository.rulesets:
             if start_from and ruleset.id != start_from:
                 continue
-            logging.debug("Creating session with service Id: %s, ruleset:%s, facts:%s", service_id, ruleset, facts)
+            logging.debug("Creating session with service Id: %s, ruleset:%s, facts:%s", service_id, ruleset, resulting_facts)
             session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}", self.global_ctx)
             resulting_facts = session.execute()
             logging.debug("Executed session: %s", session)

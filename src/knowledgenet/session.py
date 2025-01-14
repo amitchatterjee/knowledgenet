@@ -106,7 +106,7 @@ class Session:
                     new_leftmost = self._minimum(new_leftmost, element)
                 count = count+1
 
-        logging.debug("%s: Deleted fatcs from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
+        logging.debug("%s: Deleted facts from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, count, changed_collectors, new_leftmost)
         return new_leftmost, count, changed_collectors
 
     @trace()
