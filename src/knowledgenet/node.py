@@ -33,11 +33,10 @@ class Leaf:
         return self.__str__()
 
 class Node:
-    def __init__(self, id, rule, graph, global_ctx, when_objs):
+    def __init__(self, id, rule, session, when_objs):
         self.id = id
         self.rule = rule
-        self.graph = graph
-        self.global_ctx = global_ctx
+        self.session = session
         self.when_objs = when_objs
         self.context = None
         self.changes = None
@@ -61,12 +60,12 @@ class Node:
         return False
 
     @trace()
-    def execute(self, facts_set:set)->dict:
+    def execute(self, facts:set)->dict:
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
 
         if not self.context:
-            self.context = SimpleNamespace(_facts=facts_set, _node=self, _graph=self.graph, _global=self.global_ctx)
+            self.context = SimpleNamespace(_facts=facts, _node=self, _session=self.session)
         self.context._changes={}
         
         all_cached = True

@@ -1,14 +1,14 @@
 from typing import Union
 import uuid
 
-from knowledgenet.ftypes import Eval
+from knowledgenet.ftypes import EventFact
 from knowledgenet.util import to_frozenset, to_list, to_tuple
 from knowledgenet.collector import Collector
 
-class Evaluator:
-    def __init__(self, of_types:Union[list[type],tuple[type],set[type], frozenset[type],type],
+class Event:
+    def __init__(self, on_types:Union[list[type],tuple[type],set[type], frozenset[type],type],
                  matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None,):
-        self.of_types = to_frozenset(of_types)
+        self.on_types = to_frozenset(on_types)
         self.var = var
         self.matches = matches
 
@@ -53,12 +53,12 @@ class Rule:
         for i, when in enumerate(whens):
             if type(when) == Collection:
                 whens[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
-            elif type(when) == Evaluator:
-                if Collector in when.of_types or Eval in when.of_types:
-                    raise Exception("Evaluator of_types cannot contain Collector or Eval")
-                whens[i] = Fact(of_type=Eval, of_types=when.of_types, matches=when.matches, var=when.var)
+            elif type(when) == Event:
+                if Collector in when.on_types or EventFact in when.on_types:
+                    raise Exception("Event on_types cannot contain Collector or EventFact")
+                whens[i] = Fact(of_type=EventFact, on_types=when.on_types, matches=when.matches, var=when.var)
             elif type(when) != Fact:
-                raise Exception('When clause must only contain Fact, Eval and Collection types')
+                raise Exception('When clause must only contain Fact, Event and Collection types')
         return to_tuple(whens) 
 
     def __str__(self):

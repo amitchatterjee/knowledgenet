@@ -10,19 +10,26 @@ class Switch:
     def __repr__(self):
         return self.__str__()
 
-class Eval:
-    def __init__(self, of_types:Union[list[type],tuple[type],set[type],frozenset[type],type], **kwargs):
-        self.of_types = to_frozenset(of_types)
+class EventFact:
+    def __init__(self, on_types:Union[list[type],tuple[type],set[type],frozenset[type],type], **kwargs):
+        self.on_types = to_frozenset(on_types)
         for key,value in kwargs.items():
             setattr(self, key, value)
+        self.reset()
+
+    def reset(self):
+        self.added = set()
+        self.updated = set()
+        self.deleted = set()
+
     def __str__(self):
-        return f"Eval({[each.__name__ for each in self.of_types]})"
+        return f"EventFact({[each.__name__ for each in self.on_types]})"
     def __repr__(self):
         return self.__str__()
     def __hash__(self):
-        return hash(self.of_types)
+        return hash(self.on_types)
     def __eq__(self, other):
-        if isinstance(other, Eval):
+        if isinstance(other, EventFact):
             return self.__hash__() == other.__hash__()
         return False
 

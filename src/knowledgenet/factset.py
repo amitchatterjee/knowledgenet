@@ -1,6 +1,6 @@
 import logging
 from knowledgenet.collector import Collector
-from knowledgenet.ftypes import Eval
+from knowledgenet.ftypes import EventFact
 from knowledgenet.tracer import trace
 from knowledgenet.util import to_frozenset
 
@@ -15,8 +15,8 @@ class Factset:
         self._type_to_collectors:dict[type,set[Collector]] = {}
         self._group_to_collectors:dict[str,set[Collector]] = {}
 
-        self._types_to_eval:dict[frozenset[type],Eval] = {}
-        self._type_to_evals:dict[type,set[Eval]] = {}
+        self._types_to_event:dict[frozenset[type],EventFact] = {}
+        self._type_to_events:dict[type,set[EventFact]] = {}
 
     def __str__(self):
         return f"Factset({self.facts})"
@@ -57,15 +57,15 @@ class Factset:
         # Initialize the newly-added facts
         updated_facts = set()
 
-        # Handle addition of a Eval facts next. The next loop may use the Evals added here
+        # Handle addition of a Event facts next. The next loop may use the facts added here
         for fact in new_facts:
-            if type(fact) == Eval:
-                self._types_to_eval[fact.of_types] = fact
-                self._add_to_type_evals_dict(fact)
+            if type(fact) == EventFact:
+                self._types_to_event[fact.on_types] = fact
+                self._add_to_type_events_dict(fact)
                 continue
 
         for fact in new_facts:
-            if type(fact) in (Eval,Collector):
+            if type(fact) in (EventFact,Collector):
                 # Handled above, skip
                 continue
 
@@ -78,9 +78,11 @@ class Factset:
                     if collector.add(fact):
                         updated_facts.add(collector)
 
-            # If this type of this fact matches one or more evals that are interested in this type 
-            if type(fact) in self._type_to_evals:
-                updated_facts.update(self._type_to_evals[type(fact)])
+            # If this type of this fact matches one or more events that are interested in this type 
+            if type(fact) in self._type_to_events:
+                for event in self._type_to_events[type(fact)]:
+                    event.added.add(fact)
+                updated_facts.update(self._type_to_events[type(fact)])
 
          # Update the factset
         self.facts.update(new_facts)
@@ -94,7 +96,7 @@ class Factset:
             if typ == Collector:
                 continue
 
-            if type == Eval:
+            if type == EventFact:
                 continue
 
             # For application-defined facts
@@ -104,10 +106,11 @@ class Factset:
                     if fact in collector.collection and collector.value:
                         collector.reset_cache()
                     updated_facts.add(collector)
-            if type(fact) in self._type_to_evals:
-                matching_evals = self._type_to_evals[type(fact)]
-                for eval_fact in matching_evals:
-                    updated_facts.add(eval_fact)
+            if type(fact) in self._type_to_events:
+                matching_events = self._type_to_events[type(fact)]
+                for event_fact in matching_events:
+                    event_fact.updated.add(fact)
+                    updated_facts.add(event_fact)
         return updated_facts
 
     @trace()
@@ -129,14 +132,14 @@ class Factset:
                         del self._type_to_collectors[key]
                 continue
 
-            if typ == Eval:
-                for key,value in list(self._types_to_eval.items()):  # Create a copy to iterate safely
+            if typ == EventFact:
+                for key,value in list(self._types_to_event.items()):  # Create a copy to iterate safely
                     if value == fact:
-                        del self._types_to_eval[key]
-                for key,value in list(self._type_to_evals.items()):  # Create a copy to iterate safely
+                        del self._types_to_event[key]
+                for key,value in list(self._type_to_events.items()):  # Create a copy to iterate safely
                     for each in list(value):
                         if each == fact:
-                            self._type_to_evals[key].remove(each)
+                            self._type_to_events[key].remove(each)
                 continue
             
             # For application-defined facts
@@ -149,8 +152,10 @@ class Factset:
                     if collector.remove(fact):
                         # If the fact matched the filter and other criteria
                         updated_facts.add(collector)
-            if typ in self._type_to_evals:
-                updated_facts.update(self._type_to_evals[typ])
+            if typ in self._type_to_events:
+                for event in self._type_to_events[typ]:
+                    event.deleted.add(fact)
+                updated_facts.update(self._type_to_events[typ])
         return updated_facts
 
     def _add_to_type_facts_dict(self, fact):
@@ -165,23 +170,23 @@ class Factset:
         collectors_list.add(collector)
         self._type_to_collectors[collector.of_type] = collectors_list
 
-    def _add_to_type_evals_dict(self, eval_fact):
-        for typ in eval_fact.of_types:
-            evals_list = self._type_to_evals[typ] \
-                if typ in self._type_to_evals else set()
-            evals_list.add(eval_fact)
-            self._type_to_evals[typ] = evals_list
+    def _add_to_type_events_dict(self, event_fact):
+        for typ in event_fact.on_types:
+            events_list = self._type_to_events[typ] \
+                if typ in self._type_to_events else set()
+            events_list.add(event_fact)
+            self._type_to_events[typ] = events_list
 
     @trace()
-    def find(self, of_type, group=None, filter=lambda obj:True, of_types=None):
+    def find(self, of_type, group=None, filter=lambda obj:True, on_types=None):
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \
                 if group in self._group_to_collectors else set()
         
-        if of_type == Eval:
-            of_types = to_frozenset(of_types)
-            return {self._types_to_eval[of_types]} \
-                if of_types in self._types_to_eval else set()
+        if of_type == EventFact:
+            on_types = to_frozenset(on_types)
+            return {self._types_to_event[on_types]} \
+                if on_types in self._types_to_event else set()
         
         return {each for each in self._type_to_facts[of_type] if filter(each)} \
             if of_type in self._type_to_facts else set()

@@ -1,7 +1,7 @@
 import logging
 from typing import Union
 
-from knowledgenet.ftypes import Eval
+from knowledgenet.ftypes import EventFact
 from knowledgenet.tracer import trace
 from knowledgenet.perm import combinations
 from knowledgenet.node import Node
@@ -144,8 +144,8 @@ class Session:
         for when in rule.whens:
             if when.of_type == Collector:
                 objs = self.output_facts.find(when.of_type, group=when.group)
-            elif when.of_type == Eval:
-                 objs = self.output_facts.find(when.of_type, of_types=when.of_types)
+            elif when.of_type == EventFact:
+                 objs = self.output_facts.find(when.of_type, on_types=when.on_types)
             else:
                 objs = self.output_facts.find(when.of_type)
             if not objs:
@@ -174,7 +174,7 @@ class Session:
                 # insert to the graph
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
-                    node = Node(node_id, rule, self.graph, self.global_ctx, each)
+                    node = Node(node_id, rule, self, each)
                     element = self.graph.add(node)
                     logging.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)

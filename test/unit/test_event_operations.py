@@ -1,6 +1,6 @@
-from knowledgenet.ftypes import Eval
+from knowledgenet.ftypes import EventFact
 from knowledgenet.helper import assign, factset
-from knowledgenet.rule import Evaluator, Rule,Fact
+from knowledgenet.rule import Event, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.controls import delete, insert, update
@@ -9,27 +9,27 @@ from knowledgenet.service import Service
 from test_helpers.unit_util import find_result_of_type
 from test_helpers.unit_facts import C1, R1, P1, Ch1
 
-def test_single_type_eval():
+def test_single_type_event():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=C1, 
+                when=Event(on_types=C1, 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)])) and ctx.sum > 0),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
-    facts = [C1(10), C1(15), Eval(of_types=C1)]
+    facts = [C1(10), C1(15), EventFact(on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 1 == len(matching[0].vals)
     assert 25 == matching[0].vals[0]
 
-def test_multiple_types_eval_with_fact_inserts():
+def test_multiple_types_event_with_fact_inserts():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=[P1,Ch1], 
+                when=Event(on_types=[P1,Ch1], 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=P1)]) + sum([each.val for each in factset(ctx).find(of_type=Ch1)])) and ctx.sum > 0),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1,
                 when=Fact(of_type=P1, var='parent'),
                 then=lambda ctx: insert(ctx, Ch1(ctx.parent, 10)))
-    facts = [P1(10), P1(15), Eval(of_types=[P1,Ch1])]
+    facts = [P1(10), P1(15), EventFact(on_types=[P1,Ch1])]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1,rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -41,9 +41,9 @@ def test_multiple_types_eval_with_fact_inserts():
     assert 1 == len(matching[2].vals)
     assert 45 == matching[2].vals[0]
 
-def test_eval_with_fact_updates():
+def test_event_with_fact_updates():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=C1, 
+                when=Event(on_types=C1, 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)])) and ctx.sum > 0),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     def increment(ctx):
@@ -51,7 +51,7 @@ def test_eval_with_fact_updates():
         update(ctx, ctx.c1)
     rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
                 when=Fact(of_type=C1, var='c1'), then=increment)
-    facts = [C1(10), C1(15), Eval(of_types=C1)]
+    facts = [C1(10), C1(15), EventFact(on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -63,14 +63,14 @@ def test_eval_with_fact_updates():
     assert 1 == len(matching[2].vals)
     assert 45 == matching[2].vals[0]
 
-def test_eval_with_fact_deletes():
+def test_event_with_fact_deletes():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=C1, 
+                when=Event(on_types=C1, 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1,
                 when=Fact(of_type=C1, var='c1'), then=lambda ctx: delete(ctx, ctx.c1))
-    facts = [C1(10), C1(15), Eval(of_types=C1)]
+    facts = [C1(10), C1(15), EventFact(on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -85,13 +85,13 @@ def test_eval_with_fact_deletes():
     assert 1 == len(matching[2].vals)
     assert 25 == matching[2].vals[0]
 
-def test_eval_with_eval_insert():
+def test_event_with_event_fact_insert():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=C1, 
+                when=Event(on_types=C1, 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r1', order=1,
-                when=Fact(of_type=int), then=lambda ctx: insert(ctx, Eval(of_types=C1)))
+                when=Fact(of_type=int), then=lambda ctx: insert(ctx, EventFact(on_types=C1)))
     facts = [C1(10), C1(15), 5]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
@@ -100,14 +100,14 @@ def test_eval_with_eval_insert():
     assert 25 == matching[0].vals[0]
 
 
-def test_eval_with_eval_update():
+def test_event_with_event_fact_update():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=C1,
+                when=Event(on_types=C1,
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
-                when=Evaluator(of_types=C1, var='e1'), then=lambda ctx: update(ctx, ctx.e1))
-    facts = [C1(10), C1(15), Eval(of_types=C1)]
+                when=Event(on_types=C1, var='e1'), then=lambda ctx: update(ctx, ctx.e1))
+    facts = [C1(10), C1(15), EventFact(on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
@@ -116,18 +116,20 @@ def test_eval_with_eval_update():
     assert 1 == len(matching[1].vals)
     assert 25 == matching[1].vals[0]
 
-def test_eval_with_eval_delete():
+def test_event_with_event_fact_delete():
     rule_1 = Rule(id='r1',
-                when=Evaluator(of_types=C1,
+                when=Event(on_types=C1,
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1,
-                when=Evaluator(of_types=C1, var='e1'), then=lambda ctx: delete(ctx, ctx.e1))
+                when=Event(on_types=C1, var='e1'), then=lambda ctx: delete(ctx, ctx.e1))
     rule_3 = Rule(id='r3', order=2, retrigger_on_update=False,
                 when=Fact(of_type=C1, var='c1'), then=lambda ctx: update(ctx, ctx.c1))
-    facts = [C1(10), C1(15), Eval(of_types=C1)]
+    facts = [C1(10), C1(15), EventFact(on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 1 == len(matching[0].vals)
     assert 25 == matching[0].vals[0]
+
+# TODO add tests for event added/updated/deleted attributes
