@@ -1,8 +1,7 @@
 import logging
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
 from knowledgenet.tracer import trace
-from knowledgenet.util import to_frozenset
 
 class Factset:
     def __init__(self):

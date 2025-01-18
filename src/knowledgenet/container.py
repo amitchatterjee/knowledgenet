@@ -5,6 +5,7 @@ import statistics
 
 from knowledgenet.tracer import trace
 from knowledgenet.util import to_tuple
+
 class Collector:
     def __init__(self, group:str, of_type:type, filter:Union[list[Callable], tuple[Callable], Callable]=lambda this,child:True, 
         value:Callable=None, key:Callable=None, **kwargs):

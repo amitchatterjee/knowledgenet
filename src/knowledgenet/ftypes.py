@@ -1,7 +1,7 @@
 import hashlib
 from typing import Callable, Union
 
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 from knowledgenet.util import to_tuple
 
 class Switch:
@@ -46,13 +46,14 @@ class EventFact:
         return False
 
 class Wrapper:
-    def __init__(self, of_type:str, proxy=False, **kwargs):
+    def __init__(self, of_type:str, proxy=False, fact=None, **kwargs):
         self.of_type = of_type
         self._init_args = kwargs
         self.proxy = proxy
+        self.fact = fact
         for key,value in kwargs.items():
             setattr(self, key, value)
-
+        
         hasher = hashlib.sha256(of_type.encode())
         for key,value in sorted(kwargs.items()):
             hasher.update(str(key).encode())

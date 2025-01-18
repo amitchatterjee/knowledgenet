@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 from knowledgenet.helper import assign
 from knowledgenet.rule import Rule,Fact
 from knowledgenet.ruleset import Ruleset

@@ -1,4 +1,4 @@
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact, Switch
 
 def _add_key(ctx, key, fact):

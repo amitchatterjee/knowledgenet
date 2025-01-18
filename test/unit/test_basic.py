@@ -2,7 +2,7 @@ import json
 import logging
 import io
 
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 from knowledgenet.rule import Collection, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository

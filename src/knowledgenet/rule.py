@@ -3,7 +3,7 @@ import uuid
 
 from knowledgenet.ftypes import EventFact
 from knowledgenet.util import to_frozenset, to_list, to_tuple
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 
 class Event:
     def __init__(self, group,

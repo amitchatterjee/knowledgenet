@@ -6,7 +6,7 @@ from knowledgenet.repository import Repository
 from knowledgenet.helper import assign
 from knowledgenet.controls import insert, delete, update
 from knowledgenet.service import Service
-from knowledgenet.collector import Collector
+from knowledgenet.container import Collector
 
 from test_helpers.unit_util import find_result_of_type, sort_collectors
 from test_helpers.unit_facts import C1, R1, P1, Ch1
