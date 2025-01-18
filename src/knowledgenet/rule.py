@@ -6,9 +6,9 @@ from knowledgenet.util import to_frozenset, to_list, to_tuple
 from knowledgenet.collector import Collector
 
 class Event:
-    def __init__(self, on_types:Union[list[type],tuple[type],set[type], frozenset[type],type],
+    def __init__(self, group,
                  matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, var:str=None,):
-        self.on_types = to_frozenset(on_types)
+        self.group = group
         self.var = var
         self.matches = matches
 
@@ -54,9 +54,7 @@ class Rule:
             if type(when) == Collection:
                 whens[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
             elif type(when) == Event:
-                if Collector in when.on_types or EventFact in when.on_types:
-                    raise Exception("Event on_types cannot contain Collector or EventFact")
-                whens[i] = Fact(of_type=EventFact, on_types=when.on_types, matches=when.matches, var=when.var)
+                whens[i] = Fact(of_type=EventFact, group=when.group, matches=when.matches, var=when.var)
             elif type(when) != Fact:
                 raise Exception('When clause must only contain Fact, Event and Collection types')
         return to_tuple(whens) 

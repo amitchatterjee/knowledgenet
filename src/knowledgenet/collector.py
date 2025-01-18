@@ -15,10 +15,11 @@ class Collector:
         self.filter = to_tuple(filter)
         self.value = value
         self.key = key
+        self.init_args = kwargs
         for key,value in kwargs.items():
             setattr(self, key, value)
-        self.collection = set()
 
+        self.collection = set()
         self._cached_sum = None
         self._cached_variance = None
         self._cached_min = None
@@ -31,7 +32,7 @@ class Collector:
         self.__int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        return f"Collector({self.group})"
+        return f"Collector({self.group}, args={self.init_args})"
     
     def __repr__(self):
         return self.__str__()

@@ -15,7 +15,7 @@ class Factset:
         self._type_to_collectors:dict[type,set[Collector]] = {}
         self._group_to_collectors:dict[str,set[Collector]] = {}
 
-        self._types_to_event:dict[frozenset[type],EventFact] = {}
+        self._group_to_events:dict[frozenset[type],set[EventFact]] = {}
         self._type_to_events:dict[type,set[EventFact]] = {}
 
     def __str__(self):
@@ -43,10 +43,8 @@ class Factset:
         for fact in new_facts:
             if type(fact) == Collector:
                 new_collectors.add(fact)
-                self._add_to_collector_facts_dict(fact)
-                cset = self._group_to_collectors[fact.group] if fact.group in self._group_to_collectors else set()
-                cset.add(fact)
-                self._group_to_collectors[fact.group] = cset
+                self._add_to_type_collectors_dict(fact)
+                self.add_to_group_collectors_dict(fact)
                 # Initialize the newly-added collectors with facts that are already in the factset 
                 if fact.of_type in self._type_to_facts:
                     matching_facts = self._type_to_facts[fact.of_type]
@@ -60,7 +58,7 @@ class Factset:
         # Handle addition of a Event facts next. The next loop may use the facts added here
         for fact in new_facts:
             if type(fact) == EventFact:
-                self._types_to_event[fact.on_types] = fact
+                self._add_to_group_events_dict(fact)
                 self._add_to_type_events_dict(fact)
                 continue
 
@@ -127,19 +125,17 @@ class Factset:
             if typ == Collector:
                 if fact in self._group_to_collectors[fact.group]:
                     self._group_to_collectors[fact.group].remove(fact)
-                for key,value in list(self._type_to_collectors.items()):  # Create a copy to iterate safely
-                    if value == fact:
-                        del self._type_to_collectors[key]
+                for collectors in self._type_to_collectors.values():
+                    if fact in collectors:
+                        collectors.remove(fact)
                 continue
 
             if typ == EventFact:
-                for key,value in list(self._types_to_event.items()):  # Create a copy to iterate safely
-                    if value == fact:
-                        del self._types_to_event[key]
-                for key,value in list(self._type_to_events.items()):  # Create a copy to iterate safely
-                    for each in list(value):
-                        if each == fact:
-                            self._type_to_events[key].remove(each)
+                if fact in self._group_to_events[fact.group]:
+                    self._group_to_events[fact.group].remove(fact)
+                for events in self._type_to_events.values():
+                    if fact in events:
+                        events.remove(fact)
                 continue
             
             # For application-defined facts
@@ -164,11 +160,22 @@ class Factset:
         facts_list.add(fact)
         self._type_to_facts[type(fact)] = facts_list
 
-    def _add_to_collector_facts_dict(self, collector):
+    def _add_to_type_collectors_dict(self, collector):
         collectors_list = self._type_to_collectors[collector.of_type] \
             if collector.of_type in self._type_to_collectors else set()
         collectors_list.add(collector)
         self._type_to_collectors[collector.of_type] = collectors_list
+
+    def add_to_group_collectors_dict(self, fact):
+        cset = self._group_to_collectors[fact.group] if fact.group in self._group_to_collectors else set()
+        cset.add(fact)
+        self._group_to_collectors[fact.group] = cset
+
+    def _add_to_group_events_dict(self, event):
+        events_list = self._group_to_events[event.group] \
+            if event.group in self._group_to_events else set()
+        events_list.add(event)
+        self._group_to_events[event.group] = events_list
 
     def _add_to_type_events_dict(self, event_fact):
         for typ in event_fact.on_types:
@@ -184,9 +191,8 @@ class Factset:
                 if group in self._group_to_collectors else set()
         
         if of_type == EventFact:
-            on_types = to_frozenset(on_types)
-            return {self._types_to_event[on_types]} \
-                if on_types in self._types_to_event else set()
+            return {each for each in self._group_to_events[group] if filter(each)}\
+                if group in self._group_to_events else set()
         
         return {each for each in self._type_to_facts[of_type] if filter(each)} \
             if of_type in self._type_to_facts else set()

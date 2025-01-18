@@ -11,10 +11,10 @@ from test_helpers.unit_facts import C1, R1, P1, Ch1
 
 def test_single_type_event():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=C1, 
+                when=Event(group='c1-events', 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)])) and ctx.sum > 0),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
-    facts = [C1(10), C1(15), EventFact(on_types=C1)]
+    facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
@@ -23,13 +23,13 @@ def test_single_type_event():
 
 def test_multiple_types_event_with_fact_inserts():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=[P1,Ch1], 
+                when=Event(group='parent-child-events', 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=P1)]) + sum([each.val for each in factset(ctx).find(of_type=Ch1)])) and ctx.sum > 0),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1,
                 when=Fact(of_type=P1, var='parent'),
                 then=lambda ctx: insert(ctx, Ch1(ctx.parent, 10)))
-    facts = [P1(10), P1(15), EventFact(on_types=[P1,Ch1])]
+    facts = [P1(10), P1(15), EventFact(group='parent-child-events', on_types=[P1,Ch1])]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1,rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -43,7 +43,7 @@ def test_multiple_types_event_with_fact_inserts():
 
 def test_event_with_fact_updates():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=C1, 
+                when=Event(group='c1-events', 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)])) and ctx.sum > 0),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     def increment(ctx):
@@ -51,7 +51,7 @@ def test_event_with_fact_updates():
         update(ctx, ctx.c1)
     rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
                 when=Fact(of_type=C1, var='c1'), then=increment)
-    facts = [C1(10), C1(15), EventFact(on_types=C1)]
+    facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -65,12 +65,12 @@ def test_event_with_fact_updates():
 
 def test_event_with_fact_deletes():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=C1, 
+                when=Event(group='c1-events',
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1,
                 when=Fact(of_type=C1, var='c1'), then=lambda ctx: delete(ctx, ctx.c1))
-    facts = [C1(10), C1(15), EventFact(on_types=C1)]
+    facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 3 == len(matching)
@@ -87,11 +87,11 @@ def test_event_with_fact_deletes():
 
 def test_event_with_event_fact_insert():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=C1, 
+                when=Event(group='c1-events', 
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r1', order=1,
-                when=Fact(of_type=int), then=lambda ctx: insert(ctx, EventFact(on_types=C1)))
+                when=Fact(of_type=int), then=lambda ctx: insert(ctx, EventFact(group='c1-events', on_types=C1)))
     facts = [C1(10), C1(15), 5]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
@@ -102,12 +102,12 @@ def test_event_with_event_fact_insert():
 
 def test_event_with_event_fact_update():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=C1,
+                when=Event(group='c1-events',
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1, retrigger_on_update=False,
-                when=Event(on_types=C1, var='e1'), then=lambda ctx: update(ctx, ctx.e1))
-    facts = [C1(10), C1(15), EventFact(on_types=C1)]
+                when=Event(group='c1-events', var='e1'), then=lambda ctx: update(ctx, ctx.e1))
+    facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
@@ -118,18 +118,30 @@ def test_event_with_event_fact_update():
 
 def test_event_with_event_fact_delete():
     rule_1 = Rule(id='r1',
-                when=Event(on_types=C1,
+                when=Event(group='c1-events',
                                matches=lambda ctx,this: assign(ctx, sum=sum([each.val for each in factset(ctx).find(of_type=C1)]))),
                 then=lambda ctx: insert(ctx, R1(ctx.sum)))
     rule_2 = Rule(id='r2', order=1,
-                when=Event(on_types=C1, var='e1'), then=lambda ctx: delete(ctx, ctx.e1))
-    rule_3 = Rule(id='r3', order=2, retrigger_on_update=False,
-                when=Fact(of_type=C1, var='c1'), then=lambda ctx: update(ctx, ctx.c1))
-    facts = [C1(10), C1(15), EventFact(on_types=C1)]
+                when=Event(group='c1-events', var='e1'), then=lambda ctx: delete(ctx, ctx.e1))
+    facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
     assert 1 == len(matching)
     assert 1 == len(matching[0].vals)
     assert 25 == matching[0].vals[0]
+
+def test_multiple_events_on_same_group():
+    rule_1 = Rule(id='r1',
+                when=Event(group='c1-events', var='event'),
+                then=lambda ctx: insert(ctx, R1(ctx.event.id)))
+    facts = [C1(10), C1(15), 
+            EventFact(group='c1-events', on_types=C1, id='event-1'),
+            EventFact(group='c1-events', on_types=C1, id='event-2')]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 2 == len(matching)
+    matching.sort(key=lambda e: e.vals[0])
+    assert('event-1', matching[0].vals[0])
+    assert('event-2', matching[1].vals[0])
 
 # TODO add tests for event added/updated/deleted attributes

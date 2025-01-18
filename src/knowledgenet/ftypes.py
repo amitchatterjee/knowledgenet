@@ -1,6 +1,8 @@
+import hashlib
 from typing import Callable, Union
 
-from knowledgenet.util import to_frozenset, to_tuple
+from knowledgenet.collector import Collector
+from knowledgenet.util import to_tuple
 
 class Switch:
     def __init__(self, ruleset:str):
@@ -11,11 +13,21 @@ class Switch:
         return self.__str__()
 
 class EventFact:
-    def __init__(self, on_types:Union[list[type],tuple[type],set[type],frozenset[type],type], **kwargs):
-        self.on_types = to_frozenset(on_types)
+    def __init__(self, group:str, on_types:Union[list[type],tuple[type],set[type],type], **kwargs):
+        self.on_types = to_tuple(on_types)
+        if Collector in self.on_types or EventFact in self.on_types:
+            raise Exception("EventFact on_types cannot contain Collector or EventFact")
+        self.group = group        
+        self._init_args = kwargs
         for key,value in kwargs.items():
             setattr(self, key, value)
         self.reset()
+        hasher = hashlib.sha256(group.encode())
+        hasher.update(str(on_types).encode())
+        for key,value in sorted(kwargs.items()):
+            hasher.update(str(key).encode())
+            hasher.update(str(value).encode())
+        self._int_hash = int(hasher.hexdigest(), 16)
 
     def reset(self):
         self.added = set()
@@ -23,29 +35,37 @@ class EventFact:
         self.deleted = set()
 
     def __str__(self):
-        return f"EventFact({[each.__name__ for each in self.on_types]})"
+        return f"EventFact({self.group}, args={self._init_args}, types={[each.__name__ for each in self.on_types]})"
     def __repr__(self):
         return self.__str__()
     def __hash__(self):
-        return hash(self.on_types)
+        return self._int_hash
     def __eq__(self, other):
         if isinstance(other, EventFact):
             return self.__hash__() == other.__hash__()
         return False
 
 class Wrapper:
-    # TODO - implement a wrapper engine and support for this class.
-    '''Wrapper class for Facts. When dealing with large fact objects - having all the large facts in memory may not be a viable option. To deal with this problem, we can use a wrapper. The wrapper stores a uniqueue id only instead of the whole object. The wrapper engine associated with the rule engine will be responsible for fetching and writing the object when needed.
-    '''
-    def __init__(self, of_type:type, id:str, var:str=None,
-                 matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True):
+    def __init__(self, of_type:str, proxy=False, **kwargs):
         self.of_type = of_type
-        self.id = id
-        self.matches = to_tuple(matches)
-        self.var = var
+        self._init_args = kwargs
+        self.proxy = proxy
+        for key,value in kwargs.items():
+            setattr(self, key, value)
+
+        hasher = hashlib.sha256(of_type.encode())
+        for key,value in sorted(kwargs.items()):
+            hasher.update(str(key).encode())
+            hasher.update(str(value).encode())
+        self._int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        return str(self.id)
-    
+        return f"Wrapper({self.of_type}, args={self._init_args})"
     def __repr__(self):
         return self.__str__()
+    def __hash__(self):
+        return self._int_hash
+    def __eq__(self, other):
+        if isinstance(other, Wrapper):
+            return self.__hash__() == other.__hash__()
+        return False

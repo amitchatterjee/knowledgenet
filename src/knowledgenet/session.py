@@ -142,10 +142,8 @@ class Session:
         when_objs = []
         # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
         for when in rule.whens:
-            if when.of_type == Collector:
+            if when.of_type in (Collector,EventFact):
                 objs = self.output_facts.find(when.of_type, group=when.group)
-            elif when.of_type == EventFact:
-                 objs = self.output_facts.find(when.of_type, on_types=when.on_types)
             else:
                 objs = self.output_facts.find(when.of_type)
             if not objs:
