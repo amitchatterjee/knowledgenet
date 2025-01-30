@@ -27,7 +27,7 @@ class Session:
     @trace()
     def execute(self):  
         self.output_facts = Factset()
-        self.graph = Graph(self.ruleset.comparator, id=self.id)
+        self.graph = Graph(id=self.id)
         logging.debug("%s: Initializing graph", self)
         self._add_facts(self.input_facts)
         logging.debug("%s: Executing rules on graph", self)
@@ -173,7 +173,11 @@ class Session:
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
                     node = Node(node_id, rule, self, each)
-                    element = self.graph.add(node)
+                     # TODO only rule.order based ordering is implemented for now, add other stuff including:
+                    # - merge hints
+                    # - collection goes after the types it collects
+                    # - etc.
+                    element = self.graph.add(node, node.rule.order)
                     logging.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)
                     count = count+1

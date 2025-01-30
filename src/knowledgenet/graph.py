@@ -6,24 +6,24 @@ from knowledgenet.tracer import trace
 
 T = TypeVar('T')
 class Element:    
-    def __init__(self:T, prev:Union[T,None], next:Union[T,None], obj:Hashable, ord:Decimal):
+    def __init__(self:T, prev:Union[T,None], next:Union[T,None], obj:Hashable, ordinal:int, weight:Decimal):
         self.prev = prev
         self.next = next
         self.obj = obj
-        self.ord = ord
+        self.ordinal = ordinal
+        self.weight = weight
 
     def __str__(self):
-        #return f"Element:({self.obj}, prev:{self.prev.obj if self.prev else None}, next:{self.next.obj if self.next else None} ordinal:{self.ord})"
-        return f"Element:({self.obj}, ordinal:{self.ord})"
+        #return f"Element:({self.obj}, prev:{self.prev.obj if self.prev else None}, next:{self.next.obj if self.next else None} weight:{self.ord})"
+        return f"Element:({self.obj}, weight:{self.weight})"
     
     def __repr__(self):
         return self.__str__()
 
 class Graph:
-    def __init__(self, comparator:Callable, id):
+    def __init__(self, id):
         self.first = None
         self.cursors:dict[str,Element] = {}
-        self.comparator = comparator
         self.id = id
 
     def __str__(self):
@@ -32,34 +32,32 @@ class Graph:
     def __repr__(self):
         return self.__str__()
 
-    def _ordinal(self, prev:Union[Element,None], next:Union[Element,None]) -> Decimal:
-        p_ordinal = prev.ord if prev else Decimal(0)
-        n_ordinal = next.ord if next else p_ordinal + Decimal(100)
-        return (p_ordinal + n_ordinal) / Decimal(2)
+    def _weight(self, prev:Union[Element,None], next:Union[Element,None]) -> Decimal:
+        p_weight = prev.weight if prev else Decimal(0)
+        n_weight = next.weight if next else p_weight + Decimal(100)
+        return (p_weight + n_weight) / Decimal(2)
 
-    def add(self, obj:Hashable)->Element:
+    def add(self, obj:Hashable, ordinal:int)->Element:
         added_element = None
         if not self.first:
             # If this is the only element in the list
-            element = Element(None, None, obj, self._ordinal(None,None))
+            element = Element(None, None, obj, ordinal, self._weight(None,None))
             self.first = element
             added_element = element
         else:
             last:Union[Element,None] = None
             element:Element = self.first
             while element:
-                # Invoke the comparator.
-                result = self.comparator(obj, element.obj)
-                if result < 0:
+                if ordinal < element.ordinal:
                     # The obj needs to be inserted left of the element
-                    added_element = self._insert(obj, element)
+                    added_element = self._insert(obj, ordinal, element)
                     break
                 last = element
                 element = element.next
 
             if not added_element:
                 # Insert it at the rightmost side of the list
-                added_element = Element(last, None, obj, self._ordinal(last, None))
+                added_element = Element(last, None, obj, ordinal, self._weight(last, None))
                 last.next = added_element
 
         # adjust cursors
@@ -70,12 +68,12 @@ class Graph:
 
         return added_element
 
-    def _insert(self, obj:Hashable, current:Element)->Element:
+    def _insert(self, obj:Hashable, ordinal:int, current:Element)->Element:
         '''
         Insert object to the left of the current element
         '''
         prev = current.prev
-        element = Element(prev, current, obj, self._ordinal(prev,current))
+        element = Element(prev, current, obj, ordinal, self._weight(prev,current))
         if prev:
             prev.next = element
         else:
@@ -130,10 +128,7 @@ class Graph:
         return self.cursors[cursor_name]
 
     def next(self, cursor_name='default')->Hashable:
-        cursor = self.next_element(cursor_name)
-        if not cursor:
-            return None
-        return cursor.obj
+        return (cursor := self.next_element(cursor_name)) and cursor.obj
     
     @trace(filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
     def next_element(self, cursor_name='default')->Union[Element,None]:
@@ -143,8 +138,20 @@ class Graph:
         self.cursors[cursor_name] = cursor.next
         return cursor
     
+    @trace(filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
+    def next_elements(self, cursor_name='default')->Union[list[Element],None]:
+        cursors = []
+        ordinal = None    
+        while cursor := self.cursors[cursor_name]:
+            if ordinal is not None and cursor.ordinal != ordinal:
+                break
+            cursors.append(cursor)
+            ordinal = cursor.ordinal
+            self.cursors[cursor_name] = cursor.next
+        return cursors
+    
     def compare(self, element1:Element, element2:Element)->int:
-        return element1.ord - element2.ord
+        return element1.weight - element2.weight
 
     def cursor_is_left_of(self, element:Element, cursor_name='default')->bool:
         return self.compare(self.cursors[cursor_name], element) < 0 if self.cursors[cursor_name] else True

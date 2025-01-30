@@ -46,7 +46,6 @@ class Rule:
         for key,value in kwargs.items():
             setattr(self, key, value)
 
-        self.ordinal = 0
 
     def _preprocess_whens(self, whens):
         whens = to_list(whens)
