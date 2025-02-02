@@ -46,7 +46,7 @@ class EventFact:
         return False
 
 class Wrapper:
-    def __init__(self, of_type:Union[str,type], fact:Union[object, Callable]=None, **kwargs):
+    def __init__(self, of_type:Union[str,type], fact:Callable=None, **kwargs):
         self.of_type = of_type
         self._init_args = kwargs
         self.fact = fact
@@ -58,8 +58,6 @@ class Wrapper:
             hasher.update(of_type.encode())
         else:
             hasher.update(of_type.__name__.encode())
-        if fact is not None:
-            hasher.update(str(fact).encode())
         for key,value in sorted(kwargs.items()):
             hasher.update(str(key).encode())
             hasher.update(str(value).encode())
