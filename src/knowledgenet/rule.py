@@ -18,9 +18,13 @@ class Collection:
         self.matches = to_tuple(matches)
         self.var = var
 
+# AI-generated code: Change the highlighted typedef code to python 3.14 using | instead of Union
 class Fact:
-    def __init__(self, of_type:type, matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, group=None, var:str=None, **kwargs):
-        if of_type == Collector and not group:
+    def __init__(self, of_type:Union[type,str], 
+                 matches:Union[list[callable],tuple[callable],callable]=lambda ctx,this:True, 
+                 group=None, var:str=None, **kwargs):
+        if of_type in [Collector, EventFact] and not group:
+            # This situation will only occur if the rule is not using the syntaic sugar syntax
             raise Exception("when of_type is Collector, group must be specified")
         self.of_type = of_type
         self.matches = to_tuple(matches)
@@ -45,7 +49,6 @@ class Rule:
         # The following properties are for external rule management entities like scanner, etc.
         for key,value in kwargs.items():
             setattr(self, key, value)
-
 
     def _preprocess_whens(self, whens):
         whens = to_list(whens)

@@ -1,11 +1,9 @@
-import logging
-import sys
-
 import pytest
 
 from knowledgenet.container import Collector
+from knowledgenet.ftypes import EventFact
 from knowledgenet.helper import assign
-from knowledgenet.rule import Rule,Fact
+from knowledgenet.rule import Collection, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.service import Service
@@ -20,9 +18,17 @@ def test_collector_group():
     with pytest.raises(Exception) as e:
         Collector(of_type=C1, filter=lambda this,child: child.group == 'child')
 
-def test_whens():
+def test_when_with_invalid_types():
     with pytest.raises(Exception) as e:
         Rule(id='r1', when=Collector)
+
+def test_collector_in_when_with_no_group():
+    with pytest.raises(Exception) as e:
+        Rule(id='r1', when=Fact(of_type=Collector, var='c'))
+
+def test_eventfact_in_when_with_no_group():
+    with pytest.raises(Exception) as e:
+        Rule(id='r1', when=Fact(of_type=EventFact, var='c'))
             
 def test_collector_sum_on_no_value():
     with pytest.raises(Exception) as e:
@@ -59,3 +65,8 @@ def test_collector_max_on_no_key():
         facts = [K1(1, name='k1'), K1(2, name='k2'),
                 Collector(of_type=K1, group='sum_of_k1s')]
         Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
+
+def test_event_in_collector():
+    with pytest.raises(Exception) as e:
+        Collector(of_type=EventFact, group='not allowed')
+    

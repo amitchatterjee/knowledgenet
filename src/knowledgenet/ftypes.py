@@ -46,10 +46,9 @@ class EventFact:
         return False
 
 class Wrapper:
-    def __init__(self, of_type:str, proxy=False, fact=None, **kwargs):
+    def __init__(self, of_type:Union[str,type], fact:Union[object, Callable]=None, **kwargs):
         self.of_type = of_type
         self._init_args = kwargs
-        self.proxy = proxy
         self.fact = fact
         for key,value in kwargs.items():
             setattr(self, key, value)

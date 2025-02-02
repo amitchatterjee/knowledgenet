@@ -3,14 +3,15 @@ from numbers import Number
 import hashlib
 import statistics
 
+from knowledgenet.util import of_type, to_tuple
 from knowledgenet.tracer import trace
-from knowledgenet.util import to_tuple
 
 class Collector:
-    def __init__(self, group:str, of_type:type, filter:Union[list[Callable], tuple[Callable], Callable]=lambda this,child:True, 
+    def __init__(self, group:str, of_type:Union[type, str], filter:Union[list[Callable], tuple[Callable], Callable]=lambda this,child:True, 
         value:Callable=None, key:Callable=None, **kwargs):
-        if of_type == Collector:
-            raise Exception('Nested collectors are not supported')
+        from knowledgenet.ftypes import EventFact
+        if of_type in (Collector, EventFact):
+            raise Exception('Nested Collector and Eventfact types are not supported')
         self.of_type = of_type
         self.group = group
         self.filter = to_tuple(filter)
@@ -55,7 +56,7 @@ class Collector:
 
     @trace()
     def add(self, obj:object)->bool:
-        if type(obj) != self.of_type:
+        if of_type(obj) != self.of_type:
             return False
         if obj in self.collection:
             return False
@@ -68,7 +69,7 @@ class Collector:
 
     @trace()
     def remove(self, obj:object)->bool:
-        if type(obj) != self.of_type:
+        if of_type(obj) != self.of_type:
             return False
         if obj not in self.collection:
             return False

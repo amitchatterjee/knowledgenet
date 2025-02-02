@@ -1,7 +1,7 @@
 import logging
 from typing import Union
 
-from knowledgenet.ftypes import EventFact
+from knowledgenet.ftypes import EventFact, Wrapper
 from knowledgenet.tracer import trace
 from knowledgenet.perm import combinations
 from knowledgenet.node import Node

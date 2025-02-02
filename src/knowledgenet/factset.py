@@ -1,7 +1,9 @@
 import logging
+from typing import Union
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
 from knowledgenet.tracer import trace
+from knowledgenet.util import of_type
 
 class Factset:
     def __init__(self):
@@ -9,7 +11,7 @@ class Factset:
         self._init_dictionaries()
 
     def _init_dictionaries(self):
-        self._type_to_facts:dict[type,set[object]] = {}
+        self._type_to_facts:dict[Union[type,str],set[object]] = {}
 
         self._type_to_collectors:dict[type,set[Collector]] = {}
         self._group_to_collectors:dict[str,set[Collector]] = {}
@@ -40,7 +42,7 @@ class Factset:
         new_collectors = set()
         # Handle addition of a collector facts first. The next loop may use the collectors added here
         for fact in new_facts:
-            if type(fact) == Collector:
+            if of_type(fact) == Collector:
                 new_collectors.add(fact)
                 self._add_to_type_collectors_dict(fact)
                 self.add_to_group_collectors_dict(fact)
@@ -56,30 +58,30 @@ class Factset:
 
         # Handle addition of a Event facts next. The next loop may use the facts added here
         for fact in new_facts:
-            if type(fact) == EventFact:
+            if of_type(fact) == EventFact:
                 self._add_to_group_events_dict(fact)
                 self._add_to_type_events_dict(fact)
                 continue
 
         for fact in new_facts:
-            if type(fact) in (EventFact,Collector):
+            if of_type(fact) in (EventFact,Collector):
                 # Handled above, skip
                 continue
 
             # Handle application-defined facts
             self._add_to_type_facts_dict(fact)
             # If this type of this fact matches one or more collectors that are interested in this type 
-            if type(fact) in self._type_to_collectors:
-                matching_collectors = self._type_to_collectors[type(fact)]
+            if of_type(fact) in self._type_to_collectors:
+                matching_collectors = self._type_to_collectors[of_type(fact)]
                 for collector in matching_collectors:
                     if collector.add(fact):
                         updated_facts.add(collector)
 
             # If this type of this fact matches one or more events that are interested in this type 
-            if type(fact) in self._type_to_events:
-                for event in self._type_to_events[type(fact)]:
+            if of_type(fact) in self._type_to_events:
+                for event in self._type_to_events[of_type(fact)]:
                     event.added.add(fact)
-                updated_facts.update(self._type_to_events[type(fact)])
+                updated_facts.update(self._type_to_events[of_type(fact)])
 
          # Update the factset
         self.facts.update(new_facts)
@@ -89,7 +91,7 @@ class Factset:
     def update_facts(self, facts):
         updated_facts = set()
         for fact in facts:
-            typ = type(fact)
+            typ = of_type(fact)
             if typ == Collector:
                 continue
 
@@ -97,14 +99,14 @@ class Factset:
                 continue
 
             # For application-defined facts
-            if type(fact) in self._type_to_collectors:
-                matching_collectors = self._type_to_collectors[type(fact)]
+            if typ in self._type_to_collectors:
+                matching_collectors = self._type_to_collectors[typ]
                 for collector in matching_collectors:
                     if fact in collector.collection and collector.value:
                         collector.reset_cache()
                     updated_facts.add(collector)
-            if type(fact) in self._type_to_events:
-                matching_events = self._type_to_events[type(fact)]
+            if typ in self._type_to_events:
+                matching_events = self._type_to_events[typ]
                 for event_fact in matching_events:
                     event_fact.updated.add(fact)
                     updated_facts.add(event_fact)
@@ -119,7 +121,7 @@ class Factset:
                 continue
 
             self.facts.remove(fact)
-            typ = type(fact)
+            typ = of_type(fact)
 
             if typ == Collector:
                 if fact in self._group_to_collectors[fact.group]:
@@ -140,7 +142,7 @@ class Factset:
             # For application-defined facts
             flist = self._type_to_facts[typ]
             flist.remove(fact)
-            typ = type(fact)
+            typ = of_type(fact)
             if typ in self._type_to_collectors:
                 matching_collectors = self._type_to_collectors[typ]
                 for collector in matching_collectors:
@@ -154,10 +156,10 @@ class Factset:
         return updated_facts
 
     def _add_to_type_facts_dict(self, fact):
-        facts_list = self._type_to_facts[type(fact)] \
-            if type(fact) in self._type_to_facts else set()
+        facts_list = self._type_to_facts[of_type(fact)] \
+            if of_type(fact) in self._type_to_facts else set()
         facts_list.add(fact)
-        self._type_to_facts[type(fact)] = facts_list
+        self._type_to_facts[of_type(fact)] = facts_list
 
     def _add_to_type_collectors_dict(self, collector):
         collectors_list = self._type_to_collectors[collector.of_type] \

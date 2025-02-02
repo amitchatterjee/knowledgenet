@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
-def find_result_of_type(cls, results):
-    return [result for result in results if result.__class__ == cls]
+def find_result_of_type(typ, results):
+    return [result for result in results if result.__class__ == typ]
 
 def sort_collectors(matching):
     matching.sort(key=lambda e: e.parent.val)
