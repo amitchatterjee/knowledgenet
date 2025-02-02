@@ -54,13 +54,19 @@ class Wrapper:
             setattr(self, key, value)
         
         hasher = hashlib.sha256(of_type.encode())
+        if isinstance(of_type, str):
+            hasher.update(of_type.encode())
+        else:
+            hasher.update(of_type.__name__.encode())
+        if fact is not None:
+            hasher.update(str(fact).encode())
         for key,value in sorted(kwargs.items()):
             hasher.update(str(key).encode())
             hasher.update(str(value).encode())
         self._int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        return f"Wrapper({self.of_type}, args={self._init_args})"
+        return f"Wrapper({self.of_type}, fact={self.fact}, args={self._init_args})"
     def __repr__(self):
         return self.__str__()
     def __hash__(self):
