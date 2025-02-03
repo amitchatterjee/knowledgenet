@@ -46,10 +46,9 @@ class EventFact:
         return False
 
 class Wrapper:
-    def __init__(self, of_type:Union[str,type], fact:Callable=None, **kwargs):
+    def __init__(self, of_type:Union[str,type],  **kwargs):
         self.of_type = of_type
         self._init_args = kwargs
-        self.fact = fact
         for key,value in kwargs.items():
             setattr(self, key, value)
         
@@ -64,7 +63,7 @@ class Wrapper:
         self._int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        return f"Wrapper({self.of_type}, fact={self.fact}, args={self._init_args})"
+        return f"Wrapper({self.of_type}, args={self._init_args})"
     def __repr__(self):
         return self.__str__()
     def __hash__(self):
