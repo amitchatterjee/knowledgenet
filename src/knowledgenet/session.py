@@ -29,10 +29,10 @@ class Session:
         self.output_facts = Factset()
         self.graph = Graph(id=self.id)
         logging.debug("%s: Initializing graph", self)
-        self._add_facts(self.input_facts)
+        leftmost, chg_count, updated_facts = self._add_facts(self.input_facts)
         logging.debug("%s: Executing rules on graph", self)
         
-        self.graph.new_cursor()
+        self.graph.new_cursor(element=leftmost)
         while element := self.graph.next_element():
             #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
             node = element.obj
@@ -42,7 +42,6 @@ class Session:
                 element = self.graph.delete_element(element)
 
             count = 0
-            leftmost = element
             if result:
                 # If the rule execution resulted in merges (insert, update, delete)
                 all_updates = set()
