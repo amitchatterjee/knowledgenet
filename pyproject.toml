@@ -9,7 +9,7 @@ authors = [
   { name="Amit Chatterjee", email="info@quik-j.com" },
 ]
 description = "Knowledgenet RETE engine"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache V2 License",

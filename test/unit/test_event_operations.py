@@ -141,7 +141,7 @@ def test_multiple_events_on_same_group():
     matching = find_result_of_type(R1, result_facts)
     assert 2 == len(matching)
     matching.sort(key=lambda e: e.vals[0])
-    assert('event-1', matching[0].vals[0])
-    assert('event-2', matching[1].vals[0])
+    assert 'event-1' == matching[0].vals[0]
+    assert 'event-2' == matching[1].vals[0]
 
 # TODO add tests for event added/updated/deleted attributes

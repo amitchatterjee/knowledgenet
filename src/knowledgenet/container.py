@@ -7,8 +7,11 @@ from knowledgenet.util import of_type, to_tuple
 from knowledgenet.tracer import trace
 
 class Collector:
-    def __init__(self, group:str, of_type:Union[type, str], filter:Union[list[Callable], tuple[Callable], Callable]=lambda this,child:True, 
-        value:Callable=None, key:Callable=None, **kwargs):
+    def __init__(self, group: str, 
+                of_type: type | str, 
+                filter: list[Callable] | tuple[Callable] | Callable | str = lambda this,child: True, 
+                value: Callable | None = None, key: Callable | None = None, 
+                **kwargs):
         from knowledgenet.ftypes import EventFact
         if of_type in (Collector, EventFact):
             raise Exception('Nested Collector and Eventfact types are not supported')
@@ -18,8 +21,8 @@ class Collector:
         self.value = value
         self.key = key
         self.init_args = kwargs
-        for key,value in kwargs.items():
-            setattr(self, key, value)
+        for key,value in kwargs.items(): # type: ignore
+            setattr(self, key, value) # type: ignore
 
         self.collection = set()
         self._cached_sum = None
@@ -28,7 +31,7 @@ class Collector:
         self._cached_max = None
 
         hasher = hashlib.sha256(group.encode())
-        for key,value in sorted(kwargs.items()):
+        for key,value in sorted(kwargs.items()): # type: ignore
             hasher.update(str(key).encode())
             hasher.update(str(value).encode())
         self.__int_hash = int(hasher.hexdigest(), 16)
@@ -55,7 +58,7 @@ class Collector:
         return True
 
     @trace()
-    def add(self, obj:object)->bool:
+    def add(self, obj: object) -> bool:
         if of_type(obj) != self.of_type:
             return False
         if obj in self.collection:
@@ -68,7 +71,7 @@ class Collector:
         return True
 
     @trace()
-    def remove(self, obj:object)->bool:
+    def remove(self, obj: object) -> bool:
         if of_type(obj) != self.of_type:
             return False
         if obj not in self.collection:
@@ -80,30 +83,30 @@ class Collector:
         self.reset_cache()
         return True
     
-    def sum(self)->Number:
+    def sum(self) -> Number:
         if self._cached_sum is None:
             if not self.value:
                 raise Exception("Don't know how to compute sum as value function is not defined")
             self._cached_sum = sum([self.value(each) for each in self.collection])
         return self._cached_sum
 
-    def variance(self)->Number:
+    def variance(self) -> float:
         if self._cached_variance is None:
             if not self.value:
                 raise Exception("Don't know how to compute variance as value function is not defined")
             self._cached_variance = statistics.variance([self.value(each) for each in self.collection]) if len(self.collection) >= 2 else 0.0
         return self._cached_variance
 
-    def minimum(self)->object:
+    def minimum(self) -> object:
         if self._cached_min is None:
             if not self.key:
                 raise Exception("Don't know how to compute min as key function is not defined")
         self._cached_min = min(self.collection, key=self.key)
         return self._cached_min
 
-    def maximum(self)->object:
+    def maximum(self) -> object:
         if self._cached_max is None:
             if not self.key:
                 raise Exception("Don't know how to compute max as key function is not defined")
             self._cached_max = max(self.collection, key=self.key)
-        return self._cached_max    
+        return self._cached_max

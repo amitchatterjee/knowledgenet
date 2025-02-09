@@ -1,11 +1,9 @@
-import logging
 from knowledgenet.ruleset import Ruleset
 
 class Repository:
-    def __init__(self, id:str, rulesets:list[Ruleset]):
+    def __init__(self, id: str, rulesets: list[Ruleset]):
         self.id = id
         self.rulesets = rulesets
-        logging.debug("%s: added %d rulesets", self, len(rulesets))
 
     def __str__(self):
         return f"Repository({self.id})"

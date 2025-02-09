@@ -1,7 +1,3 @@
-
-from knowledgenet.tracer import trace
-
-@trace()
 def combinations(hier_list, include_only=[]):
     # TODO: Look into optimizing this. Instead of creating all combinations and then excluding, is there a better way to do this?
     perms = [[]]

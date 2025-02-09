@@ -5,7 +5,7 @@ from knowledgenet.container import Collector
 from knowledgenet.util import to_tuple
 
 class Switch:
-    def __init__(self, ruleset:str):
+    def __init__(self, ruleset: str):
         self.ruleset = ruleset
     def __str__(self):
         return f"Switch({self.ruleset})"
@@ -13,7 +13,7 @@ class Switch:
         return self.__str__()
 
 class EventFact:
-    def __init__(self, group:str, on_types:Union[list[type],tuple[type],set[type],type], **kwargs):
+    def __init__(self, group: str, on_types: list[type] | tuple[type] | set[type] | type, **kwargs):
         self.on_types = to_tuple(on_types)
         if Collector in self.on_types or EventFact in self.on_types:
             raise Exception("EventFact on_types cannot contain Collector or EventFact")
@@ -46,7 +46,7 @@ class EventFact:
         return False
 
 class Wrapper:
-    def __init__(self, of_type:Union[str,type],  **kwargs):
+    def __init__(self, of_type: str | type,  **kwargs):
         self.of_type = of_type
         self._init_args = kwargs
         for key,value in kwargs.items():

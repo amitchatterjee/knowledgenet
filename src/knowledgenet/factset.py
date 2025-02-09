@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
 from knowledgenet.tracer import trace
@@ -11,13 +10,13 @@ class Factset:
         self._init_dictionaries()
 
     def _init_dictionaries(self):
-        self._type_to_facts:dict[Union[type,str],set[object]] = {}
+        self._type_to_facts: dict[type | str, set[object]] = {}
 
-        self._type_to_collectors:dict[type,set[Collector]] = {}
-        self._group_to_collectors:dict[str,set[Collector]] = {}
+        self._type_to_collectors: dict[type, set[Collector]] = {}
+        self._group_to_collectors: dict[str, set[Collector]] = {}
 
-        self._group_to_events:dict[frozenset[type],set[EventFact]] = {}
-        self._type_to_events:dict[type,set[EventFact]] = {}
+        self._group_to_events: dict[frozenset[type], set[EventFact]] = {}
+        self._type_to_events: dict[type, set[EventFact]] = {}
 
     def __str__(self):
         return f"Factset({self.facts})"

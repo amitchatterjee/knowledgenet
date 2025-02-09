@@ -4,7 +4,7 @@ from knowledgenet.factset import Factset
 from knowledgenet.node import Node
 from knowledgenet.session import Session
 
-def assign(ctx: SimpleNamespace, **kwargs)->True:
+def assign(ctx: SimpleNamespace, **kwargs)->bool:
     for key, value in kwargs.items():
         setattr(ctx, key, value)
     return True
