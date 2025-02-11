@@ -186,6 +186,18 @@ def test_complex_interactions_with_collectors():
     assert 1 == matching[0].vals[0]
     assert 10+11+12 == matching[0].vals[1]
 
+def test_decimal_sum_in_collector():
+    rule_1 = Rule(id='r1',
+                when=Fact(of_type=Collector, group='c1s', matches=lambda ctx,this:assign(ctx, sum=this.sum(), size=len(this.collection))),
+                then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
+    facts = [C1(10.5), C1(20.5), C1(30.5), C1(40.5), C1(50.5), 
+             Collector(of_type=C1, group='c1s', value=lambda obj: obj.val)]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
+    matching = find_result_of_type(R1, result_facts)
+    assert 1 == len(matching)
+    assert 152.5 == matching[0].vals[0]
+    assert 5 == matching[0].vals[1]
+
 def test_variance_in_collector():
     rule_1 = Rule(id='r1',
                 when=Fact(of_type=Collector, group='c1s', matches=lambda ctx,this:assign(ctx, sum=this.sum(), variance=this.variance(), size=len(this.collection))),
