@@ -100,7 +100,7 @@ def test_collector_update_wrapper():
                 then=update_val)
     
     facts = [Wrapper(of_type='kickoff'),
-            wrapper1 := Wrapper(of_type='wrapper', wraps=C1(s1:=1)), 
+            Wrapper(of_type='wrapper', wraps=C1(s1:=1)), 
             Wrapper(of_type='wrapper', wraps=C1(s2:=2))]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
