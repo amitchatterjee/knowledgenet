@@ -52,7 +52,7 @@ class Wrapper:
         for key,value in kwargs.items():
             setattr(self, key, value)
         
-        hasher = hashlib.sha256(of_type.encode())
+        hasher = hashlib.sha256()
         if isinstance(of_type, str):
             hasher.update(of_type.encode())
         else:

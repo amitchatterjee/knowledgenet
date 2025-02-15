@@ -33,8 +33,7 @@ class Service:
         if tracer:
             trace_buffer.set(buffer)
         try:
-            ret = self._execute_service(facts, start_from)
-            return ret
+            return self._execute_service(facts, start_from)
         finally:
             if tracer:
                 json.dump(buffer, tracer, indent=2)

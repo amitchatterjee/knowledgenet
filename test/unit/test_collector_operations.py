@@ -45,7 +45,7 @@ def test_collector_changes_on_fact_insertion():
     assert 31 == matching[0].vals[0]
     assert 3 == matching[0].vals[1]
 
-    # Change the order and this time, it should produce two results as rule 2 should run twice
+def test_collector_changes_on_fact_insertion_with_order_shift():
     rule_1 = Rule(id='r1', order=1,
                   when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))
@@ -76,6 +76,7 @@ def test_collector_changes_on_fact_deletion():
     assert 10 == matching[0].vals[0]
     assert 1 == matching[0].vals[1]
 
+def test_collector_changes_on_fact_deletion_with_order_shift():
     rule_1 = Rule(id='r1', order=1,
                   when=Fact(of_type=C1, matches=lambda ctx, this: this.val > 10 and assign(ctx, obj=this)),
                   then=lambda ctx: delete(ctx, ctx.obj))
@@ -109,6 +110,10 @@ def test_collector_changes_on_fact_updates():
     assert 30 == matching[0].vals[0]
     assert 2 == matching[0].vals[1]
 
+def test_collector_changes_on_fact_updates_with_order_shift():
+    def divide_by_2(ctx):
+        ctx.obj.val = ctx.obj.val // 2
+        update(ctx, ctx.obj)
     rule_1 = Rule(id='r1', retrigger_on_update=False, order=1,
                   when=Fact(of_type=C1, matches=lambda ctx, this: assign(ctx, obj=this)),
                   then=divide_by_2)
