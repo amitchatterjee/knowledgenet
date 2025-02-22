@@ -38,11 +38,10 @@ class Rule:
     def __init__(self, id: str | None = None, 
                  when: list[Fact | Collection] | tuple[Fact | Collection] | Fact | Collection = (), 
                  then: list[Callable] | tuple[Callable] | Callable = lambda ctx: None, 
-                 order=0, merges: list[type] | None = None, 
+                 order=0, 
                  run_once=False, retrigger_on_update=True, **kwargs):
         self.id = id if id else uuid.uuid4()
         self.order = order
-        self.merges = merges
         self.whens = self._preprocess_whens(when)
         self.thens = to_tuple(then)
         self.run_once = run_once
