@@ -5,7 +5,7 @@ def timestamp():
     return int(round(time() * 1000))
 
 def trace(filter=None):
-    def decorator(func):    
+    def decorator(func):
         def wrapper(*args, **kwargs):
             from knowledgenet.service import trace_buffer
             buffer = trace_buffer.get()
