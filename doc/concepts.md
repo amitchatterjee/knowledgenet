@@ -130,13 +130,42 @@ Please refer to the diagram below. It represents Knowledgenet's internal data st
 
 ![Knowledgenet Entity Relationship](./Knowledgenet-Entity-Relationship.drawio.png)
 
-The blue boxes represent the entities that are created during the development phase (or authoring phase) and is passed as input parameters while creating the service. The green arrow represents a service entrypoint for initiating a transaction once the service is initialzed. The red boxes represent the input facts that are supplied to a transaction and other execution artifacts created in the process of processing the transaction. As mentioned earlier, the **execute** function in the **service.Service** class is the entrypoint for a transaction. It is a synchronous call.  
+The blue blocks represent the entities that are created during the development phase (or authoring phase) and is passed as input parameters while creating the service. The green arrow represents a service entrypoint for initiating a transaction once the service is initialized. The red blocks represent the input facts that are supplied to a transaction and other execution artifacts created in the process of processing the transaction. As mentioned earlier, the **execute** function in the **knowledgenet.service.Service** class is the entrypoint for a transaction. It is a synchronous call.  
 
-When the service is initialized, the initialization logic orders the rules in the rulesets based on rule definitions and other activities needed to be ready to process transactions.
+When the service is initialized, the initialization logic orders the rules in the rulesets based on rule definitions to process transactions.
+
+It is important to understand a few of the blocks in the diagram.
+### Graph
+### Node
+### Leaf
+
 
 ### Service Execution
-For every service.Service.execute() invocation, knowledgenet executes rules that are a part of the first ruleset. The facts thast are passed as argument to the execute() function is passed in as the input. The facts that were created from the execution of the first ruleset are added to the factset and passed on to the next ruleset. This process continues till the desired rulesets are executed. The resulting facts are returned to the caller.
+For every transaction, knowledgenet.service.Service.execute() is invoked. Knowledgenet executes rules that are a part of the first ruleset. The supplied facts are passed in as parameters to the execute() function. The facts that returned from the execution of the first ruleset are passed on to the next ruleset. Note that the facts that were passed into the first ruleset is returned by the service execution unless it is explicitly removed by rules in the ruleset. The output from the second ruleset is passed on as input to the third ruleset. This process continues until all rulesets are executed. The resulting facts are returned to the caller.
 
-### Ruleset Execution
-Each ruleset execution consists of initializing an execution graph.
-The input facts by adding them to a graph, executing rules on the nodes, and handling any changes (insertions, deletions, updates) that result from rule execution. The ruleset execution ensures that the graph and facts are updated accordingly and returns the final set of output facts.
+### Ruleset Execution (Session)
+The ruleset execution function is responsible for executing the rules on the graph and managing the changes to the facts during the session. This function is the core implementation of the RETE algorithm. In the diagram above, the execution environment is referred to as a **Session**.  Here's a step-by-step explanation of how it works:
+
+1. **Session Initialization**:
+    - An empty execution graph is initialized.
+    - Initial facts are loaded. Based on the facts, nodes are created and added to the graph. The position where a node is inserted depends on the rule definition.
+    - A cursor is set to the leftmost element in the graph.
+
+2. **Node Execution**:
+    - The rule associated with the node that the cursor points to, is executed. The rule execution involves the following steps:
+      - Knowledgenet evaluates each of the *when* matching expressions. (The result of each *when* function is cached so that they are not evaluated unless the facts have been updated). 
+      - If all the *when* functions on the result returns *True*, the *then* functions are executed. The result is also cached.
+    - If the rule is marked to run only once (`run_once`), the element is deleted from the graph.
+
+3. **Handling Changes from Node Execution**:
+    - After execution of each node, Knowledgenet checks if the rules executions signalled changes as itemized below. These changes are are processed immediately before executing the next node:
+        - **Delete**: If a fact is deleted by the rule *then* function, all nodes containing the deleted fact is removed from the graph.
+        - **Insert**: If new facts were inserted, new nodes are added to the graph similar to how nodes are added during initialization.
+        - **Update**: If facts were updated, all nodes containing the fact is invalidated in preparation for re-execution of the node.
+        - **Break**: If a 'break' is signaled, the session execution is terminated, The ruleset execution logic terminates the transaction and returns the facts.
+        - **Switch**: If a 'switch' is signaled, the session execution is terminated. The ruleset execution logic examines the switch to determine the next ruleset to proceed.
+
+    For each of the above cases, the cursor is adjusted to move to the position of the leftmost node affected by the change. If there were no changes, the cursor is moved forward and the next node is executed as described above
+
+4. **Returning Results**:
+    - The facts that are present in the Factset after all the nodes are executed, are returned.
