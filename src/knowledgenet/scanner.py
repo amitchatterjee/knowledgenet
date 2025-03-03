@@ -13,6 +13,7 @@ from knowledgenet.util import to_tuple
 registry={}
 
 def lookup(repository:str)->Repository:
+    #print(registry)
     if repository not in registry:
         raise Exception('repository not found')
     ruleset=[]
@@ -29,7 +30,7 @@ def ruledef(func):
       
          # Override the rule ruleset and repository ids
         rule.id = func.__name__
-        rule_path = os.path.dirname(inspect.getfile(func))
+        rule_path = os.path.dirname(inspect.getfile(func)).replace("/", os.sep).replace("\\", os.sep)
         splits = rule_path.split(os.sep)
         rule.ruleset = splits[-1]
         rule.repository = splits[-2]
@@ -59,12 +60,14 @@ def _find_modules(path):
     for file in os.listdir(path):
         if file.endswith(".py") and not file.startswith("__"):
             module_name = file[:-3]  # Remove .py extension
+            # print(f"Loading module: {module_name}")
             modules.append(importlib.import_module(module_name))
     return modules
 
 def load_rules_from_filepaths(paths:Union[str,list,tuple]):
     paths = to_tuple(paths)
     for path in paths:
+        # print(f"Loading path: {path}")
         sys.path.append(path)
         modules = _find_modules(path)
         for module in modules:
