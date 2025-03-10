@@ -45,6 +45,12 @@ class Collector:
     def __hash__(self):
         return self.__int_hash
 
+    def size(self) -> int:
+        return len(self.collection)
+    
+    def empty(self) -> bool:
+        return len(self.collection) == 0
+
     def reset_cache(self):
         self._cached_sum = None
         self._cached_variance = None
