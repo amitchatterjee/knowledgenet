@@ -43,8 +43,17 @@ python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv
 ## Build and install package:
 Note: For all the commands below, you must cd to the project home directory.  
 ```bash
+# bash
 python -m build
 pip install --force-reinstall dist/knowledgenet-*.whl
 pip show knowledgenet
+```
+
+```powershell
+# powershell
+python -m build
+$dir = (Get-ChildItem -Path  dist/knowledgenet-*.whl).directory.name
+$file = (Get-ChildItem -Path  dist/knowledgenet-*.whl).name
+pip install --force-reinstall "$dir/$file"
 ```
 
