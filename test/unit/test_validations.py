@@ -34,7 +34,7 @@ def test_collector_sum_on_no_value():
     with pytest.raises(Exception) as e:
         rule_1 = Rule(id='r1',
                     when=Fact(of_type=Collector, group='sum_of_k1s', 
-                            matches=lambda ctx,this: assign(ctx, sum=this.sum(), size=len(this.collection))))
+                            matches=lambda ctx,this: assign(ctx, sum=this.sum(), size=this.size())))
         facts = [K1(1, name='k1'), K1(2, name='k2'), 
                 Collector(of_type=K1, group='sum_of_k1s')]
         Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
@@ -43,7 +43,7 @@ def test_collector_variance_on_no_value():
     with pytest.raises(Exception) as e:    
         rule_1 = Rule(id='r1',
                     when=Fact(of_type=Collector, group='sum_of_k1s', 
-                            matches=lambda ctx,this: assign(ctx, variance=this.variance(), size=len(this.collection))))
+                            matches=lambda ctx,this: assign(ctx, variance=this.variance(), size=this.size())))
         facts = [K1(1, name='k1'), K1(2, name='k2'),
                 Collector(of_type=K1, group='sum_of_k1s')]
         Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
@@ -52,7 +52,7 @@ def test_collector_min_on_no_key():
     with pytest.raises(Exception) as e:    
         rule_1 = Rule(id='r1',
                     when=Fact(of_type=Collector, group='sum_of_k1s', 
-                            matches=lambda ctx,this: assign(ctx, min=this.minimum(), size=len(this.collection))))
+                            matches=lambda ctx,this: assign(ctx, min=this.minimum(), size=this.size())))
         facts = [K1(1, name='k1'), K1(2, name='k2'),
                 Collector(of_type=K1, group='sum_of_k1s')]
         Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
@@ -61,7 +61,7 @@ def test_collector_max_on_no_key():
     with pytest.raises(Exception) as e:    
         rule_1 = Rule(id='r1',
                     when=Fact(of_type=Collector, group='sum_of_k1s', 
-                            matches=lambda ctx,this: assign(ctx, max=this.maximum(), size=len(this.collection))))
+                            matches=lambda ctx,this: assign(ctx, max=this.maximum(), size=this.size())))
         facts = [K1(1, name='k1'), K1(2, name='k2'),
                 Collector(of_type=K1, group='sum_of_k1s')]
         Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)

@@ -25,7 +25,7 @@ def test_collector_syntax():
                   when=Fact(of_type=C1, matches=lambda ctx,this: this.val > 10),
                   then=lambda ctx: insert(ctx, C1(1)))
     rule_2 = Rule(id='r2', order=1,
-                when=Collection(group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=len(this.collection))),
+                when=Collection(group='sum_of_c1s', matches=lambda ctx, this: this.sum() > 10 and assign(ctx, sum=this.sum(), size=this.size())),
                 then=lambda ctx: insert(ctx, R1(ctx.sum, ctx.size)))
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
