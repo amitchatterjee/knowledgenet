@@ -63,7 +63,7 @@ class Wrapper:
         self._int_hash = int(hasher.hexdigest(), 16)
 
     def __str__(self):
-        descriptor = f"name={self.init_args['name']}" if 'name' in self._init_args else f"args={self._init_args}"
+        descriptor = f"name={self._init_args['name']}" if 'name' in self._init_args else f"args={self._init_args}"
         return f"Wrapper({self.of_type}, {descriptor})"
     def __repr__(self):
         return self.__str__()
