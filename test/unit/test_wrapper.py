@@ -21,7 +21,7 @@ def test_kwargs_wrapper():
     assert 1 == len(matching[0].vals)
     assert wrapper2.val == matching[0].vals[0]
 
-# AI-generated code: create a pytest that tests the deletion of a Wrapper fact from a rule
+# 
 def test_delete_wrapper():
     rule = Rule(id='r1',
                 when=Fact(of_type='wrapper', var='w', matches=lambda ctx, this: this.val > 1),
@@ -60,7 +60,7 @@ def test_collector_insert_in_rule():
     assert s1+s2 == matching[0].vals[0]
     assert 2 == matching[0].vals[1]
 
-# AI-generated code: write a pytest to test collector when a wrapper fact is removed from a rule
+# 
 def test_collector_remove_wrapper():
     rule_1 = Rule(id='r1',
                     when=Fact(of_type='kickoff'),
@@ -82,7 +82,7 @@ def test_collector_remove_wrapper():
     assert 2 == matching[0].vals[1]
     assert 1 == matching[1].vals[1]
 
-# AI-generated code: write a pytest to test collector when a wrapper fact is updated from a rule by calling knowledgenet.controls.update() function
+# 
 def test_collector_update_wrapper():
     rule_1 = Rule(id='r1',
                   when=Fact(of_type='kickoff'),
