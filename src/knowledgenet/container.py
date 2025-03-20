@@ -45,6 +45,11 @@ class Collector:
     def __hash__(self):
         return self.__int_hash
 
+    def __eq__(self, other):
+        if not isinstance(other, Collector):
+            return False
+        return self.__hash__() == other.__hash__()
+
     def size(self) -> int:
         return len(self.collection)
     
