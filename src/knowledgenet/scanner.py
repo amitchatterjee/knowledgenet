@@ -40,6 +40,8 @@ def ruledef(func):
             registry[rule.repository] = {}
         if rule.ruleset not in registry[rule.repository]:
             registry[rule.repository][rule.ruleset] = []
+        if any(existing_rule.id == rule.id for existing_rule in registry[rule.repository][rule.ruleset]):
+            raise Exception(f"Rule with id {rule.id} already exists")
         registry[rule.repository][rule.ruleset].append(rule)
         return rule
     wrapped.__wrapped__ = True
