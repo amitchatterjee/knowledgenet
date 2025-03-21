@@ -1,4 +1,5 @@
 
+from functools import wraps
 import inspect
 import sys
 import os
@@ -24,28 +25,40 @@ def lookup(repository:str)->Repository:
     ruleset.sort(key=lambda r: r.id)
     return Repository(repository, ruleset)
 
-def ruledef(func):
-    def wrapped(*args, **kwargs):
-        rule = func(*args, **kwargs)
-      
-         # Override the rule ruleset and repository ids
-        rule.id = func.__name__
-        rule_path = os.path.dirname(inspect.getfile(func)).replace("/", os.sep).replace("\\", os.sep)
-        splits = rule_path.split(os.sep)
-        rule.ruleset = splits[-1]
-        rule.repository = splits[-2]
-        # print(f"Rule: {rule.id}, {rule.repository}, {rule.ruleset}")
+def ruledef(*decorator_args, **decorator_kwargs):
+    def ruledef_wrapper(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if 'enabled' in decorator_kwargs and not decorator_kwargs['enabled']:
+                return None
+
+            rule = func(*args, **kwargs)
         
-        if rule.repository not in registry:
-            registry[rule.repository] = {}
-        if rule.ruleset not in registry[rule.repository]:
-            registry[rule.repository][rule.ruleset] = []
-        if any(existing_rule.id == rule.id for existing_rule in registry[rule.repository][rule.ruleset]):
-            raise Exception(f"Rule with id {rule.id} already exists")
-        registry[rule.repository][rule.ruleset].append(rule)
-        return rule
-    wrapped.__wrapped__ = True
-    return wrapped
+            # Override the rule ruleset and repository ids
+            rule.id = func.__name__
+            rule_path = os.path.dirname(inspect.getfile(func)).replace("/", os.sep).replace("\\", os.sep)
+            splits = rule_path.split(os.sep)
+            rule.ruleset = splits[-1]
+            rule.repository = decorator_kwargs.get('repository', splits[-2])
+            # print(f"Rule: {rule.id}, {rule.repository}, {rule.ruleset}")
+            
+            if rule.repository not in registry:
+                registry[rule.repository] = {}
+            if rule.ruleset not in registry[rule.repository]:
+                registry[rule.repository][rule.ruleset] = []
+            if any(existing_rule.id == rule.id for existing_rule in registry[rule.repository][rule.ruleset]):
+                raise Exception(f"Rule with id {rule.id} already exists")
+            registry[rule.repository][rule.ruleset].append(rule)
+            return rule
+        return wrapper
+    if decorator_args and callable(decorator_args[0]):
+        # Decorator called without arguments
+        #print('without', decorator_args, decorator_kwargs)
+        return ruledef_wrapper(decorator_args[0])
+    else:
+        # Decorator called with arguments
+        #print('with', decorator_args, decorator_kwargs)
+        return ruledef_wrapper
 
 def _load_rules_from_module(module):
     for name,obj in inspect.getmembers(module):
@@ -54,7 +67,7 @@ def _load_rules_from_module(module):
             if getattr(obj, '__wrapped__', False):
                 # Perform the following action only for functions that have been decorated with @ruledef
                 rule = obj()
-                if type(rule) is not Rule:
+                if rule and type(rule) is not Rule:
                     raise Exception(f"Function {name} must return a Rule object")
                 
 def _find_modules(path):

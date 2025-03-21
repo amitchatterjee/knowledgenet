@@ -12,7 +12,7 @@ import pytest
 def setup():
     load_rules_from_filepaths('test/unit/scanner_rules')
 
-def test_rule_override():
+def test_rule_loading():
     repository = lookup('unit')
     assert 'unit' == repository.id
     assert 1 == len(repository.rulesets)
@@ -22,6 +22,12 @@ def test_rule_override():
     rules.sort(key=lambda e: e.id)
     assert 'rule1' == repository.rulesets[0].rules[0].id
     assert 'rule2' == repository.rulesets[0].rules[1].id
+
+    repository=lookup('repo2')
+    assert 'repo2' == repository.id
+    assert 1 == len(repository.rulesets)
+    assert 'scanner_rules' == repository.rulesets[0].id
+    assert 'rule2' == repository.rulesets[0].rules[0].id
 
 def test_scanning_from_filepath():
     repository = lookup('unit')
@@ -35,3 +41,7 @@ def test_scanning_from_filepath():
     assert 'large' == matching[0].vals[1]
     assert facts[0] == matching[1].vals[0]
     assert 'small' == matching[1].vals[1]
+
+def test_non_existent_repo():
+    with pytest.raises(Exception):
+        lookup('norepo')
