@@ -35,10 +35,10 @@ def ruledef(*decorator_args, **decorator_kwargs):
             rule = func(*args, **kwargs)
         
             # Override the rule ruleset and repository ids
-            rule.id = func.__name__
+            rule.id = decorator_kwargs.get('id', func.__name__)
             rule_path = os.path.dirname(inspect.getfile(func)).replace("/", os.sep).replace("\\", os.sep)
             splits = rule_path.split(os.sep)
-            rule.ruleset = splits[-1]
+            rule.ruleset = decorator_kwargs.get('ruleset', splits[-1])
             rule.repository = decorator_kwargs.get('repository', splits[-2])
             # print(f"Rule: {rule.id}, {rule.repository}, {rule.ruleset}")
             

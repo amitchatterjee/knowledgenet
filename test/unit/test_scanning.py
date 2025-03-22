@@ -12,7 +12,7 @@ import pytest
 def setup():
     load_rules_from_filepaths('test/unit/scanner_rules')
 
-def test_rule_loading():
+def test_rule_loading_default():
     repository = lookup('unit')
     assert 'unit' == repository.id
     assert 1 == len(repository.rulesets)
@@ -23,11 +23,12 @@ def test_rule_loading():
     assert 'rule1' == repository.rulesets[0].rules[0].id
     assert 'rule2' == repository.rulesets[0].rules[1].id
 
-    repository=lookup('repo2')
-    assert 'repo2' == repository.id
+def test_rule_loading_override():
+    repository=lookup('repo-override')
+    assert 'repo-override' == repository.id
     assert 1 == len(repository.rulesets)
-    assert 'scanner_rules' == repository.rulesets[0].id
-    assert 'rule2' == repository.rulesets[0].rules[0].id
+    assert 'ruleset-override' == repository.rulesets[0].id
+    assert 'rule-override' == repository.rulesets[0].rules[0].id
 
 def test_scanning_from_filepath():
     repository = lookup('unit')
