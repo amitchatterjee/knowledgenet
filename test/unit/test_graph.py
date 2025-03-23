@@ -172,5 +172,3 @@ def test_next_elements():
         result = g.next_elements()
         assert len(result) == 2
         assert [i, i] == [e.ordinal for e in result]
-
-    

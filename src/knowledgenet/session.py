@@ -39,7 +39,10 @@ class Session:
             # Execute the rule on the node
             result = node.execute(self.output_facts)
             if node.rule.run_once:
-                element = self.graph.delete_element(element)
+                e = self.graph.delete_element(element)
+                if element == leftmost:
+                    leftmost = e
+                element = e
 
             if result:
                 # If the rule execution resulted in merges (insert, update, delete)
