@@ -10,4 +10,3 @@ def to_frozenset(obj):
 def of_type(fact):
     from knowledgenet.ftypes import Wrapper
     return type(fact) if type(fact) != Wrapper else fact.of_type
-

@@ -1,6 +1,7 @@
 
 from functools import wraps
 import inspect
+import logging
 import sys
 import os
 import importlib
@@ -13,17 +14,26 @@ from knowledgenet.util import to_tuple
 
 registry={}
 
-def lookup(repository:str)->Repository:
-    #print(registry)
-    if repository not in registry:
-        raise Exception('repository not found')
-    ruleset=[]
-    for ruleset_id,rules in registry[repository].items():
-        ruleset.append(Ruleset(ruleset_id, rules))
+def lookup(repositories:str|list|tuple, id:str=None)->Repository:
+    if not isinstance(repositories, str) and not id:
+        raise Exception("When multiple repositories are specified, a repository id must be provided")
     
+    repositories = to_tuple(repositories)
+    if not id:
+        id = repositories[0]
+    #print(registry)
+    
+    ruleset=[]
+    for repository in repositories:
+        if repository not in registry:
+            raise Exception(f'repository: repository not found')
+        
+        for ruleset_id,rules in registry[repository].items():
+            ruleset.append(Ruleset(ruleset_id, rules))
+        
     # Sort by id. The assumption is that the ids are defined in alphabetical order. For example: 001-validation-rules, 002-business-rules, etc.
     ruleset.sort(key=lambda r: r.id)
-    return Repository(repository, ruleset)
+    return Repository(id, ruleset)
 
 def ruledef(*decorator_args, **decorator_kwargs):
     def ruledef_wrapper(func):
@@ -40,7 +50,7 @@ def ruledef(*decorator_args, **decorator_kwargs):
             splits = rule_path.split(os.sep)
             rule.ruleset = decorator_kwargs.get('ruleset', splits[-1])
             rule.repository = decorator_kwargs.get('repository', splits[-2])
-            # print(f"Rule: {rule.id}, {rule.repository}, {rule.ruleset}")
+            #logging.info(f"Rule: {rule_path}, {rule.id}, {rule.repository}, {rule.ruleset}")
             
             if rule.repository not in registry:
                 registry[rule.repository] = {}
@@ -79,10 +89,12 @@ def _find_modules(path):
             modules.append(importlib.import_module(module_name))
     return modules
 
-def load_rules_from_filepaths(paths:Union[str,list,tuple]):
-    paths = to_tuple(paths)
+def load_rules_from_filepaths(*paths:str|list|tuple):
+    if len(paths) == 1:
+        paths = to_tuple(*paths)
+
     for path in paths:
-        # print(f"Loading path: {path}")
+        #logging.info(f"Loading path: {path}")
         sys.path.append(path)
         modules = _find_modules(path)
         for module in modules:
