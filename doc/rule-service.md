@@ -2,7 +2,7 @@
 
 This document explains how to create a Knowledgenet rules application. Please make sure that you read the [Concepts](concepts.md) before proceeding with this document.
 
-**Note**: All instructions in this document assumes that we are using a **Linux** system terminal. Developers using Windows, MacOS and other systems will have to make some adjustments to the commands the suit the respective CLI. 
+**Note**: All instructions in this document assumes that we are using a **Linux** system terminal. Developers using Windows, MacOS and other systems will have to make some adjustments to the commands the suit the respective CLIs. 
 
 ## Pre-requisites
 In order to create services, you must be conversant with Python programming and best practices.
@@ -14,7 +14,7 @@ Install:
 - Optionally, install *git* as some of the commands shown below use git.
 
 ## Building Knowledgenet project from source
-**At this time, the Knowledgenet engine has not been pushed to PyPi. So, you will need to build the project from source and install.**
+**At this time, the Knowledgenet engine has not been pushed the package to PyPi. So, you will need to build the project from source and install.**
 
 To build the Knowledgenet project from source, you need to clone the repository from GitHub. Use the following command in your terminal:
 
@@ -44,8 +44,8 @@ Once cloned, you can navigate through the project files and follow the examples 
 
 ## Bootstrapping the Knowledgenet engine
 There are two ways to initialize the Knowledgenet engine, initialize rulesets and rules, and get it ready to process transactions:
- - Programmatically.
- - Declaratively.
+1. Programmatically.
+1. Declaratively.
 
 While, for smaller number of rulesets/rules, it is ok to use programmatic method, for systems with large numbers of ruleset/rules and where, the rules are deployed independently, the declarative method is more suitable.
 
@@ -84,7 +84,9 @@ def init_service():
 Two rulesets: *rs1* and *rs2* were initialized with *rule_1_1* and *rule_1_2* belonging to *rs1* and *rule_2_1* and *rule_2_2* belonging to *rs2*. When executing a transaction, *rs1* is executed first, followed by *rs2* as defined above.
 
 ### Declarative initialization
-The following code snippet initialized the rulesets and rules declaratively. The Python code containing the rules declarations are placed under the folder specified by the *rulespath* parameter passed to the *init_service()* function. Check out the [knowledgnet-examples/autoins/rules](https://github.com/amitchatterjee/knowledgenet-examples/autoins/rules) directory to see an example. Each subdirectory under this directory contains python modules where rules are defined for a ruleset. The Knowledgenet service orders rulesets in ascending order of the subdirectory name. 
+The following code snippet initialized the rulesets and rules declaratively. The Python code containing the rules declarations are placed under the folder specified by the *rules_path* parameter passed to the *init_service()* function. Check out the [knowledgnet-examples/autoins/rules](https://github.com/amitchatterjee/knowledgenet-examples/autoins/rules) directory to see an example. Each subdirectory under this directory contains python modules where rules are defined. The Knowledgenet service orders rulesets in ascending order of the subdirectory name. The @ruledef decorator in Knowledgenet provides a simple way to define rules in a declarative manner. Each function decorated with @ruledef must return a Rule object that defines the conditions (when) and actions (then) for the rule. The when clause specifies facts or events that must match for the rule to fire, while the then clause defines the actions to take when the conditions are met. For detailed information about authoring rules, see the [Rules Authoring Guide](rules-authoring.md). When a function is decorated with @ruledef, it gets registered in the Knowledgenet rules registry for the appropriate repository and ruleset. The decorator automatically extracts metadata about the rule based on the file's location - the ruleset name is derived from the parent directory's name  and the rule name from the function name (my_rule) with the @ruledef decorator. 
+
+In the code snippets below, the repository id is the folder name specified by the *rules_path*, each subdirectory name is the ruleset id for the ruleset. The rule id for the rule is *my_rule* - the function name. 
 
 ```python
 import os
@@ -97,8 +99,8 @@ def subdirs(parent):
     
 def init_service(rules_path):
     rules_paths = []
-    repo = subdirs(rules_path)
-    for r in repo:
+    ruleset = subdirs(rules_path)
+    for r in ruleset:
         rules_paths.append(r)
     scanner.load_rules_from_filepaths(rules_paths)
 
@@ -107,19 +109,37 @@ def init_service(rules_path):
     service = Service(repository)
 ```
 
-Using this method, rulesets and rules can be developed and deployed independently of the bootstrap code.
-
-The @ruledef decorator in Knowledgenet provides a simple way to define rules in a declarative manner. When a function is decorated with @ruledef, it gets registered in the Knowledgenet rules registry for the appropriate repository and ruleset. The decorator automatically extracts metadata about the rule based on the file's location - the ruleset name is derived from the parent directory's name  and the rule name from the function name (eligibility_rules). Each function decorated with @ruledef must return a Rule object that defines the conditions (when) and actions (then) for the rule. The when clause specifies facts or events that must match for the rule to fire, while the then clause defines the actions to take when the conditions are met. 
+Using the above method, rulesets and rules can be developed and deployed independently of the bootstrap code. 
 
 Here's a basic example of creating a rule:
 
 ```python
+# Python module - my_first_rule.py
 @ruledef
 def my_rule():
     return Rule(
         when=Fact(of_type=MyType, matches=lambda ctx, this: some_condition),
         then=lambda ctx: some_action
     )
+```
+
+The above approach allows rules authors to organize rules using function and folder names as conventions. It is possible to override repository, ruleset and rule ids instead of the convention. To override, use the ruledef parameters as shown in the example above:
+
+```python
+@ruledef(id='different-ruleid', ruleset='different-rulesetId', repository='different-repoId', enabled=True)
+def my_rule():
+    return Rule(
+        ...
+    )
+```
+
+This approach makes the rule authoring somewhat cumbersome to maintain when there are large number of rules but it allows you to break up rulesets and organize them in separate locations. You can also disable a rule by using the parameter - *enabled*.
+
+You can also merge multiple repositories into a single repository as follows:
+
+```python
+    repository = scanner.lookup(['repo1', 'repo2'], id='composite')
+    service = Service(repository)
 ```
 
 ## Handling Rules Transactions
