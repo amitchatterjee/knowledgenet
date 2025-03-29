@@ -84,7 +84,7 @@ def init_service():
 Two rulesets: *rs1* and *rs2* were initialized with *rule_1_1* and *rule_1_2* belonging to *rs1* and *rule_2_1* and *rule_2_2* belonging to *rs2*. When executing a transaction, *rs1* is executed first, followed by *rs2* as defined above.
 
 ### Declarative initialization
-The following code snippet creates a service declaratively. The Python code containing the rules are placed under the folder specified by the *rulespath* parameter passed to the *init_service()* function. Check out the [knowledgnet-examples/autoins/rules](https://github.com/amitchatterjee/knowledgenet-examples/autoins/rules) directory to see an example. Each subdirectory under this directory contains rule definitions for a ruleset. The Knowledgnet service orders rulesets in ascending order of the subdirectory name. 
+The following code snippet initialized the rulesets and rules declaratively. The Python code containing the rules declarations are placed under the folder specified by the *rulespath* parameter passed to the *init_service()* function. Check out the [knowledgnet-examples/autoins/rules](https://github.com/amitchatterjee/knowledgenet-examples/autoins/rules) directory to see an example. Each subdirectory under this directory contains python modules where rules are defined for a ruleset. The Knowledgenet service orders rulesets in ascending order of the subdirectory name. 
 
 ```python
 import os
@@ -107,7 +107,20 @@ def init_service(rules_path):
     service = Service(repository)
 ```
 
-Using this method, rulesets and rules can be developed and deployed independently of the bootstrap code.  
+Using this method, rulesets and rules can be developed and deployed independently of the bootstrap code.
+
+The @ruledef decorator in Knowledgenet provides a simple way to define rules in a declarative manner. When a function is decorated with @ruledef, it gets registered in the Knowledgenet rules registry for the appropriate repository and ruleset. The decorator automatically extracts metadata about the rule based on the file's location - the ruleset name is derived from the parent directory's name  and the rule name from the function name (eligibility_rules). Each function decorated with @ruledef must return a Rule object that defines the conditions (when) and actions (then) for the rule. The when clause specifies facts or events that must match for the rule to fire, while the then clause defines the actions to take when the conditions are met. 
+
+Here's a basic example of creating a rule:
+
+```python
+@ruledef
+def my_rule():
+    return Rule(
+        when=Fact(of_type=MyType, matches=lambda ctx, this: some_condition),
+        then=lambda ctx: some_action
+    )
+```
 
 ## Handling Rules Transactions
 Once the service has been initialized, transactions are processed using the Service.execute(...) function. Example of an invocation is shown below:
@@ -117,7 +130,7 @@ import sys
 from knowledgenet.service import Service
 
 ...
-def enpoint(...):
+def endpoint(...):
     # Load facts to be used
     facts = load_facts(...)
 
@@ -128,4 +141,4 @@ def enpoint(...):
     ...
 ```
 
-See [rules_runner.py](https://github.com/amitchatterjee/knowledgenet-examples/blob/main/autoins/rules/rules_runner.py) file in the knowledgenet-examples repository for a complete view of how the service is initialized and a batch transaction is invoked. Rules transaction can also be invoked from a web services endpoint, from a message queue, etc. 
+See [rules_runner.py](https://github.com/amitchatterjee/knowledgenet-examples/blob/main/autoins/rules/rules_runner.py) file in the knowledgenet-examples repository for a complete view of how the service is initialized and a batch transaction is invoked. Rules transaction can also be invoked from a web services endpoint, from a message queue, etc.
