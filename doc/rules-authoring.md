@@ -24,3 +24,5 @@ To get started, you can clone the repository using the following command in your
 git clone https://github.com/amitchatterjee/knowledgenet-examples.git
 ```
 Once cloned, you can navigate through the project files and follow the examples provided to understand how to implement and work with Knowledgenet rules.
+
+## Authoring a simple rule

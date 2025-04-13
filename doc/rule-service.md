@@ -139,7 +139,7 @@ You can also merge multiple repositories into a single repository as follows:
 
 ```python
     repository = scanner.lookup(['repo1', 'repo2'], id='composite')
-    service = Service(repository)
+    service = Service(repository, id='some_name')
 ```
 
 ## Handling Rules Transactions
