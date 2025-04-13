@@ -18,9 +18,9 @@ def test_collector_in_input_facts():
     facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 20 == matching[0].vals[0]
-    assert 2 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 20
+    assert matching[0].vals[1] == 2
 
 def test_collector_filter():
     rule_1 = Rule(id='r1',
@@ -29,7 +29,7 @@ def test_collector_filter():
     facts = [C1(10), C1(10), Collector(of_type=C1, group='sum_of_c1s', filter=lambda this, obj: obj.val > 10, value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching) == 0
  
 def test_collector_changes_on_fact_insertion():
     rule_1 = Rule(id='r1',
@@ -41,9 +41,9 @@ def test_collector_changes_on_fact_insertion():
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 31 == matching[0].vals[0]
-    assert 3 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 31
+    assert matching[0].vals[1] == 3
 
 def test_collector_changes_on_fact_insertion_with_order_shift():
     rule_1 = Rule(id='r1', order=1,
@@ -55,12 +55,12 @@ def test_collector_changes_on_fact_insertion_with_order_shift():
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda o: o.vals[1])
-    assert 30 == matching[0].vals[0]
-    assert 2 == matching[0].vals[1]
-    assert 31 == matching[1].vals[0]
-    assert 3 == matching[1].vals[1]
+    assert matching[0].vals[0] == 30
+    assert matching[0].vals[1] == 2
+    assert matching[1].vals[0] == 31
+    assert matching[1].vals[1] == 3
 
 def test_collector_changes_on_fact_deletion():
     rule_1 = Rule(id='r1',
@@ -72,9 +72,9 @@ def test_collector_changes_on_fact_deletion():
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 10 == matching[0].vals[0]
-    assert 1 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 10
+    assert matching[0].vals[1] == 1
 
 def test_collector_changes_on_fact_deletion_with_order_shift():
     rule_1 = Rule(id='r1', order=1,
@@ -86,12 +86,12 @@ def test_collector_changes_on_fact_deletion_with_order_shift():
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda o: o.vals[1])
-    assert 10 == matching[0].vals[0]
-    assert 1 == matching[0].vals[1]
-    assert 30 == matching[1].vals[0]
-    assert 2 == matching[1].vals[1]
+    assert matching[0].vals[0] == 10
+    assert matching[0].vals[1] == 1
+    assert matching[1].vals[0] == 30
+    assert matching[1].vals[1] == 2
 
 def test_collector_changes_on_fact_updates():
     def divide_by_2(ctx):
@@ -106,9 +106,9 @@ def test_collector_changes_on_fact_updates():
     facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 30 == matching[0].vals[0]
-    assert 2 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 30
+    assert matching[0].vals[1] == 2
 
 def test_collector_changes_on_fact_updates_with_order_shift():
     def divide_by_2(ctx):
@@ -123,14 +123,14 @@ def test_collector_changes_on_fact_updates_with_order_shift():
     facts = [C1(50), C1(10), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 3 == len(matching)
+    assert len(matching) == 3
     matching.sort(key=lambda o: o.vals[0], reverse=True)
     # The first element (after sorting) is always 50+10
-    assert 50+10 == matching[0].vals[0]
+    assert matching[0].vals[0] == 50+10
     # Depending on whether r1 was triggered by C1 or C2, we will get different outcomes. If C1 triggered first, then the value is 25+10. If C2 was triggered first, then the value is 50+5
     assert matching[1].vals[0] in [25+10,50+5]
     # The last iteration will always be 30
-    assert 30 == matching[2].vals[0]
+    assert matching[2].vals[0] == 30
 
 def test_collector_insert_from_rule():
     '''
@@ -145,9 +145,9 @@ def test_collector_insert_from_rule():
     facts = [p1, Ch1(p1,10), Ch1(p1,11), p2, Ch1(p2,20), Ch1(p2,21)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(Collector, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     result = sort_collectors(matching)
-    assert(OrderedDict([(1, [10, 11]), (2, [20, 21])]) == result)
+    assert result == OrderedDict([(1, [10, 11]), (2, [20, 21])])
 
 def test_complex_interactions_with_collectors():
     '''
@@ -182,14 +182,14 @@ def test_complex_interactions_with_collectors():
     facts = [P1(1), P1(2)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts)
     matching = find_result_of_type(Collector, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     result = sort_collectors(matching)
-    assert(OrderedDict([(1, [10, 11, 12]), (2, [20, 21, 22])]) == result)
+    assert result == OrderedDict([(1, [10, 11, 12]), (2, [20, 21, 22])])
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert R1 == type(matching[0])
-    assert 1 == matching[0].vals[0]
-    assert 10+11+12 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert type(matching[0]) == R1
+    assert matching[0].vals[0] == 1
+    assert matching[0].vals[1] == 10+11+12
 
 def test_decimal_sum_in_collector():
     rule_1 = Rule(id='r1',
@@ -199,9 +199,9 @@ def test_decimal_sum_in_collector():
              Collector(of_type=C1, group='c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 152.5 == matching[0].vals[0]
-    assert 5 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 152.5
+    assert matching[0].vals[1] == 5
 
 def test_variance_in_collector():
     rule_1 = Rule(id='r1',
@@ -211,10 +211,10 @@ def test_variance_in_collector():
              Collector(of_type=C1, group='c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 150 == matching[0].vals[0]
-    assert 250 == matching[0].vals[1]
-    assert 5 == matching[0].vals[2]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 150
+    assert matching[0].vals[1] == 250
+    assert matching[0].vals[2] == 5
 
 def test_minmax_in_collector():
     rule_1 = Rule(id='r1',
@@ -228,12 +228,12 @@ def test_minmax_in_collector():
                        key=lambda o: o.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 150 == matching[0].vals[0]
-    assert 250 == matching[0].vals[1]
-    assert 5 == matching[0].vals[2]
-    assert facts[0] is matching[0].vals[3]
-    assert facts[-2] is matching[0].vals[4]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 150
+    assert matching[0].vals[1] == 250
+    assert matching[0].vals[2] == 5
+    assert matching[0].vals[3] is facts[0]
+    assert matching[0].vals[4] is facts[-2]
 
 def test_collector_update():
     rule_1 = Rule(id='r1',
@@ -250,12 +250,12 @@ def test_collector_update():
              Collector(of_type=C1, group='c1s', calls=0)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda r1: r1.vals[0])
-    assert 1 == len(matching[0].vals)
-    assert 0 == matching[0].vals[0]
-    assert 1 == len(matching[1].vals)
-    assert 1 == matching[1].vals[0]
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 0
+    assert len(matching[1].vals) == 1
+    assert matching[1].vals[0] == 1
 
 def test_collector_delete():
     rule_1 = Rule(id='r1',
@@ -269,6 +269,6 @@ def test_collector_delete():
              Collector(of_type=C1, group='c1s')]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 1 == len(matching[0].vals)
-    assert 2 == matching[0].vals[0]
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 2

@@ -20,10 +20,10 @@ def test_rule_chaining_with_insert():
     facts = [P1(20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1==len(matching)
-    assert 2 ==len(matching[0].vals)
-    assert facts[0] == matching[0].vals[0]
-    assert Ch1 == type(matching[0].vals[1])
+    assert len(matching)==1
+    assert len(matching[0].vals)==2
+    assert matching[0].vals[0]==facts[0]
+    assert type(matching[0].vals[1])==Ch1
 
 def test_rule_chaining_with_insert_and_matching():
     rule_1 = Rule(id='r1',
@@ -37,10 +37,10 @@ def test_rule_chaining_with_insert_and_matching():
     facts = [P1(20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1==len(matching)
-    assert 2 ==len(matching[0].vals)
-    assert facts[0] == matching[0].vals[0]
-    assert Ch1 == type(matching[0].vals[1])
+    assert len(matching)==1
+    assert len(matching[0].vals)==2
+    assert matching[0].vals[0]==facts[0]
+    assert type(matching[0].vals[1])==Ch1
 
 def test_rule_chaining_with_update():
     def zero_out(ctx):
@@ -55,9 +55,9 @@ def test_rule_chaining_with_update():
     facts = [C1(20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1==len(matching)
-    assert 1 ==len(matching[0].vals)
-    assert facts[0] == matching[0].vals[0]
+    assert len(matching)==1
+    assert len(matching[0].vals)==1
+    assert matching[0].vals[0]==facts[0]
 
 def test_rule_chaining_with_delete():
     rule_1 = Rule(id='r1',
@@ -72,7 +72,7 @@ def test_rule_chaining_with_delete():
     facts = [parent, Ch1(parent, 20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching)==0
 
 def test_chaining_with_walkback_on_insert():
     rule_1 = Rule(id='r1',
@@ -88,7 +88,7 @@ def test_chaining_with_walkback_on_insert():
     facts = [parent, Ch1(parent, 20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching)==0
 
 def test_chaining_with_walkback_on_update():
     rule_1 = Rule(id='r1',
@@ -107,9 +107,9 @@ def test_chaining_with_walkback_on_update():
     facts = [parent, Ch1(parent, 20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1==len(matching)
-    assert 1 ==len(matching[0].vals)
-    assert facts[0] == matching[0].vals[0]
+    assert len(matching)==1
+    assert len(matching[0].vals)==1
+    assert matching[0].vals[0]==facts[0]
 
 def test_chaining_with_walkback_on_delete():
     rule_1 = Rule(id='r1',
@@ -129,9 +129,9 @@ def test_chaining_with_walkback_on_delete():
     facts = [parent, Ch1(parent, 20)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(P1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching)==0
     matching = find_result_of_type(Ch1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching)==0
 
 def test_multiple_combinations():
     rule_1 = Rule(id='r1',
@@ -143,6 +143,6 @@ def test_multiple_combinations():
     facts = [p1, Ch1(p1,1), Ch1(p1,2), p2, Ch1(p2,1), Ch1(p2,2)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 4 == len(matching)
+    assert len(matching)==4
     matching.sort(key=lambda each: each.vals[0].val * 10 + each.vals[1].val)
-    assert [(1, 1), (1, 2), (2, 1), (2, 2)] == [(e.vals[0].val, e.vals[1].val) for e in matching]
+    assert [(e.vals[0].val, e.vals[1].val) for e in matching]==[(1, 1), (1, 2), (2, 1), (2, 2)]

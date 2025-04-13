@@ -30,15 +30,15 @@ def test_flow_control_with_end():
         Ruleset('rs2', [rule_2_1])])
     result_facts = Service(repo).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching) == 0
 
     facts = [C1(0)]
     result_facts = Service(repo).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda e: e.vals[0])
-    assert 'r13' == matching[0].vals[0]
-    assert 'r21' == matching[1].vals[0]
+    assert matching[0].vals[0] == 'r13'
+    assert matching[1].vals[0] == 'r21'
 
 def test_flow_control_with_switch():
     rule_1_1 = Rule(id='r11',
@@ -65,5 +65,5 @@ def test_flow_control_with_switch():
         Ruleset('rs3', [rule_3_1])])
     result_facts = Service(repo).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 'r31' == matching[0].vals[0]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 'r31'

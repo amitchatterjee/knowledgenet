@@ -45,10 +45,10 @@ def test_flow_control_with_no_retrigger_on_update():
     result_facts = Service(Repository('repo1', [Ruleset('rs1', 
                                                         [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 ==len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda o: o.vals[0])
-    assert 10 == matching[0].vals[0]
-    assert 20 == matching[1].vals[0]
+    assert matching[0].vals[0] == 10
+    assert matching[1].vals[0] == 20
 
 def test_flow_control_with_next_ruleset():
     rule_1 = Rule(id='r1',
@@ -64,4 +64,4 @@ def test_flow_control_with_next_ruleset():
     result_facts=Service(Repository('repo1', 
                                     [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 0 == len(matching)
+    assert len(matching) == 0

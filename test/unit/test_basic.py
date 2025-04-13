@@ -20,9 +20,9 @@ def test_one_rule_single_when_then():
     facts = [C1(1), C1(2)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1== len(matching)
-    assert 1 == len(matching[0].vals)
-    assert facts[1] == matching[0].vals[0]
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == facts[1]
 
 def test_one_rule_multiple_when_thens():
     rule = Rule(id='r1', when=[
@@ -35,9 +35,9 @@ def test_one_rule_multiple_when_thens():
     facts = [C1(1), C1(2), C2(1), C2(2), C2(3)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1==len(matching)
-    assert 2 ==len(matching[0].vals)
-    assert (facts[1],facts[4]) == matching[0].vals
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 2
+    assert matching[0].vals == (facts[1],facts[4])
 
 def test_condition_with_python_collection_objs():
     rule_1 = Rule(id='r1',
@@ -50,11 +50,11 @@ def test_condition_with_python_collection_objs():
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts,)
     matching = find_result_of_type(R1, result_facts)
     matching.sort(key=lambda o: str(o)) # Sort to make the order predictable
-    assert 2== len(matching)
-    assert 1 == len(matching[0].vals)
-    assert facts[0] == matching[0].vals[0]
-    assert 1 == len(matching[1].vals)
-    assert facts[1] == matching[1].vals[0]
+    assert len(matching) == 2
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == facts[0]
+    assert len(matching[1].vals) == 1
+    assert matching[1].vals[0] == facts[1]
 
 def test_multiple_matches_syntax():
     rule_1 = Rule(id='r1',
@@ -68,9 +68,9 @@ def test_multiple_matches_syntax():
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 31 == matching[0].vals[0]
-    assert 3 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 31
+    assert matching[0].vals[1] == 3
 
 def test_tracer():
     rule = Rule(id='r1',
@@ -81,6 +81,6 @@ def test_tracer():
         Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, tracer=stream)
         trace = stream.getvalue()
         parsed = json.loads(trace)
-        assert list == type(parsed)
-        assert 1 == len(parsed)
-        assert dict == type(parsed[0])
+        assert type(parsed) == list
+        assert len(parsed) == 1
+        assert type(parsed[0]) == dict

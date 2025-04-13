@@ -17,9 +17,9 @@ def test_kwargs_wrapper():
     facts = [Wrapper(of_type='wrapper', val=1), wrapper2:=Wrapper(of_type='wrapper', val=2)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1== len(matching)
-    assert 1 == len(matching[0].vals)
-    assert wrapper2.val == matching[0].vals[0]
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == wrapper2.val
 
 # 
 def test_delete_wrapper():
@@ -39,9 +39,9 @@ def test_wrapper_in_collector():
             Collector(of_type='wrapper', group='sum_of_c1s', value=lambda obj: obj.wraps.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert s1+s2 == matching[0].vals[0]
-    assert 2 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == s1+s2
+    assert matching[0].vals[1] == 2
 
 def test_collector_insert_in_rule():
     rule_1 = Rule(id='r1',
@@ -56,11 +56,10 @@ def test_collector_insert_in_rule():
             Wrapper(of_type='wrapper', wraps=C1(s2:=2))]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1,rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert s1+s2 == matching[0].vals[0]
-    assert 2 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == s1+s2
+    assert matching[0].vals[1] == 2
 
-# 
 def test_collector_remove_wrapper():
     rule_1 = Rule(id='r1',
                     when=Fact(of_type='kickoff'),
@@ -77,12 +76,11 @@ def test_collector_remove_wrapper():
             Wrapper(of_type='wrapper', wraps=C1(s2:=2))]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda e: -e.vals[1])
-    assert 2 == matching[0].vals[1]
-    assert 1 == matching[1].vals[1]
+    assert matching[0].vals[1] == 2
+    assert matching[1].vals[1] == 1
 
-# 
 def test_collector_update_wrapper():
     rule_1 = Rule(id='r1',
                   when=Fact(of_type='kickoff'),
@@ -104,9 +102,8 @@ def test_collector_update_wrapper():
             Wrapper(of_type='wrapper', wraps=C1(s2:=2))]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2, rule_3])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda e: e.vals[0])
-    assert s1 + s2 == matching[0].vals[0]
-    assert s1 + s2 + 1 == matching[1].vals[0]
-    assert 2 == matching[0].vals[1] == matching[1].vals[1]
-
+    assert matching[0].vals[0] == s1 + s2
+    assert matching[1].vals[0] == s1 + s2 + 1
+    assert matching[0].vals[1] == matching[1].vals[1] == 2

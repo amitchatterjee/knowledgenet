@@ -17,9 +17,9 @@ def test_single_type_event():
     facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 1 == len(matching[0].vals)
-    assert 25 == matching[0].vals[0]
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 25
 
 def test_multiple_types_event_with_fact_inserts():
     rule_1 = Rule(id='r1',
@@ -32,14 +32,14 @@ def test_multiple_types_event_with_fact_inserts():
     facts = [P1(10), P1(15), EventFact(group='parent-child-events', on_types=[P1,Ch1])]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1,rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 3 == len(matching)
+    assert len(matching) == 3
     matching.sort(key=lambda r: r.vals[0])
-    assert 1 == len(matching[0].vals)
-    assert 25 == matching[0].vals[0]
-    assert 1 == len(matching[1].vals)
-    assert 35 == matching[1].vals[0]
-    assert 1 == len(matching[2].vals)
-    assert 45 == matching[2].vals[0]
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 25
+    assert len(matching[1].vals) == 1
+    assert matching[1].vals[0] == 35
+    assert len(matching[2].vals) == 1
+    assert matching[2].vals[0] == 45
 
 def test_event_with_fact_updates():
     rule_1 = Rule(id='r1',
@@ -54,14 +54,14 @@ def test_event_with_fact_updates():
     facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 3 == len(matching)
+    assert len(matching) == 3
     matching.sort(key=lambda r: r.vals[0])
-    assert 1 == len(matching[0].vals)
-    assert 25 == matching[0].vals[0]
-    assert 1 == len(matching[1].vals)
-    assert 35 == matching[1].vals[0]
-    assert 1 == len(matching[2].vals)
-    assert 45 == matching[2].vals[0]
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 25
+    assert len(matching[1].vals) == 1
+    assert matching[1].vals[0] == 35
+    assert len(matching[2].vals) == 1
+    assert matching[2].vals[0] == 45
 
 def test_event_with_fact_deletes():
     rule_1 = Rule(id='r1',
@@ -73,17 +73,17 @@ def test_event_with_fact_deletes():
     facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 3 == len(matching)
+    assert len(matching) == 3
     matching.sort(key=lambda r: r.vals[0])
-    assert 1 == len(matching[0].vals)
-    assert 0 == matching[0].vals[0]
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 0
 
-    assert 1 == len(matching[1].vals)
+    assert len(matching[1].vals) == 1
     # This values is non-deterministic. It depends on the set
     assert matching[1].vals[0] in [10,15]
 
-    assert 1 == len(matching[2].vals)
-    assert 25 == matching[2].vals[0]
+    assert len(matching[2].vals) == 1
+    assert matching[2].vals[0] == 25
 
 def test_event_with_event_fact_insert():
     rule_1 = Rule(id='r1',
@@ -95,10 +95,9 @@ def test_event_with_event_fact_insert():
     facts = [C1(10), C1(15), 5]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 1 == len(matching[0].vals)
-    assert 25 == matching[0].vals[0]
-
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 25
 
 def test_event_with_event_fact_update():
     rule_1 = Rule(id='r1',
@@ -110,11 +109,11 @@ def test_event_with_event_fact_update():
     facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
-    assert 1 == len(matching[0].vals)
-    assert 25 == matching[0].vals[0]
-    assert 1 == len(matching[1].vals)
-    assert 25 == matching[1].vals[0]
+    assert len(matching) == 2
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 25
+    assert len(matching[1].vals) == 1
+    assert matching[1].vals[0] == 25
 
 def test_event_with_event_fact_delete():
     rule_1 = Rule(id='r1',
@@ -126,9 +125,9 @@ def test_event_with_event_fact_delete():
     facts = [C1(10), C1(15), EventFact(group='c1-events', on_types=C1)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 1 == len(matching[0].vals)
-    assert 25 == matching[0].vals[0]
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == 25
 
 def test_multiple_events_on_same_group():
     rule_1 = Rule(id='r1',
@@ -139,9 +138,9 @@ def test_multiple_events_on_same_group():
             EventFact(group='c1-events', on_types=C1, id='event-2')]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 2 == len(matching)
+    assert len(matching) == 2
     matching.sort(key=lambda e: e.vals[0])
-    assert 'event-1' == matching[0].vals[0]
-    assert 'event-2' == matching[1].vals[0]
+    assert matching[0].vals[0] == 'event-1'
+    assert matching[1].vals[0] == 'event-2'
 
 # TODO add tests for event added/updated/deleted attributes

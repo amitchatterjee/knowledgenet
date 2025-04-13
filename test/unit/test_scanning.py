@@ -14,31 +14,31 @@ def setup():
 
 def test_rule_loading_default():
     repository = lookup('repo1')
-    assert 'repo1' == repository.id
-    assert 1 == len(repository.rulesets)
-    assert 'rs1' == repository.rulesets[0].id
-    assert 2 == len(repository.rulesets[0].rules)
+    assert repository.id == 'repo1'
+    assert repository.rulesets[0].id == 'rs1'
+    assert len(repository.rulesets) == 1
+    assert len(repository.rulesets[0].rules) == 2
     rules = list(repository.rulesets[0].rules)
     rules.sort(key=lambda e: e.id)
-    assert 'rule1' == repository.rulesets[0].rules[0].id
-    assert 'rule2' == repository.rulesets[0].rules[1].id
+    assert repository.rulesets[0].rules[0].id == 'rule1'
+    assert repository.rulesets[0].rules[1].id == 'rule2'
 
 def test_rule_loading_override():
     repository=lookup('repo-override')
-    assert 'repo-override' == repository.id
-    assert 1 == len(repository.rulesets)
-    assert 'ruleset-override' == repository.rulesets[0].id
-    assert 'rule-override' == repository.rulesets[0].rules[0].id
+    assert repository.id == 'repo-override'
+    assert len(repository.rulesets) == 1
+    assert repository.rulesets[0].id == 'ruleset-override'
+    assert repository.rulesets[0].rules[0].id == 'rule-override'
 
 def test_lookup_from_multiple_repos():
     with pytest.raises(Exception):
         # An id must be provided
         lookup(['repo1', 'repo2'])
     repository = lookup(['repo1', 'repo2'], id='composite')
-    assert 'composite' == repository.id
-    assert 2 == len(repository.rulesets)
-    assert 'rs1' == repository.rulesets[0].id
-    assert 'rs10' == repository.rulesets[1].id
+    assert repository.id == 'composite'
+    assert len(repository.rulesets) == 2
+    assert repository.rulesets[0].id == 'rs1'
+    assert repository.rulesets[1].id == 'rs10'
 
 def test_scanning_from_filepath():
     repository = lookup('repo1')
@@ -47,11 +47,11 @@ def test_scanning_from_filepath():
     matching = find_result_of_type(R1, result_facts)
     # Sort by the description. possible descriptions are [small, large] - see the rules
     matching.sort(key=lambda e: e.vals[1])
-    assert 2==len(matching)
-    assert facts[1] == matching[0].vals[0]
-    assert 'large' == matching[0].vals[1]
-    assert facts[0] == matching[1].vals[0]
-    assert 'small' == matching[1].vals[1]
+    assert len(matching) == 2
+    assert matching[0].vals[0] == facts[1]
+    assert matching[0].vals[1] == 'large'
+    assert matching[1].vals[0] == facts[0]
+    assert matching[1].vals[1] == 'small'
 
 def test_non_existent_repo():
     with pytest.raises(Exception):

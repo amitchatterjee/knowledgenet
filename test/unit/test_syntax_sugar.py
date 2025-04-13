@@ -16,9 +16,9 @@ def test_rule_with_when_var():
     facts = [C1(1), C1(2)]
     result_facts = Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1== len(matching)
-    assert 1 == len(matching[0].vals)
-    assert facts[1] == matching[0].vals[0]
+    assert len(matching) == 1
+    assert len(matching[0].vals) == 1
+    assert matching[0].vals[0] == facts[1]
 
 def test_collector_syntax():
     rule_1 = Rule(id='r1',
@@ -30,6 +30,6 @@ def test_collector_syntax():
     facts = [C1(10), C1(20), Collector(of_type=C1, group='sum_of_c1s', value=lambda obj: obj.val)]
     result_facts = Service(Repository('repo1', [Ruleset('rs1', [rule_1, rule_2])])).execute(facts)
     matching = find_result_of_type(R1, result_facts)
-    assert 1 == len(matching)
-    assert 31 == matching[0].vals[0]
-    assert 3 == matching[0].vals[1]
+    assert len(matching) == 1
+    assert matching[0].vals[0] == 31
+    assert matching[0].vals[1] == 3
