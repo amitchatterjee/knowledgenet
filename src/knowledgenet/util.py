@@ -13,41 +13,6 @@ def of_type(fact):
     from knowledgenet.ftypes import Wrapper
     return type(fact) if type(fact) != Wrapper else fact.of_type
 
-def _parse_list(part: str) -> tuple[str, int|None]:
-    if '[' in part and part.endswith(']'):
-        name, idx = part[:-1].split('[')
-        return name, int(idx)
-    return part, None
-
-def shape(properties: dict[str,object]) -> dict[str, object|List]:
-    result = {}
-    for key, value in properties.items():
-        parts = key.split('.')
-        current = result
-        for part in parts[:-1]:
-            name, idx = _parse_list(part)
-            if idx is not None:
-                # It is a list
-                current = current.setdefault(name, [])
-                while len(current) <= idx:
-                    current.append({})
-                current = current[idx]
-            else:
-                # Not a list
-                current = current.setdefault(name, {})
-        
-        name, idx = _parse_list(parts[-1])
-        if idx is not None:
-            current.setdefault(name, [])
-            while len(current[name]) <= idx:
-                current[name].append(None)
-            current[name][idx] = value
-        else:
-            current[name] = value
-            
-    return result
-
-
 def merge(d1: dict[str,object], d2: dict[str,object]) -> dict[str,object]:
     result = {}
     for key in set(d1.keys()) | set(d2.keys()):

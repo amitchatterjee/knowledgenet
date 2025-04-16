@@ -52,8 +52,6 @@ pip show knowledgenet
 ```powershell
 # powershell
 python -m build
-$dir = (Get-ChildItem -Path  dist/knowledgenet-*.whl).directory.name
-$file = (Get-ChildItem -Path  dist/knowledgenet-*.whl).name
-pip install --force-reinstall "$dir/$file"
+pip install --force-reinstall (Get-ChildItem -Path dist/knowledgenet-*.whl).FullName
 ```
 
