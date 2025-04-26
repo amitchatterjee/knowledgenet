@@ -46,7 +46,15 @@ class EventFact:
         return False
 
 class Wrapper:
-    def __init__(self, of_type: str | type,  **kwargs):
+    def __init__(self, of_type: str | type = None, named: str = None,  **kwargs):
+        if not named and not of_type:
+            raise Exception('Either type or named must be specified')
+        
+        if named and of_type:
+            raise Exception('type and named cannot be specified together')
+        
+        of_type = named if named else of_type
+
         self.of_type = of_type
         self._init_args = kwargs
         for key,value in kwargs.items():

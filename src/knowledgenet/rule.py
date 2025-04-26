@@ -22,11 +22,19 @@ class Collection:
         self.var = var
 
 class Fact:
-    def __init__(self, of_type: type | str, 
+    def __init__(self, of_type: type | str = None, named: str = None, 
                  matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
                  group=None, var: str | None = None, **kwargs):
+        if not named and not of_type:
+            raise Exception('Either type or named must be specified')
+        
+        if named and of_type:
+            raise Exception('type and named cannot be specified together')
+        
+        of_type = named if named else of_type
+
         if of_type in [Collector, EventFact] and not group:
-            raise Exception("when of_type is Collector, group must be specified")
+            raise Exception("when of_type is Collector or EventFact, group must be specified")
         self.of_type = of_type
         self.matches = to_tuple(matches)
         self.group = group
