@@ -27,17 +27,17 @@ Note: For all the commands below, you must cd to the project home directory.
 
 ```bash
 # With code coverage:  
-python -m pytest -rPX -vv --cov  
+python -m pytest -rPX -vv -s --cov  
 # Without code coverage:  
-python -m pytest -rPX -vv 
+python -m pytest -rPX -s -vv 
 # With debug logging
-python -m pytest -rPX -vv --log-cli-level=DEBUG  
+python -m pytest -rPX -vv -s --log-cli-level=DEBUG  
 # Run all tests on a pytest file:  
-python -m pytest -rPX -vv 'test/unit/test_basic.py'  
+python -m pytest -rPX -vv -s 'test/unit/test_basic.py'  
 # Run a single test:  
-python -m pytest -rPX -vv 'test/unit/test_basic.py::test_one_rule_single_when_then'  
+python -m pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_then'  
 # Run tests with remote debugging:  
-python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv 
+python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
 ```
 
 ## Build and install package:

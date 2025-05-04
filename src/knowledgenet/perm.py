@@ -1,20 +1,19 @@
-def combinations(hier_list, include_only=[]):
+def combinations(ll, include_only=[]):
     # TODO: Look into optimizing this. Instead of creating all combinations and then excluding, is there a better way to do this?
-    perms = [[]]
-    for child in hier_list:
-        perms = _append(perms, child)
+    all_perms = cartesian(ll)
+    
+    included_perms = []
     if len(include_only):
-        excludes = []
-        for perm in perms:
+        for perm in all_perms:
             overlap = [x for x in perm if x in include_only]
-            if not len(overlap):
-                excludes.append(perm)
-        perms = [x for x in perms if x not in excludes]
-    return perms
+            if len(overlap):
+                included_perms.append(perm)
+    else:
+        included_perms = all_perms
+    return included_perms
 
-def _append(parent, child):
-    ret = []
-    for p in parent:
-        for e in child:
-            ret.append(p+[e])
-    return ret
+def cartesian(ll: list[list])->list[list]:
+    result = [[]]
+    for l in ll:
+        result = [x + [y] for x in result for y in l]
+    return result

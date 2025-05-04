@@ -131,7 +131,7 @@ class Session:
         logging.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, len(deduped_updates), deduped_updates, new_leftmost)
         return new_leftmost, deduped_updates
 
-    def _get_matching_objs(self, rule):
+    def _get_matching_objs(self, rule, include_only):
         when_objs = []
         # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
         for when in rule.whens:
@@ -156,7 +156,7 @@ class Session:
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
 
         for rule in self.rules:
-            when_objs = self._get_matching_objs(rule)
+            when_objs = self._get_matching_objs(rule, new_facts)
             if when_objs:
                 # Get all the permutations associated with the objects
                 perms = combinations(when_objs, new_facts)                
