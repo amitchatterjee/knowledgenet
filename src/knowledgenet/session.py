@@ -29,7 +29,7 @@ class Session:
         self.output_facts = Factset()
         self.graph = Graph(id=self.id)
         logging.debug("%s: Initializing graph", self)
-        leftmost, inserted, updated_facts = self._add_facts(self.input_facts)
+        leftmost,_, updated_facts = self._add_facts(self.input_facts)
         logging.debug("%s: Executing rules on graph", self)
         
         self.graph.new_cursor(element=leftmost)
@@ -57,7 +57,7 @@ class Session:
 
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
-                    leftmost, inserted, updated_facts = self._add_facts(new_facts, leftmost)
+                    leftmost, _, updated_facts = self._add_facts(new_facts, leftmost)
                     all_updates.update(updated_facts)
                     logging.debug("%s: Inserted facts: %s", self, new_facts)
 
@@ -65,7 +65,7 @@ class Session:
                     all_updates.update(node.changes['update'])
 
                 if len(all_updates):
-                    leftmost, updated = self._update_facts(node, all_updates, leftmost)
+                    leftmost, _ = self._update_facts(node, all_updates, leftmost)
                     logging.debug("%s: Updated facts: %s", self, all_updates)
 
                 if 'break' in node.changes:
@@ -131,7 +131,7 @@ class Session:
         logging.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, len(deduped_updates), deduped_updates, new_leftmost)
         return new_leftmost, deduped_updates
 
-    def _get_matching_objs(self, rule, include_only):
+    def _get_matching_objs(self, rule):
         when_objs = []
         # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
         for when in rule.whens:
@@ -156,7 +156,7 @@ class Session:
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
 
         for rule in self.rules:
-            when_objs = self._get_matching_objs(rule, new_facts)
+            when_objs = self._get_matching_objs(rule)
             if when_objs:
                 # Get all the permutations associated with the objects
                 perms = combinations(when_objs, new_facts)                

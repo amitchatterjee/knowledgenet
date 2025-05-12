@@ -17,8 +17,8 @@ def trace(filter=None):
                 class_name = f"{args[0].__class__.__module__}.{args[0].__class__.__name__}" if args else 'Unknown'
                 object_id = getattr(args[0], 'id', 'unknown')
                 func_name = func.__name__
-                trace = {'func': f"{class_name}.{func_name}",
-                    'obj': f"{object_id}",
+                trace = {'obj': f"{object_id}",
+                    'func': f"{class_name}.{func_name}",
                     'args': [f"{arg}" for arg in args],
                     'kwargs': kwargs,
                     'start': timestamp(),

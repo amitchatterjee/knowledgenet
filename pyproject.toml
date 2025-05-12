@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "knowledgenet"
 version = "1.0.0b"
 authors = [
-  { name="Amit Chatterjee", email="info@quik-j.com" },
+  { name="Amit Chatterjee"},
 ]
 description = "Knowledgenet RETE engine"
 requires-python = ">=3.14"
@@ -14,8 +14,22 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache V2 License",
     "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
 ]
-
+keywords = [
+    "RETE",
+    "rules engine",
+    "knowledge base",
+    "inference engine",
+    "expert systems",
+    "rule-based system",
+    "forward chaining",
+    "backward chaining",
+]
+readme = "readme.md"
 [project.urls]
 Homepage = "https://github.com/amitchatterjee/knowledgenet"
 Issues = "https://github.com/amitchatterjee/knowledgenet"
+Repository = "https://github.com/amitchatterjee/knowledgenet.git"
+Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/doc"

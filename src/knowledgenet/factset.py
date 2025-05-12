@@ -185,7 +185,7 @@ class Factset:
             self._type_to_events[typ] = events_list
 
     @trace()
-    def find(self, of_type, group=None, filter=lambda obj:True, on_types=None):
+    def find(self, of_type, group=None, filter=lambda obj:True):
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \
                 if group in self._group_to_collectors else set()

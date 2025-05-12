@@ -19,7 +19,8 @@ You can add the above to $HOME/.bashrc to automatically activate the venv.
 ```bash
 pip install -U pytest pytest-cov    
 pip install build  
-pip install debugpy  
+pip install debugpy
+pip install twine
 ```
 
 ## Run tests - adjust as needed:
@@ -52,6 +53,7 @@ pip show knowledgenet
 ```powershell
 # powershell
 python -m build
+twine check dist/*
 pip install --force-reinstall (Get-ChildItem -Path dist/knowledgenet-*.whl).FullName
 ```
 
