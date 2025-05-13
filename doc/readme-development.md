@@ -4,12 +4,13 @@ This page is meant for contributors of this project.
 ## One-time setup
 This project needs python 3.14 or higher installed. It may work with other versions as well.  
 
+### Create a virtual environment:
 ```bash
 cd $HOME  
 python3.14 -m venv knowledgenet-venv
 ```
 
-### To switch to knowledgenet virtual environment:
+### Switch to knowledgenet virtual environment:
 ```bash
 source ~/knowledgenet-venv/bin/activate  
 ```
@@ -21,6 +22,19 @@ pip install -U pytest pytest-cov
 pip install build  
 pip install debugpy
 pip install twine
+```
+
+## Configure the publishing environment:
+1. Create an account in [TestPyPI](https://test.pypi.org/account/register/) and [PyPI](https://pypi.org/account/register/).
+1. Create an API token in [TestPyPI](https://test.pypi.org/manage/account/#api-tokens) and [PyPI](https://pypi.org/manage/account/#api-tokens).
+1. Create a file called `$HOME/.pypirc` with the following content - change the passwords to the tokens you created in step 2.:
+```ini
+[testpypi]
+  username = __token__
+  password = pypi-<your_testpypi_token>
+[pypi]
+  username = __token__
+  password = pypi-<your_pypi_token>
 ```
 
 ## Run tests - adjust as needed:
@@ -53,7 +67,18 @@ pip show knowledgenet
 ```powershell
 # powershell
 python -m build
-twine check dist/*
 pip install --force-reinstall (Get-ChildItem -Path dist/knowledgenet-*.whl).FullName
 ```
+
+## Publish package to PyPi:
+Note: For all the commands below, you must cd to the project home directory.  
+```bash
+Replace the <repository> with either testpypi or pypi.
+# bash
+python -m build
+python -m twine upload --repository <repository> dist/*
+```
+
+
+
 

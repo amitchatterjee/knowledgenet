@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowledgenet"
-version = "1.0.0b"
+version = "1.0.0b1"
 authors = [
   { name="Amit Chatterjee"},
 ]
@@ -12,7 +12,6 @@ description = "Knowledgenet RETE engine"
 requires-python = ">=3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache V2 License",
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -27,6 +26,7 @@ keywords = [
     "forward chaining",
     "backward chaining",
 ]
+license = "Apache-2.0"
 readme = "readme.md"
 [project.urls]
 Homepage = "https://github.com/amitchatterjee/knowledgenet"
