@@ -1,3 +1,4 @@
+import inspect
 from time import time
 import logging
 from contextvars import ContextVar
@@ -5,7 +6,7 @@ import json
 
 from knowledgenet.session import Session
 from knowledgenet.ftypes import Switch
-from knowledgenet.tracer import trace
+from knowledgenet.tracer import timestamp, trace
 
 trace_buffer = ContextVar('trace_buffer', default=None)
 
@@ -28,15 +29,22 @@ class Service:
         return None
 
     def execute(self, facts, start_from=None, tracer=None):
-        # TODO handle thread-safety of trace buffers. Basically, we have to make sure that the trace_buffer is unique for each execution. Maybe, each execute() needs to run on separate threads
         buffer = []
         if tracer:
-            trace_buffer.set(buffer)
+            trace_buffer.set([])
         try:
             return self._execute_service(facts, start_from)
         finally:
             if tracer:
-                json.dump(buffer, tracer, indent=2)
+                root = {'obj': f"{self.id}",
+                    'func': f"{type(self).__name__}.{inspect.currentframe().f_code.co_name}",
+                    'args': list(map(lambda e: str(e), 
+                                inspect.getargvalues(inspect.currentframe().f_back).locals.values()[1:])),
+                    'kwargs': None,
+                    'start': timestamp(),
+                    'calls': trace_buffer.get()
+                }
+                json.dump(root, tracer, indent=2)
                 trace_buffer.set(None)
  
     @trace()

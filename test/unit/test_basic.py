@@ -81,6 +81,16 @@ def test_tracer():
         Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, tracer=stream)
         trace = stream.getvalue()
         parsed = json.loads(trace)
-        assert type(parsed) == list
-        assert len(parsed) == 1
-        assert type(parsed[0]) == dict
+        #print(trace)
+        assert type(parsed) == dict
+        assert 'obj' in parsed
+        assert parsed['obj'] == 'knowledgenet'
+        assert 'func' in parsed
+        assert parsed['func'] == 'Service.execute'
+        assert 'args' in parsed
+        assert type(parsed['args']) == list
+        assert len(parsed['args']) == 2
+        assert parsed['args'][0] == '[C1(1), C1(2)]'
+        assert 'calls' in parsed
+        assert type(parsed['calls']) == list
+        

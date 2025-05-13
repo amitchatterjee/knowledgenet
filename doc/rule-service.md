@@ -111,6 +111,7 @@ def init_service(rules_path):
 
 Using the above method, rulesets and rules can be developed and deployed independently of the bootstrap code. 
 
+#### Basic Rule Definition
 Here's a basic example of creating a rule:
 
 ```python
@@ -123,6 +124,7 @@ def my_rule():
     )
 ```
 
+#### Custom Rule Identification
 The above approach allows rules authors to organize rules using function and folder names as conventions. It is possible to override repository, ruleset and rule ids instead of the convention. To override, use the ruledef parameters as shown in the example above:
 
 ```python
@@ -135,6 +137,7 @@ def my_rule():
 
 This approach makes the rule authoring somewhat cumbersome to maintain when there are large number of rules but it allows you to break up rulesets and organize them in separate locations. You can also disable a rule by using the parameter - *enabled*.
 
+#### Repository Merging
 You can also merge multiple repositories into a single repository as follows:
 
 ```python

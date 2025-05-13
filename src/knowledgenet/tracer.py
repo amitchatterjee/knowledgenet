@@ -22,9 +22,9 @@ def trace(filter=None):
                     'args': [f"{arg}" for arg in args],
                     'kwargs': kwargs,
                     'start': timestamp(),
-                    'children': []
+                    'calls': []
                 }
-                trace_buffer.set(trace['children'])
+                trace_buffer.set(trace['calls'])
             ret = None
             exception_trace = None
             try:
