@@ -13,23 +13,10 @@ Install:
 - Access to the Knowledgenet Examples Repository.
 - Optionally, install *git* as some of the commands shown below use git.
 
-## Building Knowledgenet project from source
-**At this time, the Knowledgenet engine has not been pushed the package to PyPi. So, you will need to build the project from source and install.**
-
-To build the Knowledgenet project from source, you need to clone the repository from GitHub. Use the following command in your terminal:
-
+## Install Knowledgenet
+To install Knowledgenet, run the following command: 
 ```bash
-git clone https://github.com/amitchatterjee/knowledgenet.git
-```
-
-Once the repository is cloned, navigate to the project directory:
-
-```bash
-cd knowledgenet
-## Build and install package:
-python -m build
-pip install --force-reinstall dist/knowledgenet-*.whl
-pip show knowledgenet
+    pip install knowledgenet
 ```
 
 ## About the knowledgenet-examples companion project
