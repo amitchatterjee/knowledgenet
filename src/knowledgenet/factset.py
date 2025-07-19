@@ -1,7 +1,7 @@
 import logging
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
-from knowledgenet.tracer import trace
+from knowledgenet.core.tracer import trace
 from knowledgenet.util import of_type
 
 class Factset:

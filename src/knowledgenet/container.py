@@ -4,7 +4,7 @@ import hashlib
 import statistics
 
 from knowledgenet.util import of_type, to_tuple
-from knowledgenet.tracer import trace
+from knowledgenet.core.tracer import trace
 
 class Collector:
     def __init__(self, group: str, 

@@ -4,9 +4,9 @@ import logging
 from contextvars import ContextVar
 import json
 
-from knowledgenet.session import Session
+from knowledgenet.core.session import Session
 from knowledgenet.ftypes import Switch
-from knowledgenet.tracer import timestamp, trace
+from knowledgenet.core.tracer import timestamp, trace
 
 trace_buffer = ContextVar('trace_buffer', default=None)
 

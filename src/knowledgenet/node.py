@@ -1,7 +1,7 @@
 import logging
 from types import SimpleNamespace
 
-from knowledgenet.tracer import trace
+from knowledgenet.core.tracer import trace
 
 class Leaf:
     def __init__(self, id, rule, when_index):

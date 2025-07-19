@@ -2,11 +2,11 @@ import logging
 from typing import Union
 
 from knowledgenet.ftypes import EventFact, Wrapper
-from knowledgenet.tracer import trace
+from knowledgenet.core.tracer import trace
 from knowledgenet.perm import combinations
 from knowledgenet.node import Node
 from knowledgenet.factset import Factset
-from knowledgenet.graph import Graph, Element
+from knowledgenet.core.graph import Graph, Element
 from knowledgenet.container import Collector
 from knowledgenet.ruleset import Ruleset
 

@@ -1,7 +1,7 @@
 from decimal import Decimal
 from collections.abc import Hashable
 
-from knowledgenet.tracer import trace
+from knowledgenet.core.tracer import trace
 
 class Element:
     def __init__(self, prev: Element | None, next: Element | None, obj: Hashable, ordinal: int, weight: Decimal):

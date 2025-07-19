@@ -1,5 +1,5 @@
 import uuid
-from knowledgenet.graph import Graph
+from knowledgenet.core.graph import Graph
 
 def test_insert():
     g = Graph(str(uuid.uuid4()))

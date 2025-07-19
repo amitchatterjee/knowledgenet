@@ -1,4 +1,4 @@
-from knowledgenet.scanner import ruledef
+from knowledgenet.decorator import ruledef
 from knowledgenet.rule import Rule, Fact
 from knowledgenet.controls import insert
 from knowledgenet.helper import assign
