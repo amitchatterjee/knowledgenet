@@ -3,7 +3,7 @@ from typing import Union
 
 from knowledgenet.ftypes import EventFact, Wrapper
 from knowledgenet.core.tracer import trace
-from knowledgenet.perm import combinations
+from knowledgenet.core.perm import combinations
 from knowledgenet.node import Node
 from knowledgenet.factset import Factset
 from knowledgenet.core.graph import Graph, Element
