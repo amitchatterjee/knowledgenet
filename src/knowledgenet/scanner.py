@@ -13,6 +13,9 @@ from knowledgenet.util import to_tuple
 
 registry={}
 
+def clear():
+    registry.clear()
+
 def lookup(repositories:str|list|tuple, id:str=None)->Repository:
     if not isinstance(repositories, str) and not id:
         raise Exception("When multiple repositories are specified, a repository id must be provided")
@@ -25,7 +28,7 @@ def lookup(repositories:str|list|tuple, id:str=None)->Repository:
     ruleset=[]
     for repository in repositories:
         if repository not in registry:
-            raise Exception(f'repository: repository not found')
+            raise Exception(f'repository: {repository} not found')
         
         for ruleset_id,rules in registry[repository].items():
             ruleset.append(Ruleset(ruleset_id, rules))

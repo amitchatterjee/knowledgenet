@@ -79,6 +79,13 @@ python -m build
 python -m twine upload --repository <repository> dist/*
 ```
 
+## Install git flow
+We use git flow to manage branches and releases. On Fedora Linux, use the following commands to install the gitflow packages.The steps will differ based on what distribution and operating system you are using.
+```bash
+sudo dnf copr enable elegos/gitflow
+sudo dnf install gitflow
 
+git flow init -d
+```
 
 
