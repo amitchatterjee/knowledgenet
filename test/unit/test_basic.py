@@ -78,7 +78,7 @@ def test_tracer():
                 then=lambda ctx: insert(ctx, R1(ctx.c1)))
     facts = [C1(1), C1(2)]
     with io.StringIO() as stream:
-        Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, tracer=stream)
+        Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, trc_stream=stream)
         trace = stream.getvalue()
         parsed = json.loads(trace)
         #print(trace)

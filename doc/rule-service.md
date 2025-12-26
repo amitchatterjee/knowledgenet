@@ -145,7 +145,7 @@ def endpoint(...):
     facts = load_facts(...)
 
     # Execute the service
-    result_facts = service.execute(facts, tracer=sys.stdout)
+    result_facts = service.execute(facts, tracer_stream=sys.stdout)
 
     # Do something with the result_facts
     ...

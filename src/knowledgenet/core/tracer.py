@@ -1,46 +1,98 @@
 from time import time
 import traceback
 
+from opentelemetry import trace as otel_trace
+
+class NoneTraceContext:
+    def __init__(self):
+        ...
+    def __enter__(self):
+        return self
+    def set_attribute(self, key, val):
+        ...
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False
+
+class StreamTraceContext:
+    def __init__(self, trace_buffer, f_func, f_args, f_kwargs):
+        self.trace_buffer = trace_buffer
+        self.f_func = f_func
+        self.f_args = f_args
+        self.f_kwargs = f_kwargs
+        self.buffer = trace_buffer.get()
+        self.attributes = {}
+    
+    def __enter__(self):
+        class_name = f"{self.f_args[0].__class__.__module__}.{self.f_args[0].__class__.__name__}" if self.f_args else 'Unknown'
+        object_id = getattr(self.f_args[0], 'id', 'unknown')
+        func_name = self.f_func.__name__
+        self.trace = {'obj': f"{object_id}",
+            'func': f"{class_name}.{func_name}",
+            'args': [f"{arg}" for arg in self.f_args],
+            'kwargs': self.f_kwargs,
+            'start': timestamp(),
+            'calls': []
+        }
+        self.trace_buffer.set(self.trace['calls'])
+        return self
+    
+    def set_attribute(self, key, val):
+        self.attributes[key] = str(val)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        exception_trace = None
+        if exc_type is not None:
+            # Exception occured
+            exception_trace = traceback.format_exc("".join(traceback.format_exception(exc_type, exc_val, exc_tb)))
+
+        self.trace['end'] = timestamp()
+        # add collected attributes into the trace (safely convert values to strings if needed)
+        
+        self.trace.update(self.attributes)
+
+        if exception_trace:
+            self.trace['exc'] = exception_trace
+        self.buffer.append(self.trace)
+        self.trace_buffer.set(self.buffer)
+        return False
+
+otel_tracer = otel_trace.get_tracer(__name__)
+
 def timestamp():
     return int(round(time() * 1000))
+
+def trace_context_factory(to_trace, trace_method, trace_buffer, f_func, f_args, f_kwargs):
+    if not to_trace:
+        return NoneTraceContext()
+    
+    method = trace_method.get()
+
+    if method == 'stream':
+        return StreamTraceContext(trace_buffer, f_func, f_args, f_kwargs)
+    
+    if method == 'otel':
+        class_name = f"{f_args[0].__class__.__module__}.{f_args[0].__class__.__name__}" if f_args else 'Unknown'
+        func_name = f_func.__name__
+        object_id = getattr(f_args[0], 'id', 'unknown')
+        attributes = {'obj': f"{object_id}",
+            'args': [f"{arg}" for arg in f_args],
+            'kwargs': f_kwargs
+        }
+        return otel_tracer.start_as_current_span(f"{class_name}.{func_name}", attributes=attributes)
+    raise Exception('NYI')
 
 def trace(filter=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            from knowledgenet.service import trace_buffer
-            buffer = trace_buffer.get()
+            from knowledgenet.service import trace_method, trace_buffer
+            method = trace_method.get()
             
             filter_pass = filter(args, kwargs) if filter else True
-            to_trace = buffer is not None and filter_pass
-            if to_trace:
-                # TODO: This is a nice trace, but a big memory hog. Devise another type of tracing where the trace is streamed as each of the @trace() calls are done            
-                class_name = f"{args[0].__class__.__module__}.{args[0].__class__.__name__}" if args else 'Unknown'
-                object_id = getattr(args[0], 'id', 'unknown')
-                func_name = func.__name__
-                trace = {'obj': f"{object_id}",
-                    'func': f"{class_name}.{func_name}",
-                    'args': [f"{arg}" for arg in args],
-                    'kwargs': kwargs,
-                    'start': timestamp(),
-                    'calls': []
-                }
-                trace_buffer.set(trace['calls'])
+            to_trace = method is not None and filter_pass
             ret = None
-            exception_trace = None
-            try:
+            with trace_context_factory(to_trace, trace_method, trace_buffer, func, args, kwargs) as trace_ctx:
                 ret = func(*args, **kwargs)
-            except Exception as e:
-                if to_trace:
-                    exception_trace = traceback.format_exc()
-                raise e
-            finally:
-                if to_trace:
-                    trace['end'] = timestamp()
-                    trace['ret'] = f"{ret}"
-                    if exception_trace:
-                        trace['exc'] = exception_trace
-                    buffer.append(trace)
-                    trace_buffer.set(buffer)
+                trace_ctx.set_attribute('ret', ret)
             return ret
         wrapper.__wrapped__ = True
         return wrapper

@@ -8,6 +8,7 @@ from knowledgenet.core.session import Session
 from knowledgenet.ftypes import Switch
 from knowledgenet.core.tracer import timestamp, trace
 
+trace_method = ContextVar('trace_method', default=None)
 trace_buffer = ContextVar('trace_buffer', default=None)
 
 class Service:
@@ -28,14 +29,14 @@ class Service:
                 return fact
         return None
 
-    def execute(self, facts, start_from=None, tracer=None):
-        buffer = []
-        if tracer:
+    def execute(self, facts, start_from=None, trc_method=None, trc_stream=None):
+        trace_method.set(trc_method)
+        if trc_stream:
             trace_buffer.set([])
         try:
             return self._execute_service(facts, start_from)
         finally:
-            if tracer:
+            if trc_stream:
                 root = {'obj': f"{self.id}",
                     'func': f"{type(self).__name__}.{inspect.currentframe().f_code.co_name}",
                     'args': list(map(lambda e: str(e), 
@@ -44,8 +45,9 @@ class Service:
                     'start': timestamp(),
                     'calls': trace_buffer.get()
                 }
-                json.dump(root, tracer, indent=2)
+                json.dump(root, trc_stream, indent=2)
                 trace_buffer.set(None)
+                trace_method.set(None)
  
     @trace()
     def _execute_service(self, facts, start_from):
