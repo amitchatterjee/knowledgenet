@@ -61,13 +61,20 @@ otel_tracer = otel_trace.get_tracer(__name__)
 def timestamp():
     return int(round(time() * 1000))
 
+def normalize_attribute(value):
+    # Primitive passthrough
+    if isinstance(value, (int, float, str, bool)):
+        return value
+    # Fallback: stringify
+    return str(value)
+
 def trace_context_factory(to_trace, trace_method, trace_buffer, f_func, f_args, f_kwargs):
     if not to_trace:
         return NoneTraceContext()
     
     method = trace_method.get()
 
-    if method == 'stream':
+    if method == 'legacy':
         return StreamTraceContext(trace_buffer, f_func, f_args, f_kwargs)
     
     if method == 'otel':
@@ -75,8 +82,8 @@ def trace_context_factory(to_trace, trace_method, trace_buffer, f_func, f_args, 
         func_name = f_func.__name__
         object_id = getattr(f_args[0], 'id', 'unknown')
         attributes = {'obj': f"{object_id}",
-            'args': [f"{arg}" for arg in f_args],
-            'kwargs': f_kwargs
+            'args': [normalize_attribute(arg) for arg in f_args],
+            'kwargs': normalize_attribute(f_kwargs)
         }
         return otel_tracer.start_as_current_span(f"{class_name}.{func_name}", attributes=attributes)
     raise Exception('NYI')
@@ -92,7 +99,8 @@ def trace(filter=None):
             ret = None
             with trace_context_factory(to_trace, trace_method, trace_buffer, func, args, kwargs) as trace_ctx:
                 ret = func(*args, **kwargs)
-                trace_ctx.set_attribute('ret', ret)
+                if ret is not None:
+                    trace_ctx.set_attribute('ret', normalize_attribute(ret))
             return ret
         wrapper.__wrapped__ = True
         return wrapper

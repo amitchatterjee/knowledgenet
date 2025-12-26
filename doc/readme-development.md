@@ -24,6 +24,12 @@ pip install debugpy
 pip install twine
 ```
 
+## Install runtime dependencies:
+```bash
+  pip install -r requirements.txt
+
+```
+
 ## Configure the publishing environment:
 1. Create an account in [TestPyPI](https://test.pypi.org/account/register/) and [PyPI](https://pypi.org/account/register/).
 1. Create an API token in [TestPyPI](https://test.pypi.org/manage/account/#api-tokens) and [PyPI](https://pypi.org/manage/account/#api-tokens).
