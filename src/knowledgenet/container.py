@@ -1,8 +1,10 @@
-from typing import Callable, Union
+from typing import Callable
 from numbers import Number
+import inspect
 import hashlib
 import statistics
 
+from knowledgenet.core.otel_util import span_args
 from knowledgenet.util import of_type, to_tuple
 from knowledgenet.core.tracer import trace
 

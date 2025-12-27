@@ -24,6 +24,12 @@ pip install debugpy
 pip install twine
 ```
 
+## Install runtime dependencies:
+```bash
+  pip install -r requirements.txt
+
+```
+
 ## Configure the publishing environment:
 1. Create an account in [TestPyPI](https://test.pypi.org/account/register/) and [PyPI](https://pypi.org/account/register/).
 1. Create an API token in [TestPyPI](https://test.pypi.org/manage/account/#api-tokens) and [PyPI](https://pypi.org/manage/account/#api-tokens).
@@ -61,6 +67,10 @@ Note: For all the commands below, you must cd to the project home directory.
 # bash
 python -m build
 pip install --force-reinstall dist/knowledgenet-*.whl
+
+# If you want to --force-reinstall the wheel, but not the dependencies
+pip install --force-reinstall --no-deps dist/knowledgenet-*.whl
+
 pip show knowledgenet
 ```
 
