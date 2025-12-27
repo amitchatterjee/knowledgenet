@@ -8,6 +8,13 @@ version = "1.0.0b1"
 authors = [
   { name="Amit Chatterjee"},
 ]
+
+dependencies = [
+  "opentelemetry-api >= 1.39.1",
+  "opentelemetry-sdk >= 1.39.1",
+  "opentelemetry-exporter-otlp >= 1.39.1"
+]
+
 description = "Knowledgenet RETE engine"
 requires-python = ">=3.13"
 classifiers = [
@@ -19,7 +26,7 @@ classifiers = [
 keywords = [
     "RETE",
     "rules engine",
-    "knowledge base",
+    "knowledgebase",
     "inference engine",
     "expert systems",
     "rule-based system",

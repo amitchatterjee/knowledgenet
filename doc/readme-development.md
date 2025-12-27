@@ -67,6 +67,10 @@ Note: For all the commands below, you must cd to the project home directory.
 # bash
 python -m build
 pip install --force-reinstall dist/knowledgenet-*.whl
+
+# If you want to --force-reinstall the wheel, but not the dependencies
+pip install --force-reinstall --no-deps dist/knowledgenet-*.whl
+
 pip show knowledgenet
 ```
 

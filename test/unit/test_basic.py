@@ -3,15 +3,21 @@ import logging
 import io
 
 from knowledgenet.container import Collector
+from knowledgenet.core.file_trace_exporter import FileSpanExporter
 from knowledgenet.rule import Collection, Rule,Fact
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.helper import assign
 from knowledgenet.controls import insert
 from knowledgenet.service import Service
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry import trace
 
 from test_helpers.unit_util import find_result_of_type
 from test_helpers.unit_facts import C1, C2, R1
+import os
 
 def test_one_rule_single_when_then():
     rule = Rule(id='r1',
@@ -77,20 +83,25 @@ def test_tracer():
                 when=Fact(of_type=C1, var='c1', matches=lambda ctx, this: this.val > 1),
                 then=lambda ctx: insert(ctx, R1(ctx.c1)))
     facts = [C1(1), C1(2)]
-    with io.StringIO() as stream:
-        Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, trc_stream=stream)
-        trace = stream.getvalue()
-        parsed = json.loads(trace)
-        #print(trace)
-        assert type(parsed) == dict
-        assert 'obj' in parsed
-        assert parsed['obj'] == 'knowledgenet'
-        assert 'func' in parsed
-        assert parsed['func'] == 'Service.execute'
-        assert 'args' in parsed
-        assert type(parsed['args']) == list
-        assert len(parsed['args']) == 2
-        assert parsed['args'][0] == '[C1(1), C1(2)]'
-        assert 'calls' in parsed
-        assert type(parsed['calls']) == list
-        
+    trace_file_path = "target/unit-trace.ndjson"
+    os.makedirs(os.path.dirname(trace_file_path), exist_ok=True)
+    if os.path.exists(trace_file_path):
+        try:
+            os.remove(trace_file_path)
+        except OSError:
+            raise AssertionError("Intentional test failure")
+    try:
+        provider = TracerProvider(resource=Resource.create({"service.name": 'knowledgenet unit test'}))
+        exporter = FileSpanExporter(trace_file_path)
+        # exporter = ConsoleSpanExporter()
+        provider.add_span_processor(BatchSpanProcessor(exporter))
+        trace.set_tracer_provider(provider)
+        Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, trc_option='full')
+    finally:
+        # Make sure that the trace is full written out
+        trace.get_tracer_provider().shutdown()
+
+        assert os.path.exists(trace_file_path)
+        with io.open(trace_file_path, 'r', encoding='utf-8') as fh:
+            entries = [json.loads(line) for line in fh if line.strip()]
+        assert len(entries) > 1

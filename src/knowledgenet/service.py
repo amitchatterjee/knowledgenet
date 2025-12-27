@@ -8,8 +8,7 @@ from knowledgenet.core.session import Session
 from knowledgenet.ftypes import Switch
 from knowledgenet.core.tracer import timestamp, trace
 
-trace_method = ContextVar('trace_method', default=None)
-trace_buffer = ContextVar('trace_buffer', default=None)
+tracing_option = ContextVar('trace_option', default=None)
 
 class Service:
     def __init__(self, repository, id="knowledgenet", global_ctx={}):
@@ -29,25 +28,9 @@ class Service:
                 return fact
         return None
 
-    def execute(self, facts, start_from=None, trc_method=None, trc_stream=None):
-        trace_method.set(trc_method)
-        if trc_stream:
-            trace_buffer.set([])
-        try:
-            return self._execute_service(facts, start_from)
-        finally:
-            if trc_stream:
-                root = {'obj': f"{self.id}",
-                    'func': f"{type(self).__name__}.{inspect.currentframe().f_code.co_name}",
-                    'args': list(map(lambda e: str(e), 
-                                inspect.getargvalues(inspect.currentframe().f_back).locals.values()[1:])),
-                    'kwargs': None,
-                    'start': timestamp(),
-                    'calls': trace_buffer.get()
-                }
-                json.dump(root, trc_stream, indent=2)
-                trace_buffer.set(None)
-                trace_method.set(None)
+    def execute(self, facts, start_from=None, trc_option=None):
+        tracing_option.set(trc_option)
+        return self._execute_service(facts, start_from)
  
     @trace()
     def _execute_service(self, facts, start_from):
