@@ -15,6 +15,9 @@ dependencies = [
   "opentelemetry-exporter-otlp >= 1.39.1"
 ]
 
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "pip-tools"]
+
 description = "Knowledgenet RETE engine"
 requires-python = ">=3.13"
 classifiers = [

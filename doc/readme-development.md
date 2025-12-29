@@ -1,6 +1,9 @@
 # For Developers
 This page is meant for contributors of this project.
 
+
+> **Note:** For all the commands below, you must `cd` to the project home directory.  
+
 ## One-time setup
 This project needs python 3.14 or higher installed. It may work with other versions as well.  
 
@@ -8,6 +11,8 @@ This project needs python 3.14 or higher installed. It may work with other versi
 ```bash
 cd $HOME  
 python3.14 -m venv knowledgenet-venv
+
+pip install --upgrade pip
 ```
 
 ### Switch to knowledgenet virtual environment:
@@ -18,16 +23,15 @@ You can add the above to $HOME/.bashrc to automatically activate the venv.
 
 ## Install development tools:
 ```bash
-pip install -U pytest pytest-cov    
-pip install build  
-pip install debugpy
-pip install twine
+pip install -U --group=dev
+
 ```
 
 ## Install runtime dependencies:
 ```bash
-  pip install -r requirements.txt
-
+mkdir -p target
+python -m piptools compile pyproject.toml -o target/requirements.txt
+pip install -r target/requirements.txt
 ```
 
 ## Configure the publishing environment:
@@ -44,7 +48,6 @@ pip install twine
 ```
 
 ## Run tests - adjust as needed:
-Note: For all the commands below, you must cd to the project home directory.  
 
 ```bash
 # With code coverage:  
