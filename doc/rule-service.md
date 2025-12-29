@@ -152,3 +152,45 @@ def endpoint(...):
 ```
 
 See [rules_runner.py](https://github.com/amitchatterjee/knowledgenet-examples/blob/main/autoins/rules/rules_runner.py) file in the knowledgenet-examples repository for a complete view of how the service is initialized and a batch transaction is invoked. Rules transaction can also be invoked from a web services endpoint, from a message queue, etc.
+
+## Enable tracing
+
+The tracing capability of the Knowledgenet rules engine allows detailed traces of how the RETE network was executed in order to process the facts and produce the output. This is useful for troubleshooting rules issues and fine-tuning performances. 
+
+If you want tracing for rule execution, configure OpenTelemetry and initialize a tracer early in your application.
+
+- Install runtime tracing packages manually. The packages you have to install will vary based on what kind of exporter you want to setup. Following is a sample:
+
+```bash
+python -m pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp
+
+```
+
+- Initialize Open Telemetry from your application. The following code snippet is one way to do it. There are different ways to initialize Open Telemetry tracing. Read the Open Telemetry documentation for details:
+
+
+```python
+import os
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+def init_tracing(service_name: str = "[YOUR_APPLICATION_NAME]"):
+    resource = Resource.create({"service.name": service_name})
+    provider = TracerProvider(resource=resource)
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+    exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    return trace.get_tracer(__name__)
+
+# Create a root span and tell Knowledgenet to create trace spans 
+with tracer.start_as_current_span("transaction.execution - (CHANGE THE NAME of this span)"):
+        result_facts = service.execute(facts, trc_option='full')    
+```
+
+The tracing capability is extensive but it is an expensive operation. We will improve the tracing capabilities in the upcoming releases. We suggest that you use it selectively instead of enabling it for all calls to *service.execute(...)*. If *trc_option* is null or not specified, the tracing is disabled. Knowledgenet provides a *knowledgenet.core.file_trace_exporter.FileSpanExporter* class that enables the trace spans to be written to a .ndjson file specified as the constructor argument.  
+
+
