@@ -131,7 +131,7 @@ class Graph:
     def next(self, cursor_name='default') -> Hashable:
         return (cursor := self.next_element(cursor_name)) and cursor.obj
     
-    @trace(filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
+    @trace(level=7, filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
     def next_element(self, cursor_name='default') -> Element | None:
         cursor = self.cursors[cursor_name]
         if not cursor:
@@ -139,7 +139,7 @@ class Graph:
         self.cursors[cursor_name] = cursor.next
         return cursor
     
-    @trace(filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
+    @trace(level=7, filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
     def next_elements(self, cursor_name='default') -> list[Element] | None:
         cursors = []
         ordinal = None    

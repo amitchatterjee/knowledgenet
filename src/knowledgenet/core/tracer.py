@@ -1,5 +1,4 @@
 from time import time
-import traceback
 import inspect
 
 from opentelemetry import trace as otel_trace
@@ -27,11 +26,11 @@ def normalize_attribute(value):
     # Fallback: stringify
     return str(value)
 
-def trace_context_factory(filter, f_func, f_args, f_kwargs):
-    from knowledgenet.service import tracing_option
-    method = tracing_option.get()
+def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
+    from knowledgenet.service import trace_level
+    trace_level = trace_level.get()
     filter_pass = filter(f_args, f_kwargs) if filter else True
-    to_trace = method is not None and filter_pass
+    to_trace = trace_level >= level and filter_pass
     if not to_trace:
         return PassThruTraceContext()
     
@@ -67,11 +66,11 @@ def trace_context_factory(filter, f_func, f_args, f_kwargs):
         attributes['kwargs'] = normalize_attribute(f_kwargs)
     return otel_tracer.start_as_current_span(name, attributes=attributes)
 
-def trace(filter=None):
+def trace(level=1, filter=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
             ret = None
-            with trace_context_factory(filter, func, args, kwargs) as trace_ctx:
+            with trace_context_factory(level, filter, func, args, kwargs) as trace_ctx:
                 ret = func(*args, **kwargs)
                 if ret is not None:
                     trace_ctx.set_attribute('ret', normalize_attribute(ret))
