@@ -30,6 +30,10 @@ def ruledef(*decorator_args, **decorator_kwargs):
                 raise Exception(f"Rule with id {rule.id} already exists")
             registry[rule.repository][rule.ruleset].append(rule)
             return rule
+        # Mark this wrapper explicitly as a rule definition so scanners
+        # can reliably detect rule functions without relying on
+        # `__wrapped__` (which other decorators may also set via wraps).
+        wrapper.__ruledef__ = True
         return wrapper
     if decorator_args and callable(decorator_args[0]):
         # Decorator called without arguments

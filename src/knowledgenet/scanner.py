@@ -39,9 +39,10 @@ def lookup(repositories:str|list|tuple, id:str=None)->Repository:
 
 def _load_rules_from_module(module):
     for name,obj in inspect.getmembers(module):
-        #print(f"{name}:{obj}")
-        if inspect.isfunction(obj) and name != 'ruledef':
-            if getattr(obj, '__wrapped__', False):
+        if inspect.isfunction(obj):
+            # Detect only functions explicitly marked as rule definitions.
+            if getattr(obj, '__ruledef__', False):
+                #print(f"{name}:{obj}")
                 # Perform the following action only for functions that have been decorated with @ruledef
                 rule = obj()
                 if rule and type(rule) is not Rule:
