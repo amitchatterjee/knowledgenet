@@ -4,7 +4,6 @@ import inspect
 
 from opentelemetry import trace as otel_trace
 
-
 class PassThruTraceContext:
     def __init__(self):
         ...
@@ -19,24 +18,26 @@ class PassThruTraceContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
 
-
 otel_tracer = otel_trace.get_tracer(__name__)
 
+def trace_details_to_max_size(trace_details):
+    return 99 + 4**trace_details 
 
-def timestamp():
-    return int(round(time() * 1000))
-
-
-def normalize_attribute(value):
+def normalize_attribute(value, trace_details):
     # Primitive passthrough
     if isinstance(value, (int, float, str, bool)):
         return value
     # Fallback: stringify
-    return str(value)
+    str_val = str(value)
+    max_size = trace_details_to_max_size(trace_details)
+    if len(str_val) > max_size:
+        str_val = str_val[0:max_size] + '...'
+    return str_val
 
 
 def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
-    from knowledgenet.service import trace_level
+    from knowledgenet.service import trace_level, trace_details
+    trace_details = trace_details.get()
     trace_level = trace_level.get()
     filter_pass = filter(f_args, f_kwargs) if filter else True
     to_trace = trace_level >= level and filter_pass
@@ -53,12 +54,9 @@ def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
     if f_args:
         first = f_args[0]
         try:
-            if hasattr(first, f_func.__name__):
-                attr = getattr(first, f_func.__name__)
-                if inspect.ismethod(attr) or inspect.isfunction(attr) or callable(attr):
-                    cls = first.__class__
-                    name = f"{cls.__module__}.{cls.__name__}.{f_func.__name__}"
-                    object_id = getattr(first, 'id', None)
+            cls = first.__class__
+            name = f"{cls.__module__}.{cls.__name__}.{f_func.__name__}"
+            object_id = getattr(first, 'id', None)
         except Exception:
             # Fall back to module-level name below
             name = None
@@ -69,25 +67,11 @@ def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
     attributes = {}
     if object_id:
         attributes['obj'] = f"{object_id}"
-    if f_args:
-        attributes['args'] = [normalize_attribute(arg) for arg in f_args]
-    if f_kwargs:
-        attributes['kwargs'] = normalize_attribute(f_kwargs)
+    if f_args and trace_details >= 5:
+        attributes['args'] = [normalize_attribute(arg, trace_details) for arg in f_args]
+    if f_kwargs and trace_details >= 5:
+        attributes['kwargs'] = normalize_attribute(f_kwargs, trace_details)
     return otel_tracer.start_as_current_span(name, attributes=attributes)
-
-def trace_old(level=1, filter=None):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            ret = None
-            with trace_context_factory(level, filter, func, args, kwargs) as trace_ctx:
-                ret = func(*args, **kwargs)
-                if ret is not None:
-                    trace_ctx.set_attribute('ret', normalize_attribute(ret))
-            return ret
-        return wrapper
-    return decorator
-
 
 def trace(*decorator_args, **decorator_kwargs):
     level = decorator_kwargs.get('level', 1)
@@ -96,11 +80,13 @@ def trace(*decorator_args, **decorator_kwargs):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             #print(f'{func.__name__}({args}, {kwargs}), level={level}, filter={filter}')
+            from knowledgenet.service import trace_details
+            trace_details = trace_details.get()
             ret = None
             with trace_context_factory(level, filter, func, args, kwargs) as trace_ctx:
                 ret = func(*args, **kwargs)
-                if ret is not None:
-                    trace_ctx.set_attribute('ret', normalize_attribute(ret))
+                if ret is not None and trace_details >= 6:
+                    trace_ctx.set_attribute('ret', normalize_attribute(ret, trace_details))
             return ret
         return wrapper
     if decorator_args and callable(decorator_args[0]):
