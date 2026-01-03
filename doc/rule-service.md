@@ -166,7 +166,7 @@ python -m pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter
 
 ```
 
-- Initialize Open Telemetry from your application. The following code snippet is one way to do it. There are different ways to initialize Open Telemetry tracing. Read the Open Telemetry documentation for details:
+- Initialize Open Telemetry from your application. The following code snippet is an example of OTEL initialization. There are different ways to initialize Open Telemetry tracing and controls how it behaves. Read the Open Telemetry documentation for details:
 
 
 ```python
@@ -188,9 +188,14 @@ def init_tracing(service_name: str = "[YOUR_APPLICATION_NAME]"):
 
 # Create a root span and tell Knowledgenet to create trace spans 
 with tracer.start_as_current_span("transaction.execution - (CHANGE THE NAME of this span)"):
-        result_facts = service.execute(facts, trc_level=10)    
+        result_facts = service.execute(facts, trc_level=10, trc_detail=10)    
 ```
 
-The tracing capability is extensive but it is an expensive operation. We will improve the tracing capabilities in the upcoming releases. We suggest that you use it selectively instead of enabling it for all calls to *service.execute(...)*. If *trc_level* is not specified, the default value, 0, is used, - tracing is disabled. The maximum value is 10. The higher the trace level, the more verbose the trace is (and slower). Knowledgenet provides a *knowledgenet.core.file_trace_exporter.FileSpanExporter* class that enables the trace spans to be written to a .ndjson file specified as the constructor argument.
+The tracing capability is extensive but it is an expensive operation. We suggest that you control it selectively instead of enabling it for all calls to *service.execute(...)*. You can control the stack depth and the details of the OTEL tracing span that Knowledgenet generates using the following parameters. 
+
+- *trc_level*: If *trc_level* is not specified, the default value, 0, is used, - tracing is disabled. The maximum value is 10. The higher the trace level, the higher the stack depth is (and slower).
+- *trc_details*: If *trc_details* is not specified, the default value, 0, is used, - very little information is added to the trace span. The maximum value is 10. The higher the trace details, the more detailed the trace attributes are.
+
+Knowledgenet provides a *knowledgenet.core.file_trace_exporter.FileSpanExporter* class that enables the trace spans to be written to a .ndjson file specified as the constructor argument.
 
 
