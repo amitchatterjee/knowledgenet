@@ -96,7 +96,7 @@ def test_tracer():
         # exporter = ConsoleSpanExporter()
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)
-        Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, trc_option='full')
+        Service(Repository('repo1',[Ruleset('rs1', [rule])])).execute(facts, trc_level=10)
     finally:
         # Make sure that the trace is full written out
         trace.get_tracer_provider().shutdown()

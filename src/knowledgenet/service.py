@@ -1,14 +1,13 @@
-import inspect
 from time import time
 import logging
 from contextvars import ContextVar
-import json
 
 from knowledgenet.core.session import Session
 from knowledgenet.ftypes import Switch
-from knowledgenet.core.tracer import timestamp, trace
+from knowledgenet.core.tracer import trace
 
-tracing_option = ContextVar('trace_option', default=None)
+trace_level = ContextVar('trace_level', default=0)
+trace_details = ContextVar('trace_details', default=0)
 
 class Service:
     def __init__(self, repository, id="knowledgenet", global_ctx={}):
@@ -28,8 +27,9 @@ class Service:
                 return fact
         return None
 
-    def execute(self, facts, start_from=None, trc_option=None):
-        tracing_option.set(trc_option)
+    def execute(self, facts, start_from=None, trc_level=0, trc_details=0):
+        trace_level.set(trc_level)
+        trace_details.set(trc_details)
         return self._execute_service(facts, start_from)
  
     @trace()
