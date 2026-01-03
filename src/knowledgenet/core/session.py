@@ -84,7 +84,7 @@ class Session:
                     self.graph.new_cursor(element=leftmost)
         return self.output_facts.facts
     
-    @trace()
+    @trace(level=6)
     def _delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.output_facts.del_facts(deduped_deletes)
@@ -105,7 +105,7 @@ class Session:
         logging.debug("%s: Deleted facts from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, len(deduped_deletes), changed_collectors, new_leftmost)
         return new_leftmost, deduped_deletes, changed_collectors
 
-    @trace()
+    @trace(level=6)
     def _update_facts(self, execution_node: Node, facts: Union[set,list], 
                        current_leftmost: Element)->tuple[Element:int]:
         deduped_updates = set(facts) # Remove duplicates
@@ -144,7 +144,7 @@ class Session:
             when_objs.append(objs)
         return when_objs
 
-    @trace()
+    @trace(level=6)
     def _add_facts(self, facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
         # The new_facts variable contains a (deduped) set
         new_facts,updated_facts = self.output_facts.add_facts(facts)

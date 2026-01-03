@@ -54,9 +54,12 @@ def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
     if f_args:
         first = f_args[0]
         try:
-            cls = first.__class__
-            name = f"{cls.__module__}.{cls.__name__}.{f_func.__name__}"
-            object_id = getattr(first, 'id', None)
+            if hasattr(first, f_func.__name__):
+                attr = getattr(first, f_func.__name__)
+                if inspect.ismethod(attr) or inspect.isfunction(attr) or callable(attr):
+                    cls = first.__class__
+                    name = f"{cls.__module__}.{cls.__name__}.{f_func.__name__}"
+                    object_id = getattr(first, 'id', None)
         except Exception:
             # Fall back to module-level name below
             name = None
