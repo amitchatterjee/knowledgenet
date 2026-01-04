@@ -70,9 +70,9 @@ def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
     attributes = {}
     if object_id:
         attributes['obj'] = f"{object_id}"
-    if f_args and trace_details >= 5:
+    if f_args:
         attributes['args'] = [normalize_attribute(arg, trace_details) for arg in f_args]
-    if f_kwargs and trace_details >= 5:
+    if f_kwargs:
         attributes['kwargs'] = normalize_attribute(f_kwargs, trace_details)
     return otel_tracer.start_as_current_span(name, attributes=attributes)
 
@@ -88,8 +88,8 @@ def trace(*decorator_args, **decorator_kwargs):
             ret = None
             with trace_context_factory(level, filter, func, args, kwargs) as trace_ctx:
                 ret = func(*args, **kwargs)
-                if ret is not None and trace_details >= 6:
-                    trace_ctx.set_attribute('ret', normalize_attribute(ret, trace_details))
+                if ret is not None:
+                    trace_ctx.set_attribute('return', normalize_attribute(ret, trace_details))
             return ret
         return wrapper
     if decorator_args and callable(decorator_args[0]):
