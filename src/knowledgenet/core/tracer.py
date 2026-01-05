@@ -10,8 +10,8 @@ class PassThruTraceContext:
 
     def __enter__(self):
         return self
+    
     # The name and signature of this function must match that of otel. DO NOT CHANGE
-
     def set_attribute(self, key, val):
         ...
 
@@ -33,7 +33,6 @@ def normalize_attribute(value, trace_details):
     if len(str_val) > max_size:
         str_val = str_val[0:max_size] + '...'
     return str_val
-
 
 def trace_context_factory(level, filter, f_func, f_args, f_kwargs):
     from knowledgenet.service import trace_level, trace_details

@@ -98,7 +98,7 @@ def init_service(rules_path):
 
 Using the above method, rulesets and rules can be developed and deployed independently of the bootstrap code. 
 
-#### Basic Rule Definition
+#### Basic rule definition
 Here's a basic example of creating a rule:
 
 ```python
@@ -111,7 +111,7 @@ def my_rule():
     )
 ```
 
-#### Custom Rule Identification
+#### Customizing rules attributes
 The above approach allows rules authors to organize rules using function and folder names as conventions. It is possible to override repository, ruleset and rule ids instead of the convention. To override, use the ruledef parameters as shown in the example above:
 
 ```python
@@ -124,7 +124,7 @@ def my_rule():
 
 This approach makes the rule authoring somewhat cumbersome to maintain when there are large number of rules but it allows you to break up rulesets and organize them in separate locations. You can also disable a rule by using the parameter - *enabled*.
 
-#### Repository Merging
+#### Repository merging
 You can also merge multiple repositories into a single repository as follows:
 
 ```python
@@ -132,7 +132,7 @@ You can also merge multiple repositories into a single repository as follows:
     service = Service(repository, id='some_name')
 ```
 
-## Handling Rules Transactions
+## Handling rule transactions
 Once the service has been initialized, transactions are processed using the Service.execute(...) function. Example of an invocation is shown below:
 
 ```python
@@ -195,6 +195,8 @@ The tracing capability is extensive but it is an expensive operation. We suggest
 
 - *trc_level*: If *trc_level* is not specified, the default value, 0, is used, - tracing is disabled. The maximum value is 10. The higher the trace level, the higher the stack depth is (and slower).
 - *trc_details*: If *trc_details* is not specified, the default value, 0, is used, - very little information is added to the trace span. The maximum value is 10. The higher the trace details, the more detailed the trace attributes are.
+
+**Note:** By convention, *trc_level* less than equal to 5 must be used to tune rules. Higher trace levels are meant for Knowledgenet tuning.
 
 Knowledgenet provides a *knowledgenet.core.file_trace_exporter.FileSpanExporter* class that enables the trace spans to be written to a .ndjson file specified as the constructor argument.
 
