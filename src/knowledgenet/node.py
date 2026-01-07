@@ -46,7 +46,7 @@ class Node:
         for i, when in enumerate(rule.whens):
             self.leaves.append(Leaf(f"{self.id}[{i}]", rule, i))
 
-    @trace(trace=8)
+    @trace(level=8)
     def reset_whens(self, updated_facts:set)->bool:
         found = False
         for i,leaf in enumerate(self.when_objs):

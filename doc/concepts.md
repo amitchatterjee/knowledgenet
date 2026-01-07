@@ -12,12 +12,12 @@ At a conceptual level, the entrypoint to this service can be represented by the 
   - **rules** are code segments in Python language that are provided to the Knowledgenet engine. The Knowledgenet engine executes of the rules in order to produce the output.
 
 ## RETE
-Knowledgenet is an implementation of an **Inference Engine** using an adaptation of the **RETE** algorithm designed by **Charles L. Forgy** of Carnegie Melon University. RETE is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the RETE algorithm produce are fully predictable and explainable. It also requires no "learning" as the algorithm is rule-based, predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, RETE is often applied after ML and other statistical algorithms have processed the input data; the results from these process, being fed to the RETE algorithm for higher accuracy and explainability.
+Knowledgenet is an implementation of an **Inference Engine** using an adaptation of the **RETE** algorithm designed by **Charles L. Forgy** of Carnegie Melon University. RETE is an efficient pattern matching algorithm that is widely used in many AI systems including Expert Systems. Unlike some other fields of AI like Machine Learning (ML), the results the RETE algorithm produce are fully predictable and explainable. It also requires no "learning" as the algorithm is rule.based, predefined by "experts". Similar comparison also applies to statistical algorithms that are based on probabilistic model. In applications, RETE is often applied after ML and other statistical algorithms have processed the input data; the results from these process, being fed to the RETE algorithm for higher accuracy and explainability.
 
 ### Inferencing
 A RETE execution emulates the process used by humans to come to a decision (or conclusion) based on facts presented to him/her/them. To make the decision, a person takes the facts provided to him/her and applies a set of well-established logic (or rules). For complex decision-making, applying a rule to a set of facts may produce *intermediate* facts that are then used as input to another set of rules. This process continues until a decision or a set of decisions are reached. One can think of RETE execution as a network of rules that are applied to facts in a certain order based on the availability of facts. A very **simplistic** representation of the RETE network execution is shown below.
 
-![Simplistic Rules Network](./Rule-Network.drawio.png)
+![Simplistic Rules Network](./rule.Network.drawio.png)
 
 In the above diagram, the execution starts at the top and ends at the bottom. Note that the network shown above, is very **simplistic** and does not represent how rules are executed. First, real-life decision making involves many facts and many rules. Secondly, a rule does not just insert new facts, it can also modify existing facts and/or delete a facts. On any change to the facts, the RETE execution flow may be modified and can moved backward to re-execute some of the earlier rules that were based on "incorrect" facts (assumptions). So, the network can be *cyclical* and *recursive* in nature, recursing through the rules in order to reach a decision. Contrast this type of network with acyclic flows like DAG (directed acyclic graph), commonly used in data pipelines in data analytics and ETL applications.
 
@@ -78,7 +78,7 @@ In the above example, Python *lambda expressions* are used. But references to fu
 ### Ruleset
 A ruleset is a collection of rules. For complex applications, the decision-making process may require organizing the rules in rulesets and executing each ruleset in a specific order. For example, "validation" rules may be classified in a ruleset as do "business rules" and "pricing rules". The requirement may be to execute the rulesets in phases in the following manner.
 
-![Rule Flow Example](./Rule-Flow.drawio.png)
+![Rule Flow Example](./rule.Flow.drawio.png)
 
 With Knowledgenet, this can be achieved by organizing the rules into rulesets and specifying the flow. Knowledgenet executes each ruleset in an **execution session**. On completion of a session, the facts from the output session are passed as inputs for the next session in the flow. A *Then* code on a rule can change the normal flow (shown using white arrows) by specifying which ruleset to execute next (shown using red arrows). 
 

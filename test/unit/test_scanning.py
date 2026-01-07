@@ -28,7 +28,7 @@ def test_rule_loading_override():
     assert repository.id == 'repo-override'
     assert len(repository.rulesets) == 1
     assert repository.rulesets[0].id == 'ruleset-override'
-    assert repository.rulesets[0].rules[0].id == 'rule-override'
+    assert repository.rulesets[0].rules[0].id == 'rule.override'
 
 def test_lookup_from_multiple_repos():
     with pytest.raises(Exception):
