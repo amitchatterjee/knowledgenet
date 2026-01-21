@@ -26,10 +26,10 @@ git clone https://github.com/amitchatterjee/knowledgenet-examples.git
 Once cloned, you can navigate through the project files and follow the examples provided to understand how to implement and work with Knowledgenet rules.
 
 ## Rule Structure
-A rule consists of three main components:
+A rule definition consists of three main parts:
 
 1. **Rule Attributes** - Properties that control rule behavior:
-   - `id`: A globally-unique identifier for the rule
+   - `id`: A globally-unique identifier for the rule. If not specified, an id is generated. For declarative rules, if the id is not specified, the name of the function containing the rule declaration is used
    - `order`: Controls execution priority (nodes with lower numbers execute first). See the [concepts documentation](concepts.md) for details on what a *node* is. If not specified, default value of *0* is used
    - `run_once`: If True, each node for the rule only executes once and is never activated again, If not specified, default value of *False* is used
    - `retrigger_on_update`: Controls whether the node is re-evaluated when one or more of the facts present in the *when* clause are updated by the *then* clause of the rule. If not specified, default value of *True* is used

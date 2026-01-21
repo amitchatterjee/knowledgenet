@@ -69,7 +69,7 @@ class Collector:
                 return False
         return True
 
-    @trace(level=9)
+    @trace(level=14)
     def add(self, obj: object) -> bool:
         if of_type(obj) != self.of_type:
             return False
@@ -82,7 +82,7 @@ class Collector:
         self.reset_cache()
         return True
 
-    @trace(level=9)
+    @trace(level=14)
     def remove(self, obj: object) -> bool:
         if of_type(obj) != self.of_type:
             return False

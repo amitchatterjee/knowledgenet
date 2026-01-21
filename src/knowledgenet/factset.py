@@ -33,7 +33,7 @@ class Factset:
             typ = typ.__base__
         return hierarchy
 
-    @trace(level=7)
+    @trace(level=12)
     def add_facts(self, f):
         # Dedup
         new_facts = set(f) - self.facts
@@ -86,7 +86,7 @@ class Factset:
         self.facts.update(new_facts)
         return new_facts, updated_facts - new_collectors
     
-    @trace(level=7)
+    @trace(level=12)
     def update_facts(self, facts):
         updated_facts = set()
         for fact in facts:
@@ -111,7 +111,7 @@ class Factset:
                     updated_facts.add(event_fact)
         return updated_facts
 
-    @trace(level=7)
+    @trace(level=12)
     def del_facts(self, facts):
         updated_facts = set()
         for fact in facts:
@@ -184,7 +184,7 @@ class Factset:
             events_list.add(event_fact)
             self._type_to_events[typ] = events_list
 
-    @trace(level=7)
+    @trace(level=12)
     def find(self, of_type, group=None, filter=lambda obj:True):
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \

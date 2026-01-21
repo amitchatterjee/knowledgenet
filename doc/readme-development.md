@@ -13,6 +13,7 @@ cd $HOME
 python3.14 -m venv knowledgenet-venv
 
 pip install --upgrade pip
+pip install pip-tools
 ```
 
 ### Switch to knowledgenet virtual environment:

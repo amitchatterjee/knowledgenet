@@ -193,10 +193,10 @@ with tracer.start_as_current_span("transaction.execution - (CHANGE THE NAME of t
 
 The tracing capability is extensive but it is an expensive operation. We suggest that you control it selectively instead of enabling it for all calls to *service.execute(...)*. You can control the stack depth and the details of the OTEL tracing span that Knowledgenet generates using the following parameters. 
 
-- *trc_level*: If *trc_level* is not specified, the default value, 0, is used, - tracing is disabled. The maximum value is 10. The higher the trace level, the higher the stack depth is (and slower).
+- *trc_level*: If *trc_level* is not specified, the default value, 0, is used, - tracing is disabled. The maximum value is 20. The higher the trace level, the higher the stack depth is (and slower).
 - *trc_details*: If *trc_details* is not specified, the default value, 0, is used, - very little information is added to the trace span. The maximum value is 10. The higher the trace details, the more detailed the trace attributes are.
 
-**Note:** By convention, *trc_level* less than equal to 5 must be used to tune rules. Higher trace levels are meant for Knowledgenet tuning.
+**Note:** By convention, *trc_level* less than or equal to 10 must be used to tune rules and application code. Higher trace levels are reserved for Knowledgenet tuning.
 
 Knowledgenet provides a *knowledgenet.core.file_trace_exporter.FileSpanExporter* class that enables the trace spans to be written to a .ndjson file specified as the constructor argument.
 
