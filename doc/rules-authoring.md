@@ -1,110 +1,32 @@
 # Rules Authoring
 
 ## Introduction
-The Knowledgenet framework provides a flexible and powerful way to define, manage, and execute business rules in Python. This guide will walk you through the process of authoring rules using Knowledgenet, from basic rule creation to advanced patterns and best practices.
+This guide is intended for **rule authors** -- the engineers and business users who write the business logic for a Knowledgenet application. It covers everything you need to know to author rules: the rule syntax, matching conditions, actions, chaining, aggregation, events, and common patterns.
 
-As discussed in [rules-service documentation](rule-service.md), Knowledgenet rules can be created in two ways:
-1. **Programmatically** - by directly instantiating `Rule` objects in your initialization code.
-2. **Declaratively** - using Python functions decorated with `@ruledef`, which automatically registers rules with the framework.
+Before reading this guide, it is recommended that you read:
+- [Concepts](concepts.md) -- foundational concepts of the Knowledgenet engine including the RETE algorithm, inferencing, and entity relationships.
+- [Rule Service](rule-service.md) -- covers the platform engineering side: bootstrapping the engine, designing the fact model, configuring tracing, and wiring up transactions. Understanding the platform layer helps you understand the context in which your rules execute.
 
-The declarative approach with `@ruledef` makes rules easier to write, test, and maintain as separate modules. Rules are organized into rulesets and repositories, allowing for logical grouping and modular deployment of business logic.
+In a typical Knowledgenet application, **platform engineers** set up the infrastructure: they define the domain model (fact classes), bootstrap the engine, provide helper/utility functions, configure tracing, and wire up transaction endpoints. As a rule author, your job is to write the business logic: the individual rules that operate on facts provided by the platform.
 
-Before reading this guide, it is recommended that you read the [Concepts](concepts.md) document, which covers the foundational concepts of the Knowledgenet engine including the RETE algorithm, inferencing, and entity relationships.
+## Understanding Facts
+Facts are the data that rules operate on. They are instances of Python classes defined by the platform team as part of the domain model (see [Designing the Fact Model](rule-service.md#designing-the-fact-model) for how they are designed).
 
-## About the knowledgenet-examples companion project
-The `knowledgenet-examples` companion project is designed to provide practical examples and a reference implementation of a typical Knowledgenet rules system. By exploring this repository, you can gain insights into how to structure and implement rules within the Knowledgenet framework. Please visit the [Knowledgenet Examples Repository](https://github.com/amitchatterjee/knowledgenet-examples), download/clone the repository to follow along. Here are some key functionalities and features you might find in the `knowledgenet-examples` project:
+As a rule author, you need to know:
+- **What types of facts exist** -- the classes defined in the domain model (e.g., `Person`, `Request`, `Claim`)
+- **What attributes they have** -- the properties you can reference in match conditions (e.g., `this.age`, `this.policy.start_date`)
+- **How facts flow** -- input facts are provided to the engine, rules can insert new facts, update existing facts, or delete facts, and the resulting facts flow to the next ruleset
 
-1. **Rule Definitions**: Examples of how to define rules using Python, including syntax and best practices.
-2. **Rule Execution**: Demonstrations of how rules are executed within the Knowledgenet system.
-3. **Integration**: Examples showing how to integrate Knowledgenet rules with other systems or applications.
-4. **Testing**: Sample unit tests to ensure that rules are functioning as expected.
-5. **Documentation**: Detailed comments and documentation within the code to explain the purpose and functionality of different components.
-
-To get started, you can clone the repository using the following command from your terminal:
-
-```bash
-git clone https://github.com/amitchatterjee/knowledgenet-examples.git
-```
-Once cloned, you can navigate through the project files and follow the examples provided to understand how to implement and work with Knowledgenet rules.
-
-## Defining Facts
-Facts are the fundamental data units that rules operate on. In Knowledgenet, facts are instances of Python classes. Before authoring rules, you need to define the fact classes that represent the data in your domain.
-
-### Basic Fact Classes
-A fact class is a standard Python class. At minimum, it should have an `__init__` method and, for debugging purposes, `__str__` and `__repr__` methods:
+Here is a simple example of a fact class:
 
 ```python
 class Person:
     def __init__(self, name, age):
         self.name = name
         self.age = age
-
-    def __str__(self):
-        return f"Person({self.name}, {self.age})"
-
-    def __repr__(self):
-        return self.__str__()
 ```
 
-### Hash and Equality
-Facts must be **hashable** because Knowledgenet stores them in sets internally. Python's default object identity (`id()`) satisfies this for most cases. However, if you need facts to be deduplicated based on their content (e.g., two `Person` objects with the same `id` field should be treated as the same fact), you must implement `__hash__` and `__eq__`:
-
-```python
-class Person:
-    def __init__(self, id, name, age):
-        self.id = id
-        self.name = name
-        self.age = age
-
-    def __eq__(self, other):
-        if isinstance(other, Person):
-            return self.id == other.id
-        return False
-
-    def __hash__(self):
-        return hash(self.id)
-
-    def __str__(self):
-        return f"Person({self.id}, {self.name})"
-
-    def __repr__(self):
-        return self.__str__()
-```
-
-### Using Pydantic Models
-For more structured fact definitions, you can use Pydantic `BaseModel` classes. This provides automatic validation and serialization:
-
-```python
-from pydantic import BaseModel, Field
-from typing import Any
-
-class Driver(BaseModel):
-    id: str = Field(..., description="Unique driver identifier")
-    name: str = Field(..., description="Driver full name")
-    age: int = Field(..., description="Driver age")
-
-    def __eq__(self, obj: Any) -> bool:
-        if isinstance(obj, Driver):
-            return self.id == obj.id
-        return False
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __str__(self) -> str:
-        return f'Driver({self.id})'
-
-    def __repr__(self) -> str:
-        return self.__str__()
-```
-
-### Built-in Python Types as Facts
-Facts can also be instances of Python built-in types, as long as they are hashable. For example, `tuple`, `frozenset`, `int`, `str`, and `float` can all be used as facts directly:
-
-```python
-facts = [("key", "value"), frozenset([1, 2, 3]), 42]
-result = service.execute(facts)
-```
+In your rules, you reference fact attributes in match conditions (`this.age > 21`) and in actions (`ctx.person.name`).
 
 ## Rule Structure
 A rule definition consists of three main parts:
@@ -126,7 +48,7 @@ A rule definition consists of three main parts:
    - Common actions performed: `insert()`, `update()`, `delete()` to insert new facts, update an existing fact or delete a fact
 
 ## Your First Rule
-Let's start with a simple rule that classifies a person as a minor or adult based on age:
+Let's start with a simple rule that classifies a person as a minor based on age:
 
 ```python
 from knowledgenet.rule import Rule, Fact
@@ -183,27 +105,18 @@ rule = Rule(
 
 When `var='person'` is specified, the matched fact is automatically stored as `ctx.person`.
 
-### Running a Rule
-To execute a rule, you need a `Service`, a `Repository`, and a `Ruleset`:
+### Running and Testing a Rule
+To verify that your rule works, you can write a simple test. The platform team provides the `Service`, `Repository`, and `Ruleset` infrastructure (see [Rule Service](rule-service.md#bootstrapping-the-knowledgenet-engine)), but for unit tests you can create them directly:
 
 ```python
 from knowledgenet.service import Service
 from knowledgenet.repository import Repository
 from knowledgenet.ruleset import Ruleset
 
-# Create the ruleset and repository
-repo = Repository('my-repo', [
-    Ruleset('classification', [rule])
-])
+repo = Repository('test', [Ruleset('rs', [rule])])
+result_facts = Service(repo).execute([Person('Alice', 15), Person('Bob', 30)])
 
-# Create the service
-service = Service(repo)
-
-# Execute with input facts
-input_facts = [Person('Alice', 15), Person('Bob', 30)]
-result_facts = service.execute(input_facts)
-
-# Inspect results
+# Check results
 for fact in result_facts:
     if isinstance(fact, Classification):
         print(f"{fact.person.name} is a {fact.category}")
@@ -251,11 +164,6 @@ This is equivalent to combining the conditions with `and` in a single lambda, bu
 When the `when` clause contains a list of `Fact` conditions, **all** conditions must be satisfied for the rule to fire:
 
 ```python
-class Person:
-    def __init__(self, name, age):
-        self.name = name
-        self.age = age
-
 class Address:
     def __init__(self, person_id, city):
         self.person_id = person_id
@@ -284,28 +192,10 @@ rule = Rule(
 The conditions are evaluated in order. Context variables set by earlier conditions (via `assign()` or `var`) are available to later conditions. In the example above, `ctx.person` set in the first condition is used in the second condition to correlate the address with the person.
 
 ### Named Facts
-Instead of matching by Python type, you can match facts by a string name. This is useful for configuration or context facts that don't warrant a full class definition. Named facts are created using the `Wrapper` class:
+Instead of matching by Python type, you can match facts by a string name. Named facts are created using the `Wrapper` class (typically by the platform team) and matched using `Fact(named=...)`:
 
 ```python
-from knowledgenet.ftypes import Wrapper
-
-# Create a named fact
-config = Wrapper(named='app-config', max_retries=3, timeout=30)
-
-# Match it in a rule
-rule = Rule(
-    when=Fact(named='app-config', var='config'),
-    then=lambda ctx: print(f"Max retries: {ctx.config.max_retries}")
-)
-```
-
-Named facts are commonly used in the auto-insurance example to pass ruleset-level context:
-
-```python
-# Inserted as input fact
-context_fact = Wrapper(named='validation-ruleset', description='Validation phase')
-
-# Matched in rules
+# Matching a named fact provided by the platform
 rule = Rule(
     when=[
         Fact(named='validation-ruleset', var='ruleset_context'),
@@ -316,8 +206,10 @@ rule = Rule(
 )
 ```
 
+Named facts are commonly used to pass ruleset-level configuration from the platform to rules. See [Wrappers](rule-service.md#wrappers-named-facts) in the Rule Service documentation for how they are created.
+
 ### The Wrapper Class
-The `Wrapper` class provides a flexible way to create facts without defining dedicated classes. It supports three creation patterns:
+You can also create `Wrapper` facts directly in rules when you need lightweight, ad-hoc fact types:
 
 ```python
 from knowledgenet.ftypes import Wrapper
@@ -348,7 +240,7 @@ Rule(
 ```
 
 ### Function Actions
-For complex logic, define a separate function:
+For complex logic, define a separate function. These functions are often placed in the same module as the rule:
 
 ```python
 def classify_person(ctx):
@@ -469,7 +361,7 @@ Stores named values in the context. Always returns `True` so it can be used in m
 ```python
 from knowledgenet.helper import assign
 
-# In a match expression
+# In a match expression - store a computed value for use in the then clause
 matches=lambda ctx, this: assign(ctx, total=this.price * this.quantity) and ctx.total > 100
 ```
 
@@ -496,6 +388,7 @@ Returns the current `Node` object (the rule instance being executed):
 from knowledgenet.helper import node
 
 current_node = node(ctx)
+# Access the rule: current_node.rule.id
 ```
 
 #### session(ctx) -> Session
@@ -508,17 +401,15 @@ current_session = session(ctx)
 ```
 
 #### global_ctx(ctx) -> dict
-Returns the global context dictionary shared across all rule executions within a service. This is set when creating the `Service`:
+Returns the global context dictionary shared across all rule executions within a service. This is configured by the platform team when creating the `Service` (see [Global Context](rule-service.md#global-context)):
 
 ```python
-service = Service(repo, global_ctx={'db_connection': conn, 'api_key': key})
-
-# In a rule's then clause:
 from knowledgenet.helper import global_ctx
 
 def lookup_data(ctx):
-    conn = global_ctx(ctx)['db_connection']
-    # use conn to query external data
+    client = global_ctx(ctx)['api_client']
+    result = client.lookup(ctx.request.id)
+    insert(ctx, ExternalData(result))
 ```
 
 ## Rule Chaining
@@ -554,10 +445,6 @@ rule_process = Rule(
     when=Fact(of_type=ValidatedData, var='validated'),
     then=lambda ctx: insert(ctx, ProcessedResult(ctx.validated))
 )
-
-repo = Repository('pipeline', [Ruleset('rs', [rule_validate, rule_process])])
-result = Service(repo).execute([RawData(42)])
-# result contains: RawData(42), ValidatedData(...), ProcessedResult(...)
 ```
 
 ### Backward Chaining with Update
@@ -572,7 +459,7 @@ rule_1 = Rule(
     then=lambda ctx: insert(ctx, ZeroValueAlert(ctx.item))
 )
 
-# Rule 2: Set value to zero (fires first because of order)
+# Rule 2: Set value to zero (fires first because of higher order)
 def reset_value(ctx):
     ctx.item.value = 0
     update(ctx, ctx.item)
@@ -626,10 +513,9 @@ rule = Rule(
     then=lambda ctx: insert(ctx, Assignment(ctx.p, ctx.c))
 )
 
-# With 2 persons and 3 cities, this creates 2 × 3 = 6 nodes
+# With 2 persons and 3 cities, this creates 2 x 3 = 6 nodes
 facts = [Person('Alice', 25), Person('Bob', 30),
          City('NYC'), City('LA'), City('Chicago')]
-result = Service(Repository('r', [Ruleset('rs', [rule])])).execute(facts)
 # 6 Assignment facts are created
 ```
 
@@ -652,13 +538,13 @@ rule = Rule(
 Collections allow you to group facts by type and compute aggregate values. This is essential for rules that need to operate on multiple facts as a set rather than individually.
 
 ### The Collector
-A `Collector` is a special fact type that automatically aggregates facts of a specified type. To use collectors, you:
-1. Create a `Collector` fact and include it in the input facts (or insert it from a rule)
-2. Write rules that match the collector using `Collection` or `Fact(of_type=Collector, group=...)`
+A `Collector` is a special fact type that automatically aggregates facts of a specified type. Collectors are typically provided by the platform team as part of the input facts (see [Collectors](rule-service.md#collectors) in the Rule Service documentation), but they can also be inserted by rules at runtime.
+
+To use a collector in a rule, match it using `Collection` or `Fact(of_type=Collector, group=...)`:
 
 ```python
-from knowledgenet.container import Collector
 from knowledgenet.rule import Rule, Fact, Collection
+from knowledgenet.container import Collector
 
 class OrderItem:
     def __init__(self, name, price, quantity):
@@ -679,64 +565,40 @@ rule = Rule(
                             and assign(ctx, total=this.sum(), count=this.size())),
     then=lambda ctx: insert(ctx, OrderSummary(ctx.total, ctx.count))
 )
-
-# Execute with a collector and items
-facts = [
-    OrderItem('Widget', 50, 2),
-    OrderItem('Gadget', 75, 1),
-    Collector(of_type=OrderItem, group='order_items',
-              value=lambda item: item.price * item.quantity)
-]
-result = Service(Repository('r', [Ruleset('rs', [rule])])).execute(facts)
 ```
 
-### Collector Parameters
-The `Collector` constructor accepts:
-
-| Parameter | Description |
-|-----------|-------------|
-| `group` | A unique string identifier for this collector |
-| `of_type` | The fact type to collect |
-| `filter` | Optional function(s) to filter which facts are collected. Receives `(collector, fact)` as arguments |
-| `value` | Optional function to extract a numeric value from each fact. Required for `sum()` and `variance()` |
-| `key` | Optional function to extract a comparison key from each fact. Required for `minimum()` and `maximum()` |
-| `**kwargs` | Additional keyword arguments are stored as attributes on the collector |
+The `Collection` class is syntactic sugar for `Fact(of_type=Collector, group=...)`. Using `Collection` is recommended for clarity.
 
 ### Collector Aggregate Methods
+Within a match condition, the `this` parameter refers to the `Collector` object, which provides these aggregation methods:
 
 | Method | Description | Requires |
 |--------|-------------|----------|
-| `sum()` | Sum of all collected values | `value` parameter |
-| `variance()` | Statistical variance of collected values | `value` parameter |
-| `minimum()` | Fact with the minimum key | `key` parameter |
-| `maximum()` | Fact with the maximum key | `key` parameter |
+| `sum()` | Sum of all collected values | `value` parameter on Collector |
+| `variance()` | Statistical variance of collected values | `value` parameter on Collector |
+| `minimum()` | Fact with the minimum key | `key` parameter on Collector |
+| `maximum()` | Fact with the maximum key | `key` parameter on Collector |
 | `size()` | Number of collected facts | - |
 | `empty()` | `True` if no facts collected | - |
 | `collection` | The set of collected fact objects | - |
 
-### Collector with Filter
-You can filter which facts are added to a collector:
+### Accessing the Collection Directly
+Use the `collection` attribute to iterate over or sort collected facts:
 
 ```python
-# Only collect items with price > 10
-collector = Collector(
-    of_type=OrderItem,
-    group='expensive_items',
-    filter=lambda collector, item: item.price > 10,
-    value=lambda item: item.price
-)
-```
+def select_best_action(ctx):
+    actions = list(ctx.actions.collection)
+    actions.sort(key=lambda a: (-a.rank, a.pay_percent))
+    best = actions[0]
+    best.inactive = False
+    update(ctx, best)
 
-The filter function receives the collector instance as the first argument and the candidate fact as the second. This allows filters that reference collector attributes:
-
-```python
-# Collector that only collects items belonging to a specific parent
-collector = Collector(
-    of_type=OrderItem,
-    group='order_items',
-    parent=some_order,  # Custom attribute stored on collector
-    filter=lambda collector, item: item.order_id == collector.parent.id,
-    value=lambda item: item.price
+rule = Rule(
+    id='select_action',
+    run_once=True, order=1,
+    when=Collection(group='action-collector', var='actions',
+                    matches=lambda ctx, this: not this.empty()),
+    then=select_best_action
 )
 ```
 
@@ -765,16 +627,7 @@ rule_create_collectors = Rule(
 )
 ```
 
-### Collection Syntax
-The `Collection` class is syntactic sugar for `Fact(of_type=Collector, group=...)`:
-
-```python
-# These are equivalent:
-Collection(group='my_group', matches=lambda ctx, this: this.sum() > 10)
-Fact(of_type=Collector, group='my_group', matches=lambda ctx, this: this.sum() > 10)
-```
-
-Using `Collection` is recommended for clarity.
+Note that the `filter` function receives the collector instance as the first argument. This allows filters that reference custom attributes stored on the collector (like `collector.parent` above).
 
 ### Automatic Collector Updates
 Collectors automatically update when facts are inserted, updated, or deleted during rule execution. When a collector's contents change, rules that depend on it are re-evaluated:
@@ -787,7 +640,7 @@ rule_add_item = Rule(
     then=lambda ctx: insert(ctx, OrderItem('Bonus', 0, 1))
 )
 
-# This rule automatically re-evaluates when the new OrderItem is added
+# This rule automatically re-evaluates when the new OrderItem is added to the collector
 rule_check_total = Rule(
     id='check_total', order=1,
     when=Collection(group='order_items', var='items'),
@@ -796,26 +649,14 @@ rule_check_total = Rule(
 ```
 
 ## Events
-Events allow rules to react to changes in the FactSet (insertions, updates, and deletions of specific fact types) rather than matching individual facts.
-
-### EventFact
-An `EventFact` monitors one or more fact types for changes. It is included in the input facts:
-
-```python
-from knowledgenet.ftypes import EventFact
-from knowledgenet.rule import Event
-
-# Monitor changes to OrderItem facts
-event = EventFact(group='item-changes', on_types=OrderItem)
-
-# Monitor changes to multiple types
-event = EventFact(group='order-changes', on_types=[OrderItem, OrderDiscount])
-```
+Events allow rules to react to changes in the FactSet (insertions, updates, and deletions of specific fact types) rather than matching individual facts. Events are typically set up by the platform team as part of the input facts (see [EventFacts](rule-service.md#eventfacts) in the Rule Service documentation).
 
 ### Event Rules
 Use the `Event` condition in the `when` clause to match events:
 
 ```python
+from knowledgenet.rule import Event
+
 rule = Rule(
     id='on_item_change',
     when=Event(group='item-changes', var='event'),
@@ -826,7 +667,7 @@ rule = Rule(
 The `Event` class is syntactic sugar for `Fact(of_type=EventFact, group=...)`.
 
 ### Event Properties
-When an event fires, the `EventFact` object provides:
+When an event fires, the `EventFact` object (accessible via `ctx.event` if `var='event'`) provides:
 
 | Property | Description |
 |----------|-------------|
@@ -861,18 +702,22 @@ rule = Rule(
 )
 ```
 
-### Custom Event Parameters
-`EventFact` supports custom keyword arguments stored as attributes:
+### Creating EventFacts in Rules
+While EventFacts are typically provided by the platform team, you can also create them in rules when needed:
 
 ```python
-event1 = EventFact(group='audit-events', on_types=Action, id='audit-1', severity='high')
-event2 = EventFact(group='audit-events', on_types=Action, id='audit-2', severity='low')
+from knowledgenet.ftypes import EventFact
+
+rule = Rule(
+    id='setup_monitoring',
+    when=Fact(of_type=Config, var='config',
+              matches=lambda ctx, this: this.enable_audit),
+    then=lambda ctx: insert(ctx, EventFact(group='audit', on_types=[Action, Payment]))
+)
 ```
 
-Multiple `EventFact` instances with the same `group` but different parameters are treated as distinct facts, each creating their own node when matched by rules.
-
 ## Declarative Rules with @ruledef
-The `@ruledef` decorator provides a clean way to define rules in separate Python modules that are automatically discovered and registered.
+The `@ruledef` decorator is the recommended way to define rules. It provides a clean way to define rules in separate Python modules that are automatically discovered and registered by the platform's scanner.
 
 ### Basic Usage
 
@@ -896,6 +741,8 @@ When `@ruledef` is used without arguments:
 - The **ruleset id** is derived from the parent directory name
 - The **repository id** is derived from the grandparent directory name
 
+This means the file's location in the directory structure determines which ruleset and repository the rule belongs to. See [Directory Structure Convention](rule-service.md#directory-structure-convention) in the Rule Service documentation for how platform engineers organize the directory layout.
+
 ### With Explicit Parameters
 
 ```python
@@ -916,51 +763,7 @@ def deprecated_rule():
     return Rule(...)
 ```
 
-A disabled rule is not registered with the engine. This is useful during development or for conditional feature flags.
-
-### Directory Structure Convention
-When using `@ruledef` with automatic repository/ruleset discovery, organize your rules in the following directory structure:
-
-```
-rules/
-  <repository-name>/
-    01_validation/
-      validation_rules.py
-      field_checks.py
-    02_business/
-      eligibility_rules.py
-      pricing_rules.py
-    03_finalization/
-      selection_rules.py
-```
-
-- Each top-level directory under `rules/` becomes a **repository**
-- Each subdirectory becomes a **ruleset**, ordered alphabetically by directory name
-- Each `.py` file contains rule definitions decorated with `@ruledef`
-
-Prefixing directory names with numbers (e.g., `01_`, `02_`) ensures the desired execution order since rulesets are sorted alphabetically.
-
-### Loading Declarative Rules
-
-```python
-import os
-from knowledgenet.scanner import load_rules_from_filepaths, lookup
-from knowledgenet.service import Service
-
-def init_service(rules_path):
-    # Collect all subdirectory paths
-    subdirs = [os.path.join(rules_path, name)
-               for name in sorted(os.listdir(rules_path))
-               if os.path.isdir(os.path.join(rules_path, name))]
-
-    # Load rules from all subdirectories
-    load_rules_from_filepaths(subdirs)
-
-    # Look up the repository and create the service
-    repo_name = os.path.basename(rules_path)
-    repository = lookup(repo_name)
-    return Service(repository)
-```
+A disabled rule is not registered with the engine. This is useful during development or for temporarily removing a rule without deleting the code.
 
 ## Rule Execution Order
 
@@ -975,25 +778,7 @@ rule_c = Rule(id='third', order=2, when=..., then=...)   # Executes third
 
 The default `order` is `0`. Rules with the same order value have their nodes placed in the graph without a guaranteed relative order.
 
-### Ruleset Ordering
-Rulesets within a repository are executed in the order they are defined:
-
-```python
-repo = Repository('my-repo', [
-    Ruleset('validation', validation_rules),     # Executes first
-    Ruleset('business-logic', business_rules),   # Executes second
-    Ruleset('pricing', pricing_rules)            # Executes third
-])
-```
-
-The output facts from one ruleset become the input facts for the next.
-
-### Custom Node Sorting
-For advanced use cases, you can provide a custom node sorting function when creating the `Service`:
-
-```python
-service = Service(repo, node_sorter=my_custom_sorter)
-```
+**Tip**: Use `order` to ensure that certain rules fire before others. For example, validation rules at `order=0` and aggregate/summary rules at `order=1` ensures that all individual validations complete before the summary rule evaluates.
 
 ## Controlling Rule Re-execution
 
@@ -1010,8 +795,8 @@ rule = Rule(
 ```
 
 Use `run_once` for:
-- Initialization rules that should fire exactly once per matching fact combination
 - Validation rules where you want a single check per request
+- Initialization rules that should fire exactly once per matching fact combination
 - Preventing infinite loops when a rule modifies facts that would cause it to re-trigger
 
 ### retrigger_on_update
@@ -1032,14 +817,16 @@ rule = Rule(
 
 Without `retrigger_on_update=False`, this rule would create an infinite loop: it updates the fact, which triggers re-evaluation, which updates the fact again, and so on.
 
-The difference between `run_once` and `retrigger_on_update`:
+### run_once vs retrigger_on_update
+These two attributes address different scenarios:
+
 - `run_once=True`: The node is **permanently removed** from the graph after first execution. It will never fire again for that fact combination.
 - `retrigger_on_update=False`: The node **stays in the graph** but its cached evaluation result is not invalidated when its matched facts are updated. It can still fire again if new fact combinations are created (e.g., via insert).
 
 ## Flow Control Across Rulesets
+Rulesets within a repository execute in sequence by default. The output of each ruleset feeds into the next. Rules can alter this flow using the control functions described below.
 
 ### Normal Flow
-By default, rulesets execute in sequence. The output of each ruleset feeds into the next:
 
 ```
 Ruleset 1 → Ruleset 2 → Ruleset 3 → Result
@@ -1049,7 +836,7 @@ Ruleset 1 → Ruleset 2 → Ruleset 3 → Result
 `next_ruleset(ctx)` terminates the current ruleset and proceeds to the next one. Remaining rules in the current ruleset are skipped:
 
 ```python
-# If validation fails, skip business rules and go to the next ruleset
+# If validation fails, skip remaining validation rules
 rule = Rule(
     id='skip_on_error',
     when=Fact(of_type=ValidationError),
@@ -1061,14 +848,9 @@ rule = Rule(
 `switch(ctx, ruleset_id)` terminates the current ruleset and jumps directly to the specified ruleset, skipping any intermediate ones:
 
 ```python
-repo = Repository('my-repo', [
-    Ruleset('rs1', [rule_1]),    # Executing
-    Ruleset('rs2', [rule_2]),    # Skipped by switch
-    Ruleset('rs3', [rule_3])     # Jump target
-])
-
-# In a rule within rs1:
-then=lambda ctx: switch(ctx, 'rs3')
+# In a rule within the first ruleset:
+then=lambda ctx: switch(ctx, 'error-handling')
+# Skips all rulesets between current and 'error-handling'
 ```
 
 This enables conditional workflow routing, such as jumping to error handling or skipping optional processing phases.
@@ -1095,7 +877,7 @@ class ValidationError:
     def __init__(self, message):
         self.message = message
 
-# Validation ruleset
+# Check for required fields
 validate_required = Rule(
     id='validate_required',
     run_once=True,
@@ -1111,11 +893,6 @@ stop_on_error = Rule(
     when=Fact(of_type=ValidationError),
     then=lambda ctx: end(ctx)
 )
-
-repo = Repository('app', [
-    Ruleset('validation', [validate_required, stop_on_error]),
-    Ruleset('business', business_rules)  # Skipped if validation fails
-])
 ```
 
 ### Accumulator Pattern
@@ -1149,7 +926,8 @@ rule_history = Rule(
     then=lambda ctx: insert(ctx, Score('history', 20))
 )
 
-# Aggregation rule
+# Aggregation rule (requires a Collector(of_type=Score, group='scores', value=...)
+# to be provided in the input facts)
 rule_assess = Rule(
     id='assess_risk',
     run_once=True, order=1,
@@ -1161,13 +939,6 @@ rule_assess = Rule(
         RiskAssessment(ctx.total,
                        'high' if ctx.total > 20 else 'low'))
 )
-
-facts = [
-    Person('Alice', 22),
-    DrivingRecord(accidents=1),
-    Collector(of_type=Score, group='scores',
-              value=lambda s: s.points)
-]
 ```
 
 ### Selection Pattern
@@ -1194,12 +965,6 @@ rule_select = Rule(
 Track all fact changes for auditing:
 
 ```python
-class AuditEntry:
-    def __init__(self, action, fact_type, details):
-        self.action = action
-        self.fact_type = fact_type
-        self.details = details
-
 def audit_changes(ctx, event):
     for fact in event.added:
         insert(ctx, AuditEntry('CREATED', type(fact).__name__, str(fact)))
@@ -1213,38 +978,29 @@ rule_audit = Rule(
     when=Event(group='audit', var='event'),
     then=lambda ctx: audit_changes(ctx, ctx.event)
 )
-
-facts = [
-    input_fact_1, input_fact_2,
-    EventFact(group='audit', on_types=[OrderItem, Payment])
-]
 ```
 
-### Multi-Ruleset Pipeline
-Organize complex business logic into distinct phases:
+### Multi-Phase Pipeline
+Organize complex business logic into distinct ruleset phases:
 
 ```python
 # Directory structure:
 # rules/claims/
-#   01_validation/
+#   01_validation/        <- Validates input data
 #     field_validation.py
 #     business_validation.py
-#   02_eligibility/
+#   02_eligibility/       <- Evaluates contract terms
 #     contract_rules.py
 #     coverage_rules.py
-#   03_fraud/
+#   03_fraud/             <- Flags suspicious claims
 #     fraud_detection.py
-#   04_pricing/
+#   04_pricing/           <- Computes payment amounts
 #     pricing_rules.py
-#   05_finalization/
+#   05_finalization/      <- Selects the best action
 #     selection_rules.py
 
 # Each phase operates on the facts produced by the previous phase.
-# Validation inserts ValidationError facts if checks fail.
-# Eligibility evaluates contract terms.
-# Fraud detection flags suspicious claims.
-# Pricing computes payment amounts.
-# Finalization selects the best action.
+# Rules in each phase focus on a single concern.
 ```
 
 ## Avoiding Common Pitfalls
@@ -1270,7 +1026,7 @@ rule = Rule(
 Multi-condition rules generate all valid combinations. Be explicit about correlations:
 
 ```python
-# PROBLEM: Creates Cartesian product of all persons × all addresses
+# PROBLEM: Creates Cartesian product of all persons x all addresses
 rule = Rule(
     when=[Fact(of_type=Person, var='p'), Fact(of_type=Address, var='a')],
     then=...
@@ -1288,7 +1044,7 @@ rule = Rule(
 ```
 
 ### Facts Must Be Hashable
-All facts stored in the FactSet must be hashable. If your fact class uses mutable containers as attributes, the default `object.__hash__` (based on `id()`) works fine. But if you override `__eq__`, you must also override `__hash__`:
+All facts stored in the FactSet must be hashable. If the platform team defines `__eq__` on a fact class, they must also define `__hash__`. If you create ad-hoc fact classes in your rules, remember this requirement:
 
 ```python
 # WRONG: Defining __eq__ without __hash__ makes the object unhashable
@@ -1330,42 +1086,8 @@ rule = Rule(
 )
 ```
 
-## Tracing and Debugging
-Knowledgenet integrates with OpenTelemetry for detailed tracing of rule execution. See the [rules-service documentation](rule-service.md#enable-tracing) for configuration details.
-
-### Enabling Tracing
-
-```python
-result = service.execute(facts, trc_level=10, trc_details=5)
-```
-
-- `trc_level`: Controls the trace stack depth (0 = disabled, max 20). Values up to 10 are for application-level debugging; higher values are for engine internals.
-- `trc_details`: Controls the amount of detail in trace spans (0 = minimal, max 10).
-
-### File-based Tracing
-Knowledgenet includes a `FileSpanExporter` for writing trace output to `.ndjson` files, useful during development:
-
-```python
-from knowledgenet.core.file_trace_exporter import FileSpanExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry import trace
-
-provider = TracerProvider(resource=Resource.create({"service.name": "my-app"}))
-exporter = FileSpanExporter("trace-output.ndjson")
-provider.add_span_processor(BatchSpanProcessor(exporter))
-trace.set_tracer_provider(provider)
-
-# Now execute with tracing
-with trace.get_tracer(__name__).start_as_current_span("my-transaction"):
-    result = service.execute(facts, trc_level=10, trc_details=5)
-
-provider.shutdown()
-```
-
 ## Testing Rules
-Well-tested rules are critical for a reliable system. Here are recommended patterns for unit testing.
+Well-tested rules are critical for a reliable system. For unit tests, you can create a minimal `Service` / `Repository` / `Ruleset` setup without needing the full platform bootstrap.
 
 ### Basic Test Structure
 
@@ -1374,6 +1096,8 @@ import pytest
 from knowledgenet.service import Service
 from knowledgenet.repository import Repository
 from knowledgenet.ruleset import Ruleset
+from knowledgenet.rule import Rule, Fact
+from knowledgenet.controls import insert
 
 def find_results(result_type, facts):
     """Helper to filter results by type."""
@@ -1407,34 +1131,12 @@ def test_no_classification_for_adults():
     assert len(classifications) == 0
 ```
 
-### Testing Rule Chaining
-
-```python
-def test_validation_stops_execution():
-    rules = [validate_required, stop_on_error]
-    business_rule = Rule(id='business',
-                         when=Fact(of_type=Request),
-                         then=lambda ctx: insert(ctx, Result('processed')))
-
-    repo = Repository('test', [
-        Ruleset('validation', rules),
-        Ruleset('business', [business_rule])
-    ])
-
-    # Request without required field
-    result = Service(repo).execute([Request(customer_id=None)])
-
-    errors = find_results(ValidationError, result)
-    assert len(errors) == 1
-
-    results = find_results(Result, result)
-    assert len(results) == 0  # Business rules were skipped
-```
-
-### Testing Collections
+### Testing with Collections
 
 ```python
 def test_aggregate_scoring():
+    from knowledgenet.container import Collector
+
     facts = [
         Score('age', 10),
         Score('history', 20),
@@ -1450,32 +1152,44 @@ def test_aggregate_scoring():
     assert assessments[0].risk_level == 'high'
 ```
 
+### Testing Flow Control
+
+```python
+def test_validation_stops_execution():
+    business_rule = Rule(id='business',
+                         when=Fact(of_type=Request),
+                         then=lambda ctx: insert(ctx, Result('processed')))
+    repo = Repository('test', [
+        Ruleset('validation', [validate_required, stop_on_error]),
+        Ruleset('business', [business_rule])
+    ])
+
+    result = Service(repo).execute([Request(customer_id=None)])
+
+    errors = find_results(ValidationError, result)
+    assert len(errors) == 1
+    results = find_results(Result, result)
+    assert len(results) == 0  # Business rules were skipped
+```
+
 ## Quick Reference
 
-### Imports
+### Imports for Rule Authors
 
 ```python
 # Rule definition
 from knowledgenet.rule import Rule, Fact, Collection, Event
-
-# Fact types
-from knowledgenet.container import Collector
-from knowledgenet.ftypes import EventFact, Wrapper
-
-# Control functions
-from knowledgenet.controls import insert, update, delete, switch, next_ruleset, end
-
-# Helper functions
-from knowledgenet.helper import assign, factset, node, session, global_ctx
-
-# Declarative rules
 from knowledgenet.decorator import ruledef
 
-# Service infrastructure
-from knowledgenet.service import Service
-from knowledgenet.repository import Repository
-from knowledgenet.ruleset import Ruleset
-from knowledgenet.scanner import load_rules_from_filepaths, lookup
+# Control functions (used in then clauses)
+from knowledgenet.controls import insert, update, delete, switch, next_ruleset, end
+
+# Helper functions (used in when and then clauses)
+from knowledgenet.helper import assign, factset, node, session, global_ctx
+
+# Fact types (when creating facts in rules)
+from knowledgenet.container import Collector
+from knowledgenet.ftypes import EventFact, Wrapper
 ```
 
 ### Rule Skeleton
