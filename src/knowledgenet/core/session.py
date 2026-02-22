@@ -166,10 +166,6 @@ class Session:
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
                     node = Node(node_id, rule, self, each)
-                     # TODO only rule.order based ordering is implemented for now, add other stuff including:
-                    # - merge hints
-                    # - collection goes after the types it collects
-                    # - etc.
                     element = self.graph.add(node, node.rule.order)
                     logging.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)
