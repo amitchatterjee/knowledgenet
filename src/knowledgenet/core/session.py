@@ -11,12 +11,13 @@ from knowledgenet.container import Collector
 from knowledgenet.ruleset import Ruleset
 
 class Session:
-    def __init__(self, ruleset:Ruleset, facts, id, global_ctx={}):
+    def __init__(self, ruleset:Ruleset, facts, id, global_ctx={}, node_sorter=None):
         self.id = id
         self.ruleset = ruleset
         self.rules = ruleset.rules
         self.global_ctx = global_ctx
         self.input_facts = facts
+        self.node_sorter = node_sorter
 
     def __str__(self):
         return f"Session({self.id})"
@@ -27,7 +28,7 @@ class Session:
     @trace()
     def execute(self):  
         self.output_facts = Factset()
-        self.graph = Graph(id=self.id)
+        self.graph = Graph(id=self.id, comparator=self.node_sorter)
         logging.debug("%s: Initializing graph", self)
         leftmost,_, updated_facts = self._add_facts(self.input_facts)
         logging.debug("%s: Executing rules on graph", self)

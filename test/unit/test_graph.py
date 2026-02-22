@@ -172,3 +172,38 @@ def test_next_elements():
         result = g.next_elements()
         assert len(result) == 2
         assert [e.ordinal for e in result] == [i, i]
+
+class C:
+    def __init__(self, val):
+        self.val = val
+    def __str__(self):
+        return str(self.val)
+    def __repr__(self):
+        return str(self)
+        
+def test_comparator_based_insert():
+    g = Graph(str(uuid.uuid4()), comparator=lambda obj,other: obj.val - other.val)
+    g.add(C(1))
+    g.add(C(3))
+    g.add(C(0))
+    g.add(C(2))
+    g.add(C(4))
+    g.add(C(-1))
+    result = g.to_list()
+    assert len(result) == 6
+    for i in range(0, len(result)):
+        assert i-1 == result[i].val
+
+def test_comparator_disregard_ordinal():
+    '''Verify that even if we supply an ordinal, it is not used when a comparator is specified'''
+    g = Graph(str(uuid.uuid4()), comparator=lambda obj,other: obj.val - other.val)
+    g.add(C(1), 9)
+    g.add(C(3), 8)
+    g.add(C(0), 7)
+    g.add(C(2), 6)
+    g.add(C(4), 5)
+    g.add(C(-1), 4)
+    result = g.to_list()
+    assert len(result) == 6
+    for i in range(0, len(result)):
+        assert i-1 == result[i].val

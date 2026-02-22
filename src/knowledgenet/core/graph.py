@@ -20,10 +20,11 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, id):
+    def __init__(self, id, comparator=None):
         self.first = None
         self.cursors: dict[str, Element | None] = {}
         self.id = id
+        self.comparator = comparator
 
     def __str__(self):
         return f"Graph({self.id})"
@@ -36,7 +37,7 @@ class Graph:
         n_weight = next.weight if next else p_weight + Decimal(100)
         return (p_weight + n_weight) / Decimal(2)
 
-    def add(self, obj: Hashable, ordinal: int) -> Element:
+    def add(self, obj:Hashable, ordinal:int=0) -> Element:
         added_element = None
         if not self.first:
             # If this is the only element in the list
@@ -47,8 +48,12 @@ class Graph:
             last: Element | None = None
             element: Element | None = self.first
             while element:
-                if ordinal < element.ordinal:
-                    # The obj needs to be inserted left of the element
+                ins = False
+                if self.comparator:
+                    ins = True if self.comparator(obj, element.obj) < 0 else False
+                else:
+                    ins = True if ordinal < element.ordinal else False
+                if ins:
                     added_element = self._insert(obj, ordinal, element)
                     break
                 last = element

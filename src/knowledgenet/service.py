@@ -10,10 +10,11 @@ trace_level = ContextVar('trace_level', default=0)
 trace_details = ContextVar('trace_details', default=0)
 
 class Service:
-    def __init__(self, repository, id="knowledgenet", global_ctx={}):
+    def __init__(self, repository, id="knowledgenet", global_ctx={}, node_sorter=None):
         self.id = id
         self.repository = repository
         self.global_ctx = global_ctx
+        self.node_sorter = node_sorter
 
     def __str__(self):
         return f"Service({self.repository.id})"
@@ -41,7 +42,8 @@ class Service:
             if start_from and ruleset.id != start_from:
                 continue
             logging.debug("Creating session with service Id: %s, ruleset:%s, facts:%s", service_id, ruleset, resulting_facts)
-            session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}", self.global_ctx)
+            session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}", 
+                              self.global_ctx, self.node_sorter)
             resulting_facts = session.execute()
             logging.debug("Executed session: %s", session)
             if switch_to := self._find_switch(resulting_facts):
