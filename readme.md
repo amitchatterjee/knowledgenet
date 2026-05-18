@@ -3,4 +3,14 @@ Knowledgenet is a Python Language software library that enables application deve
 
 Please refer to the product documentation located in the [Knowledgenet Repository](https://github.com/amitchatterjee/knowledgenet/tree/develop/doc).
 
+## Setup
 
+### Install Python 3.14
+- Recommended: download the Windows installer from `https://www.python.org/downloads/release/python-3140/` and run it. During installation:
+    - check "Add Python to PATH"
+
+### Create and activate a virtual environment
+```bash
+python -m venv ~/venvs/knowledgenet
+source ~/venvs/knowledgenet/bin/activate
+```
