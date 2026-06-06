@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "pip-tools"]
+dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "pip-tools", "sphinx", "sphinx-markdown-builder"]
 
 description = "Knowledgenet RETE engine"
 requires-python = ">=3.13"
@@ -42,4 +42,4 @@ readme = "readme.md"
 Homepage = "https://github.com/amitchatterjee/knowledgenet"
 Issues = "https://github.com/amitchatterjee/knowledgenet"
 Repository = "https://github.com/amitchatterjee/knowledgenet.git"
-Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/doc"
+Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/docs"

@@ -1,3 +1,5 @@
+"""Collection primitives used to aggregate facts during session execution."""
+
 from typing import Callable
 from numbers import Number
 import inspect
@@ -8,6 +10,21 @@ from knowledgenet.util import of_type, to_tuple
 from knowledgenet.core.tracer import trace
 
 class Collector:
+    """Accumulates facts of one type and exposes aggregate operations.
+
+    Collector is itself a fact and can participate in rule matching through
+    ``Collection(...)`` or ``Fact(of_type=Collector, group=...)``.
+
+    Example:
+        Aggregate C1 facts and expose sum/size to rules::
+
+            Collector(
+                of_type=C1,
+                group='sum_of_c1s',
+                value=lambda obj: obj.val,
+            )
+    """
+
     def __init__(self, group: str, 
                 of_type: type | str, 
                 filter: list[Callable] | tuple[Callable] | Callable | str = lambda this,child: True, 
@@ -52,12 +69,15 @@ class Collector:
         return self.__hash__() == other.__hash__()
 
     def size(self) -> int:
+        """Return the number of currently collected facts."""
         return len(self.collection)
     
     def empty(self) -> bool:
+        """Return True when the collector has no facts."""
         return len(self.collection) == 0
 
     def reset_cache(self):
+        """Clear cached aggregate values after collection changes."""
         self._cached_sum = None
         self._cached_variance = None
         self._cached_min = None
@@ -71,6 +91,11 @@ class Collector:
 
     @trace(level=14)
     def add(self, obj: object) -> bool:
+        """Attempt to add one fact to the collection.
+
+        Returns True only when type checks, filter checks, and deduplication all
+        pass and the collection actually changes.
+        """
         if of_type(obj) != self.of_type:
             return False
         if obj in self.collection:
@@ -84,6 +109,11 @@ class Collector:
 
     @trace(level=14)
     def remove(self, obj: object) -> bool:
+        """Attempt to remove one fact from the collection.
+
+        Returns True only when the fact is currently present and passes the same
+        filter constraints used for insertion.
+        """
         if of_type(obj) != self.of_type:
             return False
         if obj not in self.collection:
@@ -96,6 +126,7 @@ class Collector:
         return True
     
     def sum(self) -> Number:
+        """Return sum of collected values using configured ``value`` accessor."""
         if self._cached_sum is None:
             if not self.value:
                 raise Exception("Don't know how to compute sum as value function is not defined")
@@ -103,6 +134,7 @@ class Collector:
         return self._cached_sum
 
     def variance(self) -> float:
+        """Return variance of collected values using configured ``value`` accessor."""
         if self._cached_variance is None:
             if not self.value:
                 raise Exception("Don't know how to compute variance as value function is not defined")
@@ -110,6 +142,7 @@ class Collector:
         return self._cached_variance
 
     def minimum(self) -> object:
+        """Return minimum collected fact according to configured ``key`` accessor."""
         if self._cached_min is None:
             if not self.key:
                 raise Exception("Don't know how to compute min as key function is not defined")
@@ -117,6 +150,7 @@ class Collector:
         return self._cached_min
 
     def maximum(self) -> object:
+        """Return maximum collected fact according to configured ``key`` accessor."""
         if self._cached_max is None:
             if not self.key:
                 raise Exception("Don't know how to compute max as key function is not defined")

@@ -17,7 +17,49 @@ Knowledgenet is an implementation of an **Inference Engine** using an adaptation
 ### Inferencing
 A RETE execution emulates the process used by humans to come to a decision (or conclusion) based on facts presented to him/her/them. To make the decision, a person takes the facts provided to him/her and applies a set of well-established logic (or rules). For complex decision-making, applying a rule to a set of facts may produce *intermediate* facts that are then used as input to another set of rules. This process continues until a decision or a set of decisions are reached. One can think of RETE execution as a network of rules that are applied to facts in a certain order based on the availability of facts. A very **simplistic** representation of the RETE network execution is shown below.
 
-![Simplistic Rules Network](./rule.Network.drawio.png)
+```mermaid
+flowchart TB
+    subgraph FactsRow[" "]
+        direction LR
+        F1((Fact 1))
+        F2((Fact 2))
+        FN((Fact n))
+    end
+
+    subgraph RulesRow[" "]
+        direction LR
+        R1[Rule 1]
+        R2[Rule 2]
+    end
+
+    F1 --> R1
+    F2 --> R2
+    FN --> R2
+
+
+    R1 --> FN1((Fact n+1))
+    R2 --> FN2((Fact n+2))
+    R2 --> FNM((Fact n+m))
+
+
+    FN1 --> R3[Rule 3]
+    FN2 --> R3
+    FNM --> R3
+    R3 --> FX((Fact x))
+
+    style FactsRow fill:transparent,stroke:transparent
+    style RulesRow fill:transparent,stroke:transparent
+
+    classDef inputFact fill:#dae8fc,stroke:#6c8ebf,color:#111;
+    classDef intermediateFact fill:#f8cecc,stroke:#b85450,color:#111;
+    classDef finalFact fill:#d5e8d4,stroke:#82b366,color:#111;
+    classDef rule fill:#ffffff,stroke:#555,color:#111;
+
+    class F1,F2,FN inputFact;
+    class FN1,FN2,FNM intermediateFact;
+    class FX finalFact;
+    class R1,R2,R3 rule;
+```
 
 In the above diagram, the execution starts at the top and ends at the bottom. Note that the network shown above, is very **simplistic** and does not represent how rules are executed. First, real-life decision making involves many facts and many rules. Secondly, a rule does not just insert new facts, it can also modify existing facts and/or delete a facts. On any change to the facts, the RETE execution flow may be modified and can moved backward to re-execute some of the earlier rules that were based on "incorrect" facts (assumptions). So, the network can be *cyclical* and *recursive* in nature, recursing through the rules in order to reach a decision. Contrast this type of network with acyclic flows like DAG (directed acyclic graph), commonly used in data pipelines in data analytics and ETL applications.
 
@@ -78,7 +120,24 @@ In the above example, Python *lambda expressions* are used. But references to fu
 ### Ruleset
 A ruleset is a collection of rules. For complex applications, the decision-making process may require organizing the rules in rulesets and executing each ruleset in a specific order. For example, "validation" rules may be classified in a ruleset as do "business rules" and "pricing rules". The requirement may be to execute the rulesets in phases in the following manner.
 
-![Rule Flow Example](./rule.Flow.drawio.png)
+```mermaid
+flowchart LR
+    Start((Start)) --> Validation[Validation Ruleset]
+    Validation --> Business[Business Ruleset]
+    Business --> Pricing[Pricing Ruleset]
+    Pricing --> End((End))
+
+    Validation -->|On Validation Error| End
+    Business -->|Business Condition Not Satisfied| End
+
+    classDef good fill:#d5e8d4,stroke:#82b366,color:#111;
+    classDef bad fill:#f8cecc,stroke:#b85450,color:#111;
+    classDef block fill:#ffffff,stroke:#555,color:#111;
+
+    class Start good;
+    class End bad;
+    class Validation,Business,Pricing block;
+```
 
 With Knowledgenet, this can be achieved by organizing the rules into rulesets and specifying the flow. Knowledgenet executes each ruleset in an **execution session**. On completion of a session, the facts from the output session are passed as inputs for the next session in the flow. A *Then* code on a rule can change the normal flow (shown using white arrows) by specifying which ruleset to execute next (shown using red arrows). 
 
@@ -128,7 +187,58 @@ Once a service is initialized using a rule repository, the application is ready 
 ## Transaction Internals
 Please refer to the diagram below. It represents Knowledgenet's internal data structures and their relationships.
 
-![Knowledgenet Entity Relationship](./Knowledgenet-Entity-Relationship.drawio.png)
+```mermaid
+flowchart LR
+    %% Invocation
+    SVC["knowledgenet.Service(Repository).execute(Fact[])"]
+
+    %% Authored model
+    subgraph AuthoredModel["Authored Model"]
+        Repository[Repository]
+        Ruleset[Ruleset]
+        Rule[Rule]
+        When{{When}}
+        Then[Then]
+
+        Repository -->|"1..*"| Ruleset
+        Ruleset -->|"1..*"| Rule
+        Rule -->|"1..*"| When
+        Rule -->|"1..*"| Then
+    end
+
+    %% Runtime model
+    subgraph RuntimeModel["Runtime Model"]
+        Session[Session]
+        Fact[Fact]
+        Graph[Graph]
+        Node[Node]
+        Leaf[Leaf]
+
+        Session -->|"Creates"| Graph
+        Graph -->|"Creates 1..*"| Node
+        Leaf -->|"Creates 1..*"| Node
+        Session -->|"Creates 1..*"| Fact
+    end
+
+    %% Service invocation
+    SVC -->|"Creates 1..*"| Session
+
+    %% Cross-links
+    Ruleset -. "1..1" .- Session
+    Rule -. "1..1" .- Node
+    Node -. "1..*" .- Fact
+
+    %% Visual style to match the source diagram
+    classDef authored fill:#0b2447,stroke:#7aa2ff,color:#ffffff,stroke-width:1px;
+    classDef runtime fill:#3a2200,stroke:#ffb347,color:#ffffff,stroke-width:1px;
+    classDef session fill:#052d12,stroke:#4caf50,color:#ffffff,stroke-width:1px;
+    classDef invoke fill:#111111,stroke:#2a2a2a,color:#ffffff,stroke-width:1px;
+
+    class Repository,Ruleset,Rule,When,Then authored;
+    class Fact,Graph,Node,Leaf runtime;
+    class Session session;
+    class SVC invoke;
+```
 
 The blue blocks represent the entities that are created during the development phase (or "authoring phase") and is passed as input parameters when creating the service. The green arrow represents a service entrypoint for initiating a transaction. The red blocks represent the input facts that are supplied to a transaction and other execution artifacts created in the process of processing the transaction. As mentioned earlier, the **execute** function in the **knowledgenet.service.Service** class is the entrypoint for a transaction. It is a synchronous call.  
 

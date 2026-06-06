@@ -3,7 +3,7 @@
 Project overview
 - Knowledgenet is a RETE-based rules engine implemented as a Python library. It evaluates `facts` against authored `rules` organized into `rulesets` and `repositories` and exposes a service entrypoint via `knowledgenet.service.Service.execute()` to process transactions and return result facts.
 - Core modules: `rule`, `ruleset`, `repository`, `service`, `factset`, `scanner`, `graph`/`node`, `container`, and `decorator` (see `src/knowledgenet/`).
-- Intended usage: integrate the library into an application, initialize a `Service` with a repository of rulesets, then invoke `execute(input_facts)` per transaction. See `doc/concepts.md` and `doc/rules-authoring.md` for conceptual and authoring guidance.
+- Intended usage: integrate the library into an application, initialize a `Service` with a repository of rulesets, then invoke `execute(input_facts)` per transaction. See `docs/concepts.md` and `docs/rules-authoring.md` for conceptual and authoring guidance.
 
 Purpose
 - Provide concise, actionable guidance for AI assistants (Copilot) and contributors working on the Knowledgenet Python project.

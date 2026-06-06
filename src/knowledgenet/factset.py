@@ -1,3 +1,10 @@
+"""Session-local fact store and indexes.
+
+Factset tracks application facts plus infrastructure facts (Collector and
+EventFact). It maintains secondary indexes used by Session for fast matching
+and for propagating inserts, updates, and deletes through dependent artifacts.
+"""
+
 import logging
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
@@ -5,6 +12,8 @@ from knowledgenet.core.tracer import trace
 from knowledgenet.util import of_type
 
 class Factset:
+    """Stores runtime facts and helper indexes for matching and projection."""
+
     def __init__(self):
         self.facts = set()
         self._init_dictionaries()
@@ -26,7 +35,6 @@ class Factset:
     
     # TODO - In order to support polymorphism in conditions, we need to not only add the fact type to type_to_facts dictionary, but also all the base classes. I need to think through this a bit more.
     def _get_class_hierarchy(self, typ):
-        """Gets the class hierarchy for a given type."""
         hierarchy = []
         while typ:
             hierarchy.append(typ)
@@ -35,6 +43,11 @@ class Factset:
 
     @trace(level=12)
     def add_facts(self, f):
+        """Add new facts and update collector and event projections.
+
+        Returns a tuple of newly inserted facts and derived facts whose state was
+        updated as a result of the insertion.
+        """
         # Dedup
         new_facts = set(f) - self.facts
         
@@ -88,6 +101,12 @@ class Factset:
     
     @trace(level=12)
     def update_facts(self, facts):
+        """Propagate updates of existing facts to dependent helper facts.
+
+        Updating a fact can invalidate collector caches and append entries to
+        EventFact.updated. Returned facts are helper facts that changed as a
+        result of the update.
+        """
         updated_facts = set()
         for fact in facts:
             typ = of_type(fact)
@@ -113,6 +132,12 @@ class Factset:
 
     @trace(level=12)
     def del_facts(self, facts):
+        """Delete facts and update indexes plus dependent helper facts.
+
+        For domain facts, collectors may remove members and events receive
+        deleted notifications. For Collector/EventFact facts, index entries are
+        removed directly.
+        """
         updated_facts = set()
         for fact in facts:
             if fact not in facts:
@@ -167,6 +192,7 @@ class Factset:
         self._type_to_collectors[collector.of_type] = collectors_list
 
     def add_to_group_collectors_dict(self, fact):
+        """Register a collector in the group-to-collector index."""
         cset = self._group_to_collectors[fact.group] if fact.group in self._group_to_collectors else set()
         cset.add(fact)
         self._group_to_collectors[fact.group] = cset
@@ -186,6 +212,17 @@ class Factset:
 
     @trace(level=12)
     def find(self, of_type, group=None, filter=lambda obj:True):
+        """Find facts by type, optionally scoped by group for helper facts.
+
+        Args:
+            of_type: Target type to query. Collector and EventFact require
+                ``group``.
+            group: Logical helper group when querying Collector/EventFact.
+            filter: Predicate applied to each candidate result.
+
+        Returns:
+            Set of matching facts (possibly empty).
+        """
         if of_type == Collector:
             return {each for each in self._group_to_collectors[group] if filter(each)} \
                 if group in self._group_to_collectors else set()

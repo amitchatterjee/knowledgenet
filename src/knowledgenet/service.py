@@ -1,3 +1,10 @@
+"""Service entrypoint for transactional RETE execution.
+
+The service coordinates end-to-end execution of a repository, where each
+ruleset is executed in its own runtime session. Facts emitted from one session
+become inputs to the next session unless flow-control facts change the path.
+"""
+
 from time import time
 import logging
 from contextvars import ContextVar
@@ -10,6 +17,13 @@ trace_level = ContextVar('trace_level', default=0)
 trace_details = ContextVar('trace_details', default=0)
 
 class Service:
+    """Coordinates repository execution across rulesets.
+
+    A service is typically initialized once during application startup and
+    reused for many transactions. Each call to :meth:`execute` processes one
+    transaction and returns the final fact set produced by chained rulesets.
+    """
+
     def __init__(self, repository, id="knowledgenet", global_ctx={}, node_sorter=None):
         self.id = id
         self.repository = repository
@@ -29,6 +43,27 @@ class Service:
         return None
 
     def execute(self, facts, start_from=None, trc_level=0, trc_details=0):
+        """Execute a transaction against the repository.
+
+        Args:
+            facts: Initial transaction facts.
+            start_from: Optional ruleset id to start from instead of the first
+                repository ruleset.
+            trc_level: Runtime trace verbosity threshold.
+            trc_details: Runtime trace payload detail level.
+
+        Returns:
+            Final set of facts after all reachable rulesets complete.
+
+        Examples:
+            Basic transaction execution::
+
+                result_facts = Service(repo).execute([C1(10), C1(20)])
+
+            Resume execution from a specific ruleset::
+
+                result_facts = Service(repo).execute(facts, start_from='rs2')
+        """
         trace_level.set(trc_level)
         trace_details.set(trc_details)
         return self._execute_service(facts, start_from)

@@ -11,9 +11,6 @@ This project needs python 3.14 or higher installed. It may work with other versi
 ```bash
 cd $HOME  
 python3.14 -m venv knowledgenet-venv
-
-pip install --upgrade pip
-pip install pip-tools
 ```
 
 ### Switch to knowledgenet virtual environment:
@@ -23,7 +20,10 @@ source ~/knowledgenet-venv/bin/activate
 You can add the above to $HOME/.bashrc to automatically activate the venv.
 
 ## Install development tools:
+
 ```bash
+pip install --upgrade pip
+pip install pip-tools
 pip install -U --group=dev
 
 ```
@@ -65,24 +65,31 @@ python -m pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when
 python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
 ```
 
-## Build and install package:
+## Build package artifacts:
 Note: For all the commands below, you must cd to the project home directory.  
+
+### Build API docs:
+
 ```bash
-# bash
-python -m build
-pip install --force-reinstall dist/knowledgenet-*.whl
+# Regenerate API `.rst` sources (excluding `src/knowledgenet/core`)
+sphinx-apidoc -f -e -o target/sphinx/apidoc src/knowledgenet src/knowledgenet/core
 
-# If you want to --force-reinstall the wheel, but not the dependencies
-pip install --force-reinstall --no-deps dist/knowledgenet-*.whl
+# Build HTML API docs
+sphinx-build -c src/api -D master_doc=modules -b html -d target/sphinx/doctrees target/sphinx/apidoc target/sphinx/html
 
-pip show knowledgenet
+# Build Markdown API docs (for agent knowledgebase ingestion)
+sphinx-build -c src/api -D master_doc=modules -b markdown -d target/sphinx/doctrees-markdown target/sphinx/apidoc target/sphinx/markdown
+
+# Publish generated markdown docs in-repo for GitHub browsing
+mkdir -p docs/api
+find docs/api -maxdepth 1 -type f -name '*.md' -delete
+cp -a target/sphinx/markdown/. docs/api/
 ```
 
-```powershell
-# powershell
-python -m build
-pip install --force-reinstall (Get-ChildItem -Path dist/knowledgenet-*.whl).FullName
-```
+Generated outputs:
+  HTML: `target/sphinx/html`
+  Markdown build output: `target/sphinx/markdown`
+  Markdown published for GitHub: `docs/api`
 
 ## Publish package to PyPi:
 Note: For all the commands below, you must cd to the project home directory.  
