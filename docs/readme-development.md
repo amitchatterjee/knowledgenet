@@ -67,8 +67,32 @@ python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
 
 ## Build and install package:
 Note: For all the commands below, you must cd to the project home directory.  
+
+### Build API docs:
+
 ```bash
-# bash
+# Regenerate API `.rst` sources (excluding `src/knowledgenet/core`)
+sphinx-apidoc -f -e -o target/sphinx/apidoc src/knowledgenet src/knowledgenet/core
+
+# Build HTML API docs
+sphinx-build -c src/api -D master_doc=modules -b html -d target/sphinx/doctrees target/sphinx/apidoc target/sphinx/html
+
+# Build Markdown API docs (for agent knowledgebase ingestion)
+sphinx-build -c src/api -D master_doc=modules -b markdown -d target/sphinx/doctrees-markdown target/sphinx/apidoc target/sphinx/markdown
+
+# Publish generated markdown docs in-repo for GitHub browsing
+mkdir -p docs/api
+find docs/api -maxdepth 1 -type f -name '*.md' -delete
+cp -a target/sphinx/markdown/. docs/api/
+```
+
+Generated outputs:
+  HTML: `target/sphinx/html`
+  Markdown build output: `target/sphinx/markdown`
+  Markdown published for GitHub: `docs/api`
+
+```bash
+### Build and install the package
 python -m build
 pip install --force-reinstall dist/knowledgenet-*.whl
 
@@ -78,8 +102,8 @@ pip install --force-reinstall --no-deps dist/knowledgenet-*.whl
 pip show knowledgenet
 ```
 
+If you want to build using Powershell instead of bash
 ```powershell
-# powershell
 python -m build
 pip install --force-reinstall (Get-ChildItem -Path dist/knowledgenet-*.whl).FullName
 ```

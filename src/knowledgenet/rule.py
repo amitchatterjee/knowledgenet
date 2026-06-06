@@ -1,3 +1,9 @@
+"""Rule authoring DSL primitives.
+
+This module defines typed descriptors for ``when`` clauses and the executable
+Rule object consumed by runtime sessions.
+"""
+
 from typing import Callable
 import uuid
 
@@ -6,6 +12,20 @@ from knowledgenet.util import to_list, to_tuple
 from knowledgenet.container import Collector
 
 class Event:
+    """Descriptor for event-driven when clauses.
+
+    Event is syntactic sugar that is normalized into ``Fact(of_type=EventFact,
+    group=...)`` during Rule construction.
+
+    Example:
+        React to changes tracked by an EventFact group::
+
+            Rule(
+                when=Event(group='c1-events', var='event'),
+                then=lambda ctx: insert(ctx, R1(len(ctx.event.added)))
+            )
+    """
+
     def __init__(self, group,
                  matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
                  var: str | None = None):
@@ -14,6 +34,20 @@ class Event:
         self.matches = matches
 
 class Collection:
+    """Descriptor for collector-driven when clauses.
+
+    Collection is syntactic sugar that is normalized into
+    ``Fact(of_type=Collector, group=...)`` during Rule construction.
+
+    Example:
+        Match a collector and compute aggregates::
+
+            Rule(
+                when=Collection(group='sum_of_c1s', var='c'),
+                then=lambda ctx: insert(ctx, R1(ctx.c.sum(), ctx.c.size()))
+            )
+    """
+
     def __init__(self, group: str, 
                  matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
                  var: str | None = None):
@@ -22,6 +56,23 @@ class Collection:
         self.var = var
 
 class Fact:
+    """Descriptor for matching one fact type in a when clause.
+
+    Multiple Fact descriptors in one rule produce combinations of matching
+    facts. Each combination becomes a Node candidate for rule evaluation.
+
+    Example:
+        Correlate parent and child facts in a two-clause when list::
+
+            Rule(
+                when=[
+                    Fact(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),
+                    Fact(of_type=Ch1, matches=lambda ctx, this: this.parent == ctx.parent),
+                ],
+                then=lambda ctx: insert(ctx, R1(ctx.parent))
+            )
+    """
+
     def __init__(self, of_type: type | str = None, named: str = None, 
                  matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
                  group=None, var: str | None = None, **kwargs):
@@ -43,6 +94,35 @@ class Fact:
             setattr(self, key, value)
 
 class Rule:
+    """Executable rule definition.
+
+    A rule includes one or more normalized when descriptors and one or more
+    then callables that are executed when every when predicate evaluates True
+    for a matched fact combination.
+
+    Examples:
+        Insert-based chaining::
+
+            Rule(
+                id='r1',
+                when=Fact(of_type=P1, var='parent'),
+                then=lambda ctx: insert(ctx, Ch1(ctx.parent, 20))
+            )
+
+        Update-driven walkback (avoid loops with ``retrigger_on_update=False``)::
+
+            def zero_out(ctx):
+                ctx.c1.val = 0
+                update(ctx, ctx.c1)
+
+            Rule(
+                id='r2',
+                retrigger_on_update=False,
+                when=Fact(of_type=C1, var='c1'),
+                then=zero_out
+            )
+    """
+
     def __init__(self, id: str | None = None, 
                  when: list[Fact | Collection] | tuple[Fact | Collection] | Fact | Collection = (), 
                  then: list[Callable] | tuple[Callable] | Callable = lambda ctx: None, 

@@ -1,3 +1,5 @@
+"""Ruleset model for grouping related rules into an execution phase."""
+
 import logging
 from typing import Union
 
@@ -5,6 +7,12 @@ from knowledgenet.util import to_list, to_tuple
 from knowledgenet.rule import Rule
 
 class Ruleset:
+    """Groups related rules under one identifier.
+
+    Rules are normalized and sorted by ``rule.order`` before runtime execution
+    to produce deterministic graph insertion order.
+    """
+
     def __init__(self, id:str, rules:Union[Rule,tuple[Rule],list[Rule]], global_ctx={}):
         self.id = id
         self._order_rules(rules)

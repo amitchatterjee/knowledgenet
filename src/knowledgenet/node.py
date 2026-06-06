@@ -1,9 +1,22 @@
+"""Runtime node execution primitives.
+
+Nodes are concrete rule instances bound to one matched fact combination.
+Leaves cache individual when-clause evaluation outcomes to avoid recomputing
+unchanged predicates after updates.
+"""
+
 import logging
 from types import SimpleNamespace
 
 from knowledgenet.core.tracer import trace
 
 class Leaf:
+    """Evaluator for one when-clause bound to one fact object.
+
+    Leaf instances cache their last result and are selectively invalidated by
+    session update processing.
+    """
+
     def __init__(self, id, rule, when_index):
         self.id = id
         self.rule = rule
@@ -12,6 +25,12 @@ class Leaf:
 
     @trace()
     def execute(self, context, fact):
+        """Evaluate one when-clause and optionally use cached result.
+
+        Returns:
+            tuple[bool, bool]: ``(cached, result)`` where ``cached`` indicates
+            whether evaluation was skipped due to cache hit.
+        """
         if self.executed:
             # Return the previous result
             return True, self.result
@@ -33,6 +52,12 @@ class Leaf:
         return self.__str__()
 
 class Node:
+    """Concrete runtime instance of a rule.
+
+    A node binds a Rule to one combination of when-clause objects and manages
+    predicate evaluation plus then-action execution for that binding.
+    """
+
     def __init__(self, id, rule, session, when_objs):
         self.id = id
         self.rule = rule
@@ -48,6 +73,11 @@ class Node:
 
     @trace(level=13)
     def reset_whens(self, updated_facts:set)->bool:
+        """Invalidate cached leaves after fact updates.
+
+        If any bound when object is updated, this method clears cache from that
+        position to the end to preserve ordered predicate dependencies.
+        """
         found = False
         for i,leaf in enumerate(self.when_objs):
             if leaf in updated_facts:
@@ -61,6 +91,15 @@ class Node:
 
     @trace()
     def execute(self, facts:set)->dict:
+        """Execute this node against current facts.
+
+        The method evaluates leaves in rule order, uses cached leaf outcomes
+        when possible, and executes then-actions only when all predicates pass
+        and at least one leaf was evaluated non-cached.
+
+        Returns:
+            bool: True when then actions executed, False otherwise.
+        """
         # Create an empty context for when expressions to populate stuff with
         # Add all "facts" to this context. This will be used by accumulator and other DSL methods
 
