@@ -6,6 +6,7 @@
         "src",
         "test/unit"
     ],
+    "python.defaultInterpreterPath": "${env:HOME}/knowledgenet-venv/bin/python",
     "cSpell.enabledFileTypes": {
         "*": false
     }

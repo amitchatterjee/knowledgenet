@@ -11,9 +11,6 @@ This project needs python 3.14 or higher installed. It may work with other versi
 ```bash
 cd $HOME  
 python3.14 -m venv knowledgenet-venv
-
-pip install --upgrade pip
-pip install pip-tools
 ```
 
 ### Switch to knowledgenet virtual environment:
@@ -23,7 +20,10 @@ source ~/knowledgenet-venv/bin/activate
 You can add the above to $HOME/.bashrc to automatically activate the venv.
 
 ## Install development tools:
+
 ```bash
+pip install --upgrade pip
+pip install pip-tools
 pip install -U --group=dev
 
 ```
@@ -65,7 +65,7 @@ python -m pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when
 python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
 ```
 
-## Build and install package:
+## Build package artifacts:
 Note: For all the commands below, you must cd to the project home directory.  
 
 ### Build API docs:
@@ -90,23 +90,6 @@ Generated outputs:
   HTML: `target/sphinx/html`
   Markdown build output: `target/sphinx/markdown`
   Markdown published for GitHub: `docs/api`
-
-```bash
-### Build and install the package
-python -m build
-pip install --force-reinstall dist/knowledgenet-*.whl
-
-# If you want to --force-reinstall the wheel, but not the dependencies
-pip install --force-reinstall --no-deps dist/knowledgenet-*.whl
-
-pip show knowledgenet
-```
-
-If you want to build using Powershell instead of bash
-```powershell
-python -m build
-pip install --force-reinstall (Get-ChildItem -Path dist/knowledgenet-*.whl).FullName
-```
 
 ## Publish package to PyPi:
 Note: For all the commands below, you must cd to the project home directory.  
