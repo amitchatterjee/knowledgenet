@@ -6,7 +6,8 @@
         "src",
         "test/unit"
     ],
-    "python.defaultInterpreterPath": "${env:HOME}/knowledgenet-venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder}/knowledgenet/.venv",
+    "python.terminal.activateEnvironment": true,
     "cSpell.enabledFileTypes": {
         "*": false
     }

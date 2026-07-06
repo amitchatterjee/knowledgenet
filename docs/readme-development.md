@@ -9,15 +9,14 @@ This project needs python 3.14 or higher installed. It may work with other versi
 
 ### Create a virtual environment:
 ```bash
-cd $HOME  
-python3.14 -m venv knowledgenet-venv
+python3.14 -m venv .venv
 ```
 
 ### Switch to knowledgenet virtual environment:
 ```bash
-source ~/knowledgenet-venv/bin/activate  
+source .venv/bin/activate  
 ```
-You can add the above to $HOME/.bashrc to automatically activate the venv.
+You can add the above to $HOME/.bashrc to automatically activate the venv when entering the project directory.
 
 ## Install development tools:
 
