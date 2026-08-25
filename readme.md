@@ -9,8 +9,3 @@ Please refer to the product documentation in [docs/index.md](docs/index.md) and 
 - Recommended: download the Windows installer from `https://www.python.org/downloads/release/python-3140/` and run it. During installation:
     - check "Add Python to PATH"
 
-### Create and activate a virtual environment
-```bash
-python -m venv ~/venvs/knowledgenet
-source ~/venvs/knowledgenet/bin/activate
-```
