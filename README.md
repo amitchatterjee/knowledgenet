@@ -9,3 +9,13 @@ Please refer to the product documentation in [docs/index.md](docs/index.md) and 
 - Recommended: download the Windows installer from `https://www.python.org/downloads/release/python-3140/` and run it. During installation:
     - check "Add Python to PATH"
 
+### Install knowledgenet
+Knowledgenet is [published on PyPI](https://pypi.org/project/knowledgenet/). Install it into your project's virtual environment:
+```bash
+pip install knowledgenet
+```
+or, if your project uses [uv](https://docs.astral.sh/uv/):
+```bash
+uv add knowledgenet
+```
+
