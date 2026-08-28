@@ -1,4 +1,4 @@
-# Add a typed interface and modernize type hints to Python 3.14 idioms
+# Add a typed interface, modernize type hints to Python 3.14 idioms, and modernize dev tooling (pip → uv, CI)
 
 Status: **INPROG** — plan only, implementation not started.
 
@@ -72,8 +72,8 @@ Actions workflow lives at `.github/workflow/python-publish.yml` — **singular**
 Actions only discovers workflows under `.github/workflows/` (plural); a file in the singular
 directory never runs, on any trigger. So today there is no CI at all — not lint, not tests, not the
 publish workflow itself despite `on: release: types: [published]` looking correctly configured. This
-plan's new CI job (Phase 1) goes in the correct plural directory; fixing/relocating the existing
-publish workflow is noted but left to the user, see Explicitly out of scope.
+plan's new CI job (Phase 1) goes in the correct plural directory; Phase 1 also fixes the existing
+publish workflow's directory so it starts actually running (see Phase 1).
 
 ## Design
 
@@ -117,14 +117,78 @@ disallow_untyped_defs = true
 (`no_implicit_optional` is mypy's default since ~0.990 and needs no explicit setting; it's what
 flags the `param: str = None` cases below.)
 
+### Phase 0 — Transition dev tooling from pip to uv (tooling, no source changes)
+
+Runs before Phase 1 so Phase 1's new CI workflow can be written uv-native from the start instead of
+being redone. Current flow, per `docs/readme-development.md`: manual `python3.14 -m venv .venv` +
+manual activation, `pip install pip-tools`, `python -m piptools compile pyproject.toml -o
+target/requirements.txt` then `pip install -r target/requirements.txt` for runtime deps, `pip install
+-U --group=dev` for dev deps (PEP 735 `[dependency-groups]`, already present in `pyproject.toml`),
+`python -m build` + `python -m twine upload` to publish. `uv` replaces the compile/install dance with
+a single lockfile-driven flow and removes `pip-tools` as a dependency of the dependency-management
+process itself.
+
+- Document `uv` as a once-per-machine tool install (`curl -LsSf https://astral.sh/uv/install.sh | sh`
+  or a distro package) — not a project dependency.
+- Replace manual venv creation with `uv venv --python 3.14` (or rely on `uv sync` to create `.venv`
+  implicitly on first run, honoring `requires-python` from `pyproject.toml` — document both, since
+  explicit `uv venv` is clearer for first-time contributors).
+- Replace `pip install pip-tools` + `piptools compile` + `pip install -r target/requirements.txt` with
+  `uv sync` (base deps) and `uv sync --group dev` (adds the dev group). Drop `pip-tools` from
+  `[dependency-groups] dev` in `pyproject.toml` — superseded by `uv sync`/`uv.lock`.
+- Generate and commit `uv.lock` (uv's lockfile; unlike `target/requirements.txt`, which was a
+  gitignored build artifact regenerated ad hoc, `uv.lock` is committed and covers dev deps too, not
+  just runtime).
+- **Reorganize `pyproject.toml`**: keep `[build-system]`/setuptools as the build backend (uv is a
+  package/dependency manager here, not a build-backend replacement — switching to `hatchling` etc. is
+  out of scope, see below); drop `pip-tools` from the `dev` group; move `[dependency-groups]` to
+  directly after the closing of `[project]`'s own keys and before `[project.urls]` (today it sits
+  mid-`[project]`-table, between `dependencies` and `description`/`requires-python`/`classifiers` —
+  an odd split left over from earlier edits) so the file reads top-to-bottom as `[build-system]` →
+  `[project]` (complete) → `[project.urls]` → `[dependency-groups]` → `[tool.*]` (including this
+  plan's own `[tool.mypy]` from Phase 1); add a `[tool.uv]` section only if a concrete need surfaces
+  during the phase (e.g. `python-preference`) — no speculative config.
+- **Update `docs/readme-development.md`** command-by-command:
+  - "One-time setup" → `uv venv --python 3.14`.
+  - "Install development tools" → `uv sync --group dev` (replaces the `pip install --upgrade pip` /
+    `pip install pip-tools` / `pip install -U --group=dev` trio).
+  - "Install runtime dependencies" → `uv sync` (replaces `mkdir -p target` + `piptools compile` +
+    `pip install -r`; drop the `target/requirements.txt` step and mentions entirely — `uv.lock`
+    supersedes it).
+  - "Run tests" → prefix each example with `uv run` (`uv run pytest -rPX -vv -s --cov`, etc.); note
+    that `source .venv/bin/activate` + bare `python -m pytest` still works unchanged afterward too
+    (uv still populates a normal `.venv`), but `uv run` is what CI should use since it needs no prior
+    activation step.
+  - "Build API docs" → prefix `sphinx-apidoc`/`sphinx-build` invocations with `uv run`.
+  - "Publish package to PyPI" → `uv build` replaces `python -m build`; `uv publish --index
+    <repository> dist/*` replaces `python -m twine upload --repository <repository> dist/*`. Note as
+    an open decision point (resolve during the phase, not pre-decided here): `uv publish` authenticates
+    via `UV_PUBLISH_TOKEN`/`--token`, not the existing `~/.pypirc`-based token setup documented in
+    "Configure the publishing environment" — that section needs rewriting to match, or `twine` stays
+    as a documented fallback if `uv publish`'s auth flow doesn't fit. Only drop `build`/`twine` from
+    `[dependency-groups] dev` once this is actually confirmed working end-to-end.
+  - "Install git flow" section unaffected.
+- Update Phase 1's `.github/workflows/ci.yml` to use `astral-sh/setup-uv` + `uv sync --group dev` +
+  `uv run pytest` + `uv run mypy src/knowledgenet`, written uv-native from the start.
+- Update `CLAUDE.md`'s Environment section (currently documents `source .venv/bin/activate`, `pip
+  install -U --group=dev`, pip-tools compile) to match. Confirm `uv sync`/`uv venv` still produce
+  `.venv` at the same repo-root path so `knowledgenet-examples/CLAUDE.md`'s "share
+  `../knowledgenet/.venv`" convention keeps working unchanged — no edit needed there unless the path
+  or activation story actually changes.
+
 ### Phase 1 — Tooling baseline (no source changes)
 
 - Add `mypy` to the `dev` group in `pyproject.toml` (alongside `pytest`, `ruff` is not currently used
   in this repo and is out of scope to introduce here — this plan is about typing, not linting).
 - Add the `[tool.mypy]` config above.
-- Create `.github/workflows/ci.yml` (correct plural directory) running, on push and PR:
-  `python -m pytest -rPX -s` and `python -m mypy src/knowledgenet`. This is also the first time *any*
-  workflow in this repo actually executes on GitHub, independent of this typing effort.
+- Create `.github/workflows/ci.yml` (correct plural directory), uv-native per Phase 0 (`astral-sh/
+  setup-uv` + `uv sync --group dev`), running on push and PR: `uv run pytest -rPX -s` and `uv run mypy
+  src/knowledgenet`. This is also the first time *any* workflow in this repo actually executes on
+  GitHub, independent of this typing effort.
+- Fix the `.github/workflow/` (singular) typo: `git mv .github/workflow/python-publish.yml
+  .github/workflows/python-publish.yml`, then remove the now-empty `.github/workflow/` directory.
+  Purely a path rename — no content change to the publish workflow itself, so its `on: release:
+  types: [published]` trigger and existing steps are untouched, just finally reachable by GitHub.
 - Commit the baseline numbers above as the starting point; every later phase's Verification step
   re-runs `mypy src/knowledgenet` and reports the new count.
 
@@ -226,14 +290,17 @@ Phase 1 is green on the default branch.
 
 ## Explicitly out of scope
 
+- Switching the build backend away from `setuptools` (e.g. to `hatchling`, uv's own default for `uv
+  init` projects) — orthogonal to the pip→uv tooling transition; `setuptools` works fine under `uv
+  build`.
+- Migrating `knowledgenet-examples`/`autoins`'s own `requirements.txt`-based install flow to uv — out
+  of scope per the existing no-changes-to-`knowledgenet-examples` bullet below; only the shared
+  `../knowledgenet/.venv` path needs to keep resolving the same way.
 - Typing `ctx`/`this` inside rule-author `matches`/`then` lambdas, or redesigning the DSL toward
   `TypedDict`/`Protocol`-based fact contexts — see Design's scope boundary above. `SimpleNamespace`/
   dynamic-attribute typing at that boundary is correct as-is.
 - Adopting `--strict` mypy, or any linter (`ruff`, `flake8`, etc.) — this plan is scoped to typing
   only; introducing a linter is a separate decision or plan.
-- Relocating/fixing `.github/workflow/python-publish.yml` (singular directory, currently inert) —
-  flagged in Context as directly relevant discovered-context, but fixing someone's publish pipeline
-  is not part of a typing plan; raised to the user separately.
 - Any change to `knowledgenet-examples`/`autoins` — that repo pins `knowledgenet==1.0.0` from
   PyPI/a built wheel; nothing here changes runtime behavior or the public API shape, so no version
   bump or example-repo change is implied. If Phase 2's `scanner.py` vararg-shape question resolves
@@ -247,27 +314,35 @@ Phase 1 is green on the default branch.
 
 ## Verification
 
-1. After Phase 1: `python -m mypy src/knowledgenet` runs (config picked up from `pyproject.toml`,
-   default profile) and reproduces the 44-error baseline exactly — confirms the config itself
-   introduces no behavior change before any source edits. Push a throwaway commit to confirm
-   `.github/workflows/ci.yml` actually triggers on GitHub (closing the loop on the discovered
-   singular-directory issue for at least this new workflow).
-2. After each of Phases 2-4: `python -m mypy src/knowledgenet`, confirm the error count has dropped
-   by exactly the errors that phase targeted and nothing new appeared. `python -m pytest -rPX -vv -s`
-   full suite green after every phase — these are behavior-affecting changes (implicit-Optional
-   fixes, mutable-default fixes, the `node.py`/`scanner.py`/`graph.py` bug fixes), not pure
-   annotation work, so test coverage is the real safety net there.
-3. After Phase 4's mutable-default fix: if the `global_ctx`-is-mutated-downstream check finds a real
+1. After Phase 0: from a fresh clone, `uv sync --group dev` creates `.venv` and installs cleanly with
+   no `pip`/`piptools` step run by hand; `uv run pytest -rPX -s` passes (same results as the pre-uv
+   baseline); `uv build` produces a `dist/*.whl` + `.tar.gz` of the same shape `python -m build` did;
+   `uv.lock` is committed. Confirm every command block in `docs/readme-development.md` was actually
+   updated (no leftover bare `pip install`/`piptools compile` instructions).
+2. After Phase 1: `uv run mypy src/knowledgenet` runs (config picked up from `pyproject.toml`, default
+   profile) and reproduces the 44-error baseline exactly — confirms the config itself introduces no
+   behavior change before any source edits. Push a throwaway commit to confirm
+   `.github/workflows/ci.yml` actually triggers on GitHub. Also confirm `git log --follow` on the
+   relocated `.github/workflows/python-publish.yml` still shows its original history (a `git mv`
+   rename, not a delete+recreate), and that it now shows up under the repo's Actions tab as a
+   recognized workflow (won't actually run end-to-end without cutting a release, but its presence in
+   the workflow list confirms GitHub now discovers it — closing the loop on the singular-directory
+   bug for both workflows).
+3. After each of Phases 2-4: `uv run mypy src/knowledgenet`, confirm the error count has dropped by
+   exactly the errors that phase targeted and nothing new appeared. `uv run pytest -rPX -vv -s` full
+   suite green after every phase — these are behavior-affecting changes (implicit-Optional fixes,
+   mutable-default fixes, the `node.py`/`scanner.py`/`graph.py` bug fixes), not pure annotation work,
+   so test coverage is the real safety net there.
+4. After Phase 4's mutable-default fix: if the `global_ctx`-is-mutated-downstream check finds a real
    issue, write a regression test demonstrating state was (before) or is no longer (after) leaking
    between two `Service`/`Ruleset` instances constructed without an explicit `global_ctx`.
-4. After each module in Phase 5: `python -m mypy src/knowledgenet` with that module's
+5. After each module in Phase 5: `uv run mypy src/knowledgenet` with that module's
    `disallow_untyped_defs = true` override active, confirm it's clean before moving to the next
    module (ratchet never regresses).
-5. After Phase 6: `python -m mypy src/knowledgenet` clean with a single top-level
-   `disallow_untyped_defs = true` and no per-module overrides; full `pytest` suite green;
-   `python -m build` still succeeds (confirms packaging/`pyproject.toml` changes didn't break the
-   distribution).
-6. Spot-check that IDE-visible value actually materializes: open `service.py`'s `execute()` and
+6. After Phase 6: `uv run mypy src/knowledgenet` clean with a single top-level
+   `disallow_untyped_defs = true` and no per-module overrides; full `pytest` suite green; `uv build`
+   still succeeds (confirms packaging/`pyproject.toml` changes didn't break the distribution).
+7. Spot-check that IDE-visible value actually materializes: open `service.py`'s `execute()` and
    `factset.py`'s `find()` in an editor with mypy/pylance-style hover support and confirm parameter
    and return types now show real types, not `Any`/nothing — the concrete symptom from the original
    complaint ("lacks typed interface").
