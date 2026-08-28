@@ -132,7 +132,10 @@ process itself.
   or a distro package) — not a project dependency.
 - Replace manual venv creation with `uv venv --python 3.14` (or rely on `uv sync` to create `.venv`
   implicitly on first run, honoring `requires-python` from `pyproject.toml` — document both, since
-  explicit `uv venv` is clearer for first-time contributors).
+  explicit `uv venv` is clearer for first-time contributors). For contributors upgrading an existing
+  checkout whose `.venv` was created by the old `python3.14 -m venv` flow, document
+  `rm -rf .venv && uv venv --python 3.14` — simplest as a one-time migration step, and avoids relying
+  on uv's ownership-detection/`--clear` semantics for something entirely disposable/regenerable.
 - Replace `pip install pip-tools` + `piptools compile` + `pip install -r target/requirements.txt` with
   `uv sync` (base deps) and `uv sync --group dev` (adds the dev group). Drop `pip-tools` from
   `[dependency-groups] dev` in `pyproject.toml` — superseded by `uv sync`/`uv.lock`.
@@ -160,13 +163,13 @@ process itself.
     (uv still populates a normal `.venv`), but `uv run` is what CI should use since it needs no prior
     activation step.
   - "Build API docs" → prefix `sphinx-apidoc`/`sphinx-build` invocations with `uv run`.
-  - "Publish package to PyPI" → `uv build` replaces `python -m build`; `uv publish --index
-    <repository> dist/*` replaces `python -m twine upload --repository <repository> dist/*`. Note as
-    an open decision point (resolve during the phase, not pre-decided here): `uv publish` authenticates
-    via `UV_PUBLISH_TOKEN`/`--token`, not the existing `~/.pypirc`-based token setup documented in
-    "Configure the publishing environment" — that section needs rewriting to match, or `twine` stays
-    as a documented fallback if `uv publish`'s auth flow doesn't fit. Only drop `build`/`twine` from
-    `[dependency-groups] dev` once this is actually confirmed working end-to-end.
+  - "Publish package to PyPI" → **Decided: stick with `twine upload` (via `.pypirc`) for now; `uv
+    publish` deferred.** `uv build` replaces `python -m build` (uv build has no `twine`-equivalent
+    tradeoff — adopt immediately), but publishing stays on `twine upload --repository <repository>
+    dist/*` against the existing `~/.pypirc` token setup, unchanged. A `[[tool.uv.index]]` "testpypi"
+    entry is added to `pyproject.toml` and `docs/readme-development.md` notes `uv publish` as a viable
+    future replacement, but it is not switched to now. Keep `build` and `twine` in
+    `[dependency-groups] dev`.
   - "Install git flow" section unaffected.
 - Update Phase 1's `.github/workflows/ci.yml` to use `astral-sh/setup-uv` + `uv sync --group dev` +
   `uv run pytest` + `uv run mypy src/knowledgenet`, written uv-native from the start.

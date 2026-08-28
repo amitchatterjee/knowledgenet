@@ -20,19 +20,20 @@ Read `docs/concepts.md` before making non-trivial changes — it defines the cor
 ## Environment
 
 - Python 3.13+ (3.14 recommended).
-- Virtualenv lives at `.venv` in this repo root: `source .venv/bin/activate`. This same venv is also used for `knowledgenet-examples` work — there is no separate venv per project.
-- Dev tools: `pip install -U --group=dev` (pytest, pytest-cov, build, debugpy, twine, pip-tools, sphinx, sphinx-markdown-builder).
-- Runtime deps are compiled with pip-tools: `python -m piptools compile pyproject.toml -o target/requirements.txt && pip install -r target/requirements.txt`.
+- Managed with [uv](https://docs.astral.sh/uv/) (install once per machine: `curl -LsSf https://astral.sh/uv/install.sh | sh`, or `pip install --user uv`).
+- Virtualenv lives at `.venv` in this repo root, created/managed by uv: `uv venv --python 3.14`. This same venv is also used for `knowledgenet-examples` work — there is no separate venv per project.
+- Dev tools + runtime deps: `uv sync --group dev` (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder, plus base runtime deps). `uv sync` alone installs just the runtime deps.
+- Run commands via `uv run <cmd>` (e.g. `uv run pytest ...`), or `source .venv/bin/activate` and run bare commands as before.
 
 ## Testing
 
 Run from the repo root (pytest.ini sets `pythonpath = src test/unit`):
 
 ```bash
-python -m pytest -rPX -vv -s --cov        # with coverage
-python -m pytest -rPX -vv -s              # without coverage
-python -m pytest -rPX -vv -s --log-cli-level=DEBUG
-python -m pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_then'  # single test
+uv run pytest -rPX -vv -s --cov        # with coverage
+uv run pytest -rPX -vv -s              # without coverage
+uv run pytest -rPX -vv -s --log-cli-level=DEBUG
+uv run pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_then'  # single test
 ```
 
 When adding or changing behavior in `src/knowledgenet/`, add or update the corresponding test under `test/unit/`.
@@ -42,8 +43,8 @@ When adding or changing behavior in `src/knowledgenet/`, add or update the corre
 Only needed when publishing docs, but keep in mind that `docs/api/*.md` is generated, not hand-edited:
 
 ```bash
-sphinx-apidoc -f -e -o target/sphinx/apidoc src/knowledgenet src/knowledgenet/core
-sphinx-build -c src/api -D master_doc=modules -b markdown -d target/sphinx/doctrees-markdown target/sphinx/apidoc target/sphinx/markdown
+uv run sphinx-apidoc -f -e -o target/sphinx/apidoc src/knowledgenet src/knowledgenet/core
+uv run sphinx-build -c src/api -D master_doc=modules -b markdown -d target/sphinx/doctrees-markdown target/sphinx/apidoc target/sphinx/markdown
 cp -a target/sphinx/markdown/. docs/api/
 ```
 

@@ -7,31 +7,41 @@ This page is meant for contributors of this project.
 ## One-time setup
 This project needs python 3.14 or higher installed. It may work with other versions as well.  
 
+### Install uv:
+This project uses [uv](https://docs.astral.sh/uv/) to manage the virtual environment and dependencies. Install it once per machine, either:
+```bash
+# Standalone installer (no Python dependency; supports `uv self update`)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+or:
+```bash
+# Via pip, if you'd rather not run the installer script (upgrade with `pip install --upgrade uv`)
+pip install --user uv
+```
+
 ### Create a virtual environment:
 ```bash
-python3.14 -m venv .venv
+uv venv --python 3.14
 ```
+If you have an existing `.venv` from the old pip-based setup, remove it first: `rm -rf .venv && uv venv --python 3.14`.
 
 ### Switch to knowledgenet virtual environment:
 ```bash
 source .venv/bin/activate  
 ```
-You can add the above to $HOME/.bashrc to automatically activate the venv when entering the project directory.
+You can add the above to $HOME/.bashrc to automatically activate the venv when entering the project directory. This is optional if you use `uv run`/`uv sync` below, which work against `.venv` without requiring activation.
 
 ## Install development tools:
 
 ```bash
-pip install --upgrade pip
-pip install pip-tools
-pip install -U --group=dev
-
+uv sync --group dev
 ```
+This installs the base runtime dependencies plus dev tools (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder) into `.venv`, and creates/updates `uv.lock`.
 
 ## Install runtime dependencies:
+Only needed if you want the base runtime dependencies without the dev tools above (e.g. to run the library without testing/building it):
 ```bash
-mkdir -p target
-python -m piptools compile pyproject.toml -o target/requirements.txt
-pip install -r target/requirements.txt
+uv sync
 ```
 
 ## Configure the publishing environment:
@@ -51,18 +61,19 @@ pip install -r target/requirements.txt
 
 ```bash
 # With code coverage:  
-python -m pytest -rPX -vv -s --cov  
+uv run pytest -rPX -vv -s --cov  
 # Without code coverage:  
-python -m pytest -rPX -s -vv 
+uv run pytest -rPX -s -vv 
 # With debug logging
-python -m pytest -rPX -vv -s --log-cli-level=DEBUG  
+uv run pytest -rPX -vv -s --log-cli-level=DEBUG  
 # Run all tests on a pytest file:  
-python -m pytest -rPX -vv -s 'test/unit/test_basic.py'  
+uv run pytest -rPX -vv -s 'test/unit/test_basic.py'  
 # Run a single test:  
-python -m pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_then'  
+uv run pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_then'  
 # Run tests with remote debugging:  
-python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
+uv run debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
 ```
+(If you've activated `.venv` via `source .venv/bin/activate`, the bare `python -m pytest ...` form still works unchanged.)
 
 ## Build package artifacts:
 Note: For all the commands below, you must cd to the project home directory.  
@@ -71,13 +82,13 @@ Note: For all the commands below, you must cd to the project home directory.
 
 ```bash
 # Regenerate API `.rst` sources (excluding `src/knowledgenet/core`)
-sphinx-apidoc -f -e -o target/sphinx/apidoc src/knowledgenet src/knowledgenet/core
+uv run sphinx-apidoc -f -e -o target/sphinx/apidoc src/knowledgenet src/knowledgenet/core
 
 # Build HTML API docs
-sphinx-build -c src/api -D master_doc=modules -b html -d target/sphinx/doctrees target/sphinx/apidoc target/sphinx/html
+uv run sphinx-build -c src/api -D master_doc=modules -b html -d target/sphinx/doctrees target/sphinx/apidoc target/sphinx/html
 
 # Build Markdown API docs (for agent knowledgebase ingestion)
-sphinx-build -c src/api -D master_doc=modules -b markdown -d target/sphinx/doctrees-markdown target/sphinx/apidoc target/sphinx/markdown
+uv run sphinx-build -c src/api -D master_doc=modules -b markdown -d target/sphinx/doctrees-markdown target/sphinx/apidoc target/sphinx/markdown
 
 # Publish generated markdown docs in-repo for GitHub browsing
 mkdir -p docs/api
@@ -93,11 +104,15 @@ Generated outputs:
 ## Publish package to PyPi:
 Note: For all the commands below, you must cd to the project home directory.  
 ```bash
-Replace the <repository> with either testpypi or pypi.
-# bash
-python -m build
-python -m twine upload --repository <repository> dist/*
+uv build
+# Replace <repository> with either testpypi or pypi.
+uv run twine upload --repository <repository> dist/*
 ```
+
+Not yet adopted: `uv publish` (`uv publish --index testpypi` / `uv publish`, using the
+`[[tool.uv.index]]` "testpypi" entry already in `pyproject.toml`) is a viable native replacement for
+`twine upload` once we're ready to switch — it needs `UV_PUBLISH_TOKEN` set rather than `.pypirc`.
+Sticking with `twine` for now; revisit later.
 
 ## Install git flow
 We use git flow to manage branches and releases. On Fedora Linux, use the following commands to install the gitflow packages.The steps will differ based on what distribution and operating system you are using.
@@ -107,5 +122,4 @@ sudo dnf install gitflow
 
 git flow init -d
 ```
-
 
