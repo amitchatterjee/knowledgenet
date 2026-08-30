@@ -1,5 +1,6 @@
 import logging
-from typing import Union
+from typing import Any, cast
+from collections.abc import Callable, Hashable
 
 from knowledgenet.ftypes import EventFact, Wrapper
 from knowledgenet.core.tracer import trace
@@ -8,10 +9,13 @@ from knowledgenet.node import Node
 from knowledgenet.factset import Factset
 from knowledgenet.core.graph import Graph, Element
 from knowledgenet.container import Collector
+from knowledgenet.rule import Rule
 from knowledgenet.ruleset import Ruleset
 
 class Session:
-    def __init__(self, ruleset:Ruleset, facts, id, global_ctx={}, node_sorter=None):
+    def __init__(self, ruleset:Ruleset, facts: set|list, id: str, global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None) -> None:
+        if global_ctx is None:
+            global_ctx = {}
         self.id = id
         self.ruleset = ruleset
         self.rules = ruleset.rules
@@ -19,24 +23,24 @@ class Session:
         self.input_facts = facts
         self.node_sorter = node_sorter
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Session({self.id})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
 
     @trace()
-    def execute(self):  
+    def execute(self) -> set:
         self.output_facts = Factset()
-        self.graph = Graph(id=self.id, comparator=self.node_sorter)
+        self.graph = Graph(id=self.id, comparator=cast(Callable[[Hashable, Hashable], int] | None, self.node_sorter))
         logging.debug("%s: Initializing graph", self)
         leftmost,_, updated_facts = self._add_facts(self.input_facts)
         logging.debug("%s: Executing rules on graph", self)
-        
+
         self.graph.new_cursor(element=leftmost)
         while element := self.graph.next_element():
             #print(f"Graph content: {self.graph.to_element_list(cursor_name='list')}")
-            node = element.obj
+            node = cast(Node, element.obj)
             # Execute the rule on the node
             result = node.execute(self.output_facts)
             if node.rule.run_once:
@@ -46,6 +50,8 @@ class Session:
                 element = e
 
             if result:
+                # node.execute() only returns True after setting node.changes.
+                assert node.changes is not None
                 # If the rule execution resulted in merges (insert, update, delete)
                 all_updates = set()
 
@@ -86,18 +92,19 @@ class Session:
         return self.output_facts.facts
     
     @trace(level=11)
-    def _delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
+    def _delete_facts(self, deleted_facts: set|list, current_leftmost: Element)->tuple[Element|None, set, Any]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.output_facts.del_facts(deduped_deletes)
         logging.debug("%s: Iterating through graph with deleted facts: %s", self, deduped_deletes)
         cursor_name = 'merge'
         self.graph.new_cursor(cursor_name=cursor_name)
-        new_leftmost = current_leftmost
+        new_leftmost: Element | None = current_leftmost
         while element := self.graph.next_element(cursor_name):
-            overlap = [value for value in element.obj.when_objs if value in deduped_deletes]
+            node = cast(Node, element.obj)
+            overlap = [value for value in node.when_objs if value in deduped_deletes]
             if len(overlap):
                 next_element = self.graph.delete_element(element)
-                if element.obj == new_leftmost.obj:
+                if new_leftmost is not None and element.obj == new_leftmost.obj:
                     # If the leftmost object is being deleted
                     new_leftmost = next_element
                 else:
@@ -107,8 +114,8 @@ class Session:
         return new_leftmost, deduped_deletes, changed_collectors
 
     @trace(level=11)
-    def _update_facts(self, execution_node: Node, facts: Union[set,list], 
-                       current_leftmost: Element)->tuple[Element:int]:
+    def _update_facts(self, execution_node: Node, facts: set|list,
+                       current_leftmost: Element)->tuple[Element, set]:
         deduped_updates = set(facts) # Remove duplicates
         updated_facts = self.output_facts.update_facts(deduped_updates)
         new_leftmost = current_leftmost
@@ -117,7 +124,7 @@ class Session:
         self.graph.new_cursor(cursor_name=cursor_name)
         node = execution_node
         while element:= self.graph.next_element(cursor_name):
-            node = element.obj
+            node = cast(Node, element.obj)
             if node == execution_node and not node.rule.retrigger_on_update:
                 # if this node updated the object and the rule option is not to retrigger on updare
                 continue
@@ -132,8 +139,8 @@ class Session:
         logging.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, len(deduped_updates), deduped_updates, new_leftmost)
         return new_leftmost, deduped_updates
 
-    def _get_matching_objs(self, rule):
-        when_objs = []
+    def _get_matching_objs(self, rule: Rule) -> list[set] | None:
+        when_objs: list[set] = []
         # For each class associated with the when clause, look if object(s) of that type exists. If objects exist for all of the when clauses, then this rule satisfies the need and is ready to be put in the graph
         for when in rule.whens:
             if when.of_type in (Collector,EventFact):
@@ -146,12 +153,12 @@ class Session:
         return when_objs
 
     @trace(level=11)
-    def _add_facts(self, facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
+    def _add_facts(self, facts: set|list, current_leftmost:Element|None=None)->tuple[Element|None, set, Any]:
         # The new_facts variable contains a (deduped) set
         new_facts,updated_facts = self.output_facts.add_facts(facts)
         # If all the facts are duplicates, then return
         if not new_facts:
-            return current_leftmost, 0, updated_facts
+            return current_leftmost, new_facts, updated_facts
 
         new_leftmost = current_leftmost
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
@@ -172,7 +179,7 @@ class Session:
         logging.debug("%s: Inserted into graph, count: %d, updated facts: %s, new leftmost: %s", self, len(new_facts), updated_facts, new_leftmost)
         return new_leftmost, new_facts, updated_facts
     
-    def _minimum(self, element1:Element, element2:Element)->Element:
+    def _minimum(self, element1:Element|None, element2:Element)->Element:
         if not element1:
             return element2
         min = element2 if self.graph.compare(element1, element2) >= 0 else element1

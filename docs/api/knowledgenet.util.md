@@ -2,31 +2,31 @@
 
 General-purpose utility helpers shared across Knowledgenet modules.
 
-### knowledgenet.util.merge(d1: dict[str, object], d2: dict[str, object]) → dict[str, object]
+### knowledgenet.util.merge(d1: dict[str, Any], d2: dict[str, Any]) → dict[str, Any]
 
 Recursively merge two dictionaries, preferring right-hand values.
 
 Nested dict values are merged recursively, list values are merged by index,
 and scalar conflicts are resolved in favor of `d2`.
 
-### knowledgenet.util.of_type(fact)
+### knowledgenet.util.of_type(fact: object) → type | str
 
 Return the effective type for a fact.
 
 Wrapper facts expose their logical `of_type` instead of concrete Wrapper
 class to support named/typed matching semantics.
 
-### knowledgenet.util.to_frozenset(obj)
+### knowledgenet.util.to_frozenset(obj: object) → frozenset
 
 Convert a scalar or iterable value into a frozenset.
 
-### knowledgenet.util.to_list(obj)
+### knowledgenet.util.to_list(obj: object) → list
 
 Convert a scalar or iterable value into a list.
 
 Scalars become single-item lists.
 
-### knowledgenet.util.to_tuple(obj)
+### knowledgenet.util.to_tuple(obj: object) → tuple
 
 Convert a scalar or iterable value into a tuple.
 

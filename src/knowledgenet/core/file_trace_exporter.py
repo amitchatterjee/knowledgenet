@@ -1,6 +1,7 @@
 import json
 import threading
-from typing import Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
@@ -11,12 +12,12 @@ class FileSpanExporter(SpanExporter):
     dictionaries and appends them to the configured file. It is intended for local
     debugging or CI use where an OTLP backend is not available.
     """
-    def __init__(self, file_path: str = "trace.ndjson"):
+    def __init__(self, file_path: str = "trace.ndjson") -> None:
         self._file_path = file_path
         self._lock = threading.Lock()
 
-    def export(self, spans: Sequence[object]) -> "SpanExportResult":
-        records = []
+    def export(self, spans: Sequence[object]) -> SpanExportResult:
+        records: list[dict[str, Any]] = []
         for span in spans:
             try:
                 rec = self._span_to_dict(span)
@@ -42,7 +43,7 @@ class FileSpanExporter(SpanExporter):
 
     def _span_to_dict(self, span: object) -> dict:
         # span is typically an opentelemetry.sdk.trace._Span
-        d = {
+        d: dict[str, Any] = {
             "name": getattr(span, "name", None),
             "context": {
                 "span_id": getattr(getattr(span, "context", None), "span_id", None),

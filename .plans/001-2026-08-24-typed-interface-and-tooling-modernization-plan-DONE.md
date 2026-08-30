@@ -1,6 +1,8 @@
 # Add a typed interface, modernize type hints to Python 3.14 idioms, and modernize dev tooling (pip → uv, CI)
 
-Status: **INPROG** — plan only, implementation not started.
+Status: **DONE (2026-08-30)** — Phases 0-6 implemented and verified (tests passing, `mypy` clean
+package-wide). Note: CI-green on the default branch was never separately confirmed, since the work
+was still uncommitted/unpushed as of this status change — verify that once pushed.
 
 ## Context
 
@@ -117,7 +119,7 @@ disallow_untyped_defs = true
 (`no_implicit_optional` is mypy's default since ~0.990 and needs no explicit setting; it's what
 flags the `param: str = None` cases below.)
 
-### Phase 0 — Transition dev tooling from pip to uv (tooling, no source changes)
+### Phase 0 — Transition dev tooling from pip to uv (tooling, no source changes) — **DONE (2026-08-28)**
 
 Runs before Phase 1 so Phase 1's new CI workflow can be written uv-native from the start instead of
 being redone. Current flow, per `docs/readme-development.md`: manual `python3.14 -m venv .venv` +
@@ -132,7 +134,10 @@ process itself.
   or a distro package) — not a project dependency.
 - Replace manual venv creation with `uv venv --python 3.14` (or rely on `uv sync` to create `.venv`
   implicitly on first run, honoring `requires-python` from `pyproject.toml` — document both, since
-  explicit `uv venv` is clearer for first-time contributors).
+  explicit `uv venv` is clearer for first-time contributors). For contributors upgrading an existing
+  checkout whose `.venv` was created by the old `python3.14 -m venv` flow, document
+  `rm -rf .venv && uv venv --python 3.14` — simplest as a one-time migration step, and avoids relying
+  on uv's ownership-detection/`--clear` semantics for something entirely disposable/regenerable.
 - Replace `pip install pip-tools` + `piptools compile` + `pip install -r target/requirements.txt` with
   `uv sync` (base deps) and `uv sync --group dev` (adds the dev group). Drop `pip-tools` from
   `[dependency-groups] dev` in `pyproject.toml` — superseded by `uv sync`/`uv.lock`.
@@ -160,13 +165,13 @@ process itself.
     (uv still populates a normal `.venv`), but `uv run` is what CI should use since it needs no prior
     activation step.
   - "Build API docs" → prefix `sphinx-apidoc`/`sphinx-build` invocations with `uv run`.
-  - "Publish package to PyPI" → `uv build` replaces `python -m build`; `uv publish --index
-    <repository> dist/*` replaces `python -m twine upload --repository <repository> dist/*`. Note as
-    an open decision point (resolve during the phase, not pre-decided here): `uv publish` authenticates
-    via `UV_PUBLISH_TOKEN`/`--token`, not the existing `~/.pypirc`-based token setup documented in
-    "Configure the publishing environment" — that section needs rewriting to match, or `twine` stays
-    as a documented fallback if `uv publish`'s auth flow doesn't fit. Only drop `build`/`twine` from
-    `[dependency-groups] dev` once this is actually confirmed working end-to-end.
+  - "Publish package to PyPI" → **Decided: stick with `twine upload` (via `.pypirc`) for now; `uv
+    publish` deferred.** `uv build` replaces `python -m build` (uv build has no `twine`-equivalent
+    tradeoff — adopt immediately), but publishing stays on `twine upload --repository <repository>
+    dist/*` against the existing `~/.pypirc` token setup, unchanged. A `[[tool.uv.index]]` "testpypi"
+    entry is added to `pyproject.toml` and `docs/readme-development.md` notes `uv publish` as a viable
+    future replacement, but it is not switched to now. Keep `build` and `twine` in
+    `[dependency-groups] dev`.
   - "Install git flow" section unaffected.
 - Update Phase 1's `.github/workflows/ci.yml` to use `astral-sh/setup-uv` + `uv sync --group dev` +
   `uv run pytest` + `uv run mypy src/knowledgenet`, written uv-native from the start.
@@ -176,7 +181,15 @@ process itself.
   `../knowledgenet/.venv`" convention keeps working unchanged — no edit needed there unless the path
   or activation story actually changes.
 
-### Phase 1 — Tooling baseline (no source changes)
+**Verified:** `.venv` recreated via `uv venv --python 3.14` + `uv sync --group dev` (66 packages
+resolved, `knowledgenet` importable); `uv.lock` committed and confirmed not gitignored;
+`pyproject.toml` reorganized and `pip-tools` dropped from `dev`; a `[[tool.uv.index]]` "testpypi"
+entry added (publishing itself stays on `twine`/`.pypirc` per the decision above); all three
+documented `uv run sphinx-*` commands (apidoc, HTML build, Markdown build) run clean; `docs/
+readme-development.md`, `CLAUDE.md`, and `README.md` (renamed from `readme.md`, with a new PyPI
+install section) updated. Committed in `e7bdcc3` and `10f2323`.
+
+### Phase 1 — Tooling baseline (no source changes) — **DONE (2026-08-28)**
 
 - Add `mypy` to the `dev` group in `pyproject.toml` (alongside `pytest`, `ruff` is not currently used
   in this repo and is out of scope to introduce here — this plan is about typing, not linting).
@@ -192,7 +205,17 @@ process itself.
 - Commit the baseline numbers above as the starting point; every later phase's Verification step
   re-runs `mypy src/knowledgenet` and reports the new count.
 
-### Phase 2 — Fix the real bugs mypy's baseline run surfaced
+**Verified:** `mypy` added to `dev`, `[tool.mypy]` config added, `uv sync --group dev` installed
+mypy 2.3.1 cleanly. `.github/workflows/ci.yml` created (uv-native, `astral-sh/setup-uv@v10`).
+`.github/workflow/python-publish.yml` renamed to `.github/workflows/python-publish.yml` via `git mv`
+(history-preserving; not yet pushed, so the Actions-tab/`git log --follow` checks in Verification #2
+are still outstanding). `uv run mypy src/knowledgenet` gives **45 errors in 11 files** — confirmed
+this is the real baseline-with-config (not a mistake: bare `mypy` with no config still reproduces
+44/10 exactly), caused by the `knowledgenet.helper` override catching a genuine untyped-`**kwargs`
+gap in `helper.py:13`, deferred to Phase 5 as documented in Verification #2. `uv run pytest -rPX -s`
+run manually by the user: **passed**.
+
+### Phase 2 — Fix the real bugs mypy's baseline run surfaced — **DONE (2026-08-30)**
 
 Not annotation additions — actual defects, fixed regardless of what the rest of this plan does:
 
@@ -220,7 +243,26 @@ Not annotation additions — actual defects, fixed regardless of what the rest o
   `dict[str, Any]` since span shapes are genuinely heterogeneous (`getattr` off an untyped OTel SDK
   object).
 
-### Phase 3 — Modernize old-style typing (mechanical, no behavior change)
+**Verified:** All bullets above implemented. `scanner.py:load_rules_from_filepaths` resolved via
+checking every real caller in both repos (`test/unit/test_scanning.py`: multiple plain-`str` args;
+`knowledgenet-examples/autoins/src/rule_runner.py`: single `list[str]` arg) — no caller ever mixes
+the two, so the fix is two `@overload` signatures (`*paths: str` / `paths: list[str] | tuple[str,
+...]`) rather than extending `_find_modules` to support an untested mixed shape; runtime body
+unchanged. Fixing `core/session.py`'s invalid `tuple[Element:int]` syntax let mypy check those
+function bodies for the first time (the parse error had been silently suppressing checks), which
+surfaced that `_add_facts`/`_delete_facts`'s "leftmost" value is genuinely nullable throughout —
+`_minimum`'s `element1` param (whose own `if not element1:` guard already assumed this) and the two
+return types were widened to `Element | None` accordingly. Also fixed, found adjacent to the planned
+work: `_add_facts`'s early-return path returned literal `0` instead of the already-empty `new_facts`
+set (harmless today since every caller discards that slot, but inconsistent with the return type);
+and `container.py:minimum()` had its cache-write line indented one level too shallow (unlike
+`maximum()` right below it), so it recomputed on every call instead of ever using its cache — a
+pure performance fix, no return-value change. `uv run mypy src/knowledgenet` dropped from 45 errors
+in 11 files to **10 errors in 6 files**, and all 10 remaining are pre-existing items already scoped
+to Phase 3 (implicit-Optional signatures) or Phase 5 (`perm.py`, `container.py:collection`,
+`helper.py`) — no new errors introduced. `uv run pytest -rPX -s` run manually by the user: **passed**.
+
+### Phase 3 — Modernize old-style typing (mechanical, no behavior change) — **DONE (2026-08-30)**
 
 - `ruleset.py`, `scanner.py`, `core/session.py`: `Union[X, Y]` → `X | Y`.
 - `util.py`: `typing.List` → builtin `list[...]`.
@@ -237,7 +279,29 @@ Not annotation additions — actual defects, fixed regardless of what the rest o
   (`of_type: type | str = None, named: str = None` → `type | str | None = None`, `str | None =
   None`), `scanner.py:30` (`id: str = None` → `str | None = None`).
 
-### Phase 4 — Fix mutable default arguments
+**Verified:** All bullets implemented, plus two things found while doing so that the plan's literal
+text didn't anticipate. First, `ftypes.py`'s `Callable`/`Union` imports were both dead — nothing in
+the file actually used them — so that bullet became "delete the unused imports" for this file rather
+than "migrate `typing.Callable` usage," and `Union` (also unused after the `load_rules_from_packages`
+fix in `scanner.py`) and `List` (dead in `util.py`) were dropped the same way everywhere they'd
+become unused. Second, `rule.py:127`'s `when` default (`= ()`) was mismatched with its own declared
+type (`tuple[Fact | Collection]` means an exactly-one-element tuple, not "any-length tuple," so the
+empty-tuple default didn't fit) — a fourth implicit-mismatch signature mypy had flagged in the
+Phase-2 baseline that wasn't listed in this phase's bullets; fixed to the correct variadic
+`tuple[Fact | Collection, ...]`, matching actual behavior (any number of when-clauses, including
+zero). Widening `ftypes.py:Wrapper.__init__`'s `of_type` to `type | str | None` (per the
+implicit-Optional fix) surfaced a real mypy gap further down the same method — `of_type.__name__` is
+reached only after two `raise`-guards that make `of_type is None` impossible at runtime, but mypy
+can't follow that through the reassignment — resolved with an explicit `assert of_type is not None`,
+same pattern as the `graph.py` fix in Phase 2. `core/graph.py`'s `from __future__ import annotations`
+was deliberately left alone per this phase's own note (defer until Phase 4 confirms nothing depends
+on it). `uv run mypy src/knowledgenet` dropped from 10 errors in 6 files to **4 errors in 4 files**,
+all of them already Phase 5-scoped (`perm.py`, `container.py:collection`, `helper.py`,
+`scanner.py:146`) — no new errors. `uv run pytest -rPX -s`: **89 passed** (run by the assistant as a
+sanity check given the `assert` addition was an actual runtime change, not just annotations; also
+confirmed by the user as usual).
+
+### Phase 4 — Fix mutable default arguments — **DONE (2026-08-30)**
 
 Not mypy-flagged (mypy doesn't check this), found by inspection — the standard shared-mutable-default
 footgun, all four take a `global_ctx`/`include_only` dict-or-list default:
@@ -253,7 +317,23 @@ is ever mutated in place downstream (`core/session.py`, `node.py`) — if so thi
 (state leaking between `Service`/`Ruleset`/`Session` instances that didn't pass their own
 `global_ctx`), not just a latent one; document the finding either way in this plan's Verification.
 
-### Phase 5 — Annotate the untyped public-API surface
+**Verified:** All four sites fixed identically (`None` sentinel + `if x is None: x = {}`/`[]` inside).
+Checked the mutation question by grepping every `global_ctx` reference in `src/`, `test/`, and
+`docs/`: `core/session.py`/`node.py` only ever *read* `self.global_ctx` (passing it through to
+`Session`, exposing it via `helper.global_ctx(ctx) -> ctx._session.global_ctx`), never write to it,
+and no test exercises a write either. But `docs/rule-service.md`'s own documented usage pattern —
+`global_ctx(ctx)['api_client']` from inside a rule's `then=` — returns a live reference to the same
+dict object, and nothing stops a rule author from writing `global_ctx(ctx)['x'] = y` instead of just
+reading. Before this fix, doing that from any `Service`/`Ruleset`/`Session` constructed without an
+explicit `global_ctx` would have silently mutated the one shared default dict, leaking state into
+every other unrelated instance created the same way for the lifetime of the process — a real, live
+bug given the DSL's own documented "inject shared resources" use case, not just latent risk; this
+phase's fix closes it. `uv run mypy src/knowledgenet`: same 4 pre-existing Phase 5-scoped errors,
+unchanged (`core/perm.py`'s line number shifted 16→18 from the added lines, nothing else). `uv run
+pytest -rPX -s`: **89 passed** (run by the assistant as a sanity check; also run by the user with
+`--cov`, 96% coverage, all passing, before this phase).
+
+### Phase 5 — Annotate the untyped public-API surface — **DONE (2026-08-30)**
 
 Ratchet `disallow_untyped_defs = true` onto each module's `[[tool.mypy.overrides]]` entry as it's
 completed, in this order (highest external-visibility first):
@@ -281,31 +361,93 @@ Convention for dunders across all of the above (apply once, consistently, rather
 file): `__str__`/`__repr__` return `str`, `__eq__(self, other: object) -> bool`, `__hash__(self) ->
 int`.
 
-### Phase 6 — Close the ratchet
+**Verified:** All 7 explicitly-listed items done (`controls.py`, `factset.py`, `service.py`,
+`node.py`, `core/session.py` + `core/graph.py` remainder + `core/tracer.py` + `core/perm.py`,
+`decorator.py`, `scanner.py` remainder). `decorator.py`'s expected friction materialized exactly as
+predicted (`wrapper.__ruledef__ = True` needs a targeted `# type: ignore[attr-defined]`) and was
+resolved that way, not by restructuring.
+
+**Scope gap found and closed (with sign-off):** Phase 6 requires "Phase 5's overrides cover every
+module," but this phase's own 7-item list only named 8 of the package's 18 real modules —
+`container.py`, `ruleset.py`, `rule.py`, `ftypes.py`, `util.py`, `repository.py`, and
+`core/file_trace_exporter.py` were never listed, and were still substantially untyped. Flagged this
+to the user directly rather than silently declaring Phase 5 done against an unsatisfiable Phase 6
+precondition; user chose to extend Phase 5 now to cover all of them. All 18 real modules (excluding
+the two trivial `__init__.py` files) now have `disallow_untyped_defs = true` overrides in
+`pyproject.toml`, and `uv run mypy src/knowledgenet` reports **zero issues** — this is the actual
+precondition Phase 6 needs, now genuinely met.
+
+**Real bugs found and fixed while annotating** (not part of the planned scope, but directly
+surfaced by giving `other: object` a real type on every `__eq__`, per the dunder convention above):
+- `Rule.__eq__` and `Ruleset.__eq__` both did `return self.id == other.name` — but neither class
+  ever defines a `.name` attribute (confirmed via search: no test, and no caller anywhere, ever
+  passes `name=` to either constructor). Every invocation of `rule1 == rule2` or `ruleset1 ==
+  ruleset2` would have raised `AttributeError` unconditionally, with zero test coverage to catch it.
+  Fixed both to `self.id == other.id`, matching `Node.__eq__`'s already-correct pattern. This is a
+  significant, 100%-reproducible bug, not an edge case.
+- `factset.py`'s `_type_to_events`/`_type_to_collectors` dict declarations were typed with
+  `type`-only keys, but code already looked them up using `of_type(fact)` (which returns `type | str`
+  for `Wrapper`-wrapped facts) -- widened both to `type | str` keys, matching the already-correct
+  `_type_to_facts` dict right next to them.
+- `node.py:Leaf.execute()` — `setattr(context, self.rule.whens[...].var, fact)` guarded by a truthy
+  check on the same repeated expression; mypy can't narrow a re-evaluated indexing expression the way
+  it narrows a local variable, so bound it to a local (`var = ...; if var: setattr(context, var,
+  fact)`) — also removes a redundant re-index, no behavior change.
+
+`uv run mypy src/knowledgenet`: **zero issues, all 18 modules** (up from the 4-error, 4-module state
+Phase 4 left off at). `uv run pytest -rPX -s`: **89 passed**, no regressions from any of the above,
+including the two `__eq__` fixes (unexercised by any existing test either way). Also ran the
+downstream `knowledgenet-examples/autoins` suite against this build (`uv sync --group dev && uv run
+pytest -rPX -q`, picking up the local source via the `[tool.uv.sources]` path dependency and
+`cache-keys` config from the earlier detour): **5 passed**, confirming no observable regression in a
+real consumer.
+
+### Phase 6 — Close the ratchet — **DONE (2026-08-30)**
 
 Once Phase 5's overrides cover every module, collapse them into a single top-level
 `disallow_untyped_defs = true` in `[tool.mypy]` and delete the per-module override blocks. Confirm
 `mypy src/knowledgenet` (the agreed profile, not `--strict`) is clean, and that the CI job from
 Phase 1 is green on the default branch.
 
+**Verified:** All 18 `[[tool.mypy.overrides]]` blocks deleted; `[tool.mypy]` now has a single
+`disallow_untyped_defs = true`, with a comment noting it's a one-line flip either direction (no
+per-module bookkeeping) per the user's explicit request to keep an easy escape hatch for when
+strong typing gets in the way, rather than leaving the per-module override list around as the
+"off switch" mechanism. `uv run mypy src/knowledgenet`: **zero issues** (unchanged from Phase 5's
+end state, confirming the collapse itself introduced no new gaps). `uv run pytest -rPX -s`: **89
+passed**. Not yet verified: CI green on the default branch — Phases 2 through 6 are all still
+uncommitted/unpushed (only Phase 0 and a differently-labeled Phase 1/2 pair are committed so far,
+per `git log`), so the Actions-tab check from this phase's own text is outstanding until the user
+commits and pushes.
+
 ## Explicitly out of scope
 
 - Switching the build backend away from `setuptools` (e.g. to `hatchling`, uv's own default for `uv
   init` projects) — orthogonal to the pip→uv tooling transition; `setuptools` works fine under `uv
   build`.
-- Migrating `knowledgenet-examples`/`autoins`'s own `requirements.txt`-based install flow to uv — out
-  of scope per the existing no-changes-to-`knowledgenet-examples` bullet below; only the shared
-  `../knowledgenet/.venv` path needs to keep resolving the same way.
+- ~~Migrating `knowledgenet-examples`/`autoins`'s own `requirements.txt`-based install flow to
+  uv~~ — **superseded (2026-08-30), done.** Out of scope as originally written for this plan's own
+  phases, but the user separately and explicitly requested it mid-plan (their own `.venv` had
+  been removed and they wanted `autoins` on its own `uv`-managed venv, one per future example,
+  rather than a shared one). Implemented: `autoins/pyproject.toml` (new, `requirements.txt`
+  removed), `[tool.uv.sources]` path dependency on the sibling `knowledgenet` repo (no PyPI
+  publish needed for local dev), `[tool.uv] cache-keys` added to `knowledgenet/pyproject.toml` so
+  plain `uv sync` in `autoins` picks up `knowledgenet` source edits automatically. Docs
+  (`autoins/readme.md` → renamed `README.md` by the user, `knowledgenet-examples/CLAUDE.md`)
+  updated to match. Not tracked as a phase in this plan since it's `knowledgenet-examples`' own
+  tooling, not `knowledgenet`'s — see that repo's own history/CLAUDE.md for details, not this
+  plan's Verification section.
 - Typing `ctx`/`this` inside rule-author `matches`/`then` lambdas, or redesigning the DSL toward
   `TypedDict`/`Protocol`-based fact contexts — see Design's scope boundary above. `SimpleNamespace`/
   dynamic-attribute typing at that boundary is correct as-is.
 - Adopting `--strict` mypy, or any linter (`ruff`, `flake8`, etc.) — this plan is scoped to typing
   only; introducing a linter is a separate decision or plan.
-- Any change to `knowledgenet-examples`/`autoins` — that repo pins `knowledgenet==1.0.0` from
-  PyPI/a built wheel; nothing here changes runtime behavior or the public API shape, so no version
-  bump or example-repo change is implied. If Phase 2's `scanner.py` vararg-shape question resolves
-  toward *narrowing* the signature rather than fixing the implementation, revisit whether
-  `knowledgenet-examples` relies on the currently-broken call shape first.
+- ~~Any change to `knowledgenet-examples`/`autoins`~~ — **superseded (2026-08-30), done**; see the
+  bullet above. (The original reasoning here — no version-bump implication, and checking whether
+  `knowledgenet-examples` relied on the pre-fix `scanner.py` vararg shape before narrowing it —
+  was addressed directly: Phase 2 confirmed via grep that no real caller in either repo used the
+  mixed-arg shape, so the overload-based fix was safe, and `autoins` now consumes `knowledgenet`
+  as a local source build rather than a pinned PyPI version at all.)
 - Sphinx/API-doc regeneration (`docs/api/*.md`) — unaffected by type annotations (Sphinx's
   `autodoc`/markdown builder here isn't configured to render type hints into prose); no need to
   rebuild docs as part of this plan unless that's separately requested.
@@ -319,9 +461,15 @@ Phase 1 is green on the default branch.
    baseline); `uv build` produces a `dist/*.whl` + `.tar.gz` of the same shape `python -m build` did;
    `uv.lock` is committed. Confirm every command block in `docs/readme-development.md` was actually
    updated (no leftover bare `pip install`/`piptools compile` instructions).
-2. After Phase 1: `uv run mypy src/knowledgenet` runs (config picked up from `pyproject.toml`, default
-   profile) and reproduces the 44-error baseline exactly — confirms the config itself introduces no
-   behavior change before any source edits. Push a throwaway commit to confirm
+2. After Phase 1: `uv run mypy src/knowledgenet` runs (config picked up from `pyproject.toml`) and
+   reports **45 errors in 11 files**, not the bare-mypy 44/10 baseline — verified: bare `mypy` with no
+   config still reproduces 44/10 exactly, so the +1/+1 delta comes entirely from the config's own
+   `knowledgenet.helper` `disallow_untyped_defs` override (present in `[tool.mypy]` from the start, not
+   added later) catching `helper.py:13`'s `assign(ctx: SimpleNamespace, **kwargs)->bool` — the
+   `**kwargs` has no annotation. This is expected and left as-is (Phase 1 is no-source-changes); the
+   fix (`**kwargs: object`, matching the Design's stated convention for this library's
+   dynamic-attribute pattern) belongs in Phase 5 when `helper.py`'s override is reached in the normal
+   module order. Push a throwaway commit to confirm
    `.github/workflows/ci.yml` actually triggers on GitHub. Also confirm `git log --follow` on the
    relocated `.github/workflows/python-publish.yml` still shows its original history (a `git mv`
    rename, not a delete+recreate), and that it now shows up under the repo's Actions tab as a

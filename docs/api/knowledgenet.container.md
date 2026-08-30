@@ -2,7 +2,7 @@
 
 Collection primitives used to aggregate facts during session execution.
 
-### *class* knowledgenet.container.Collector(group: str, of_type: type | str, filter: list[Callable] | tuple[Callable] | Callable | str = <function Collector.<lambda>>, value: Callable | None = None, key: Callable | None = None, \*\*kwargs)
+### *class* knowledgenet.container.Collector(group: str, of_type: type | str, filter: list[Callable] | tuple[Callable] | Callable | str = <function Collector.<lambda>>, value: Callable | None = None, key: Callable | None = None, \*\*kwargs: object)
 
 Bases: `object`
 
@@ -49,7 +49,7 @@ Attempt to remove one fact from the collection.
 Returns True only when the fact is currently present and passes the same
 filter constraints used for insertion.
 
-#### reset_cache()
+#### reset_cache() → None
 
 Clear cached aggregate values after collection changes.
 

@@ -5,7 +5,7 @@ Convenience helpers for rule context interaction.
 These utilities are intended for use in `matches` and `then` callables to
 improve readability and reduce direct access to private context fields.
 
-### knowledgenet.helper.assign(ctx: SimpleNamespace, \*\*kwargs) → bool
+### knowledgenet.helper.assign(ctx: SimpleNamespace, \*\*kwargs: object) → bool
 
 Assign values onto the rule context and return True.
 

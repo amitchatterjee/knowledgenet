@@ -1,6 +1,6 @@
 """Collection primitives used to aggregate facts during session execution."""
 
-from typing import Callable
+from collections.abc import Callable
 from numbers import Number
 import inspect
 import hashlib
@@ -28,8 +28,8 @@ class Collector:
     def __init__(self, group: str, 
                 of_type: type | str, 
                 filter: list[Callable] | tuple[Callable] | Callable | str = lambda this,child: True, 
-                value: Callable | None = None, key: Callable | None = None, 
-                **kwargs):
+                value: Callable | None = None, key: Callable | None = None,
+                **kwargs: object) -> None:
         from knowledgenet.ftypes import EventFact
         if of_type in (Collector, EventFact):
             raise Exception('Nested Collector and Eventfact types are not supported')
@@ -42,11 +42,11 @@ class Collector:
         for key,value in kwargs.items(): # type: ignore
             setattr(self, key, value) # type: ignore
 
-        self.collection = set()
-        self._cached_sum = None
-        self._cached_variance = None
-        self._cached_min = None
-        self._cached_max = None
+        self.collection: set = set()
+        self._cached_sum: Number | None = None
+        self._cached_variance: float | None = None
+        self._cached_min: object | None = None
+        self._cached_max: object | None = None
 
         hasher = hashlib.sha256(group.encode())
         for key,value in sorted(kwargs.items()): # type: ignore
@@ -54,16 +54,16 @@ class Collector:
             hasher.update(str(value).encode())
         self.__int_hash = int(hasher.hexdigest(), 16)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Collector({self.group}, args={self.init_args})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
-   
-    def __hash__(self):
+
+    def __hash__(self) -> int:
         return self.__int_hash
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Collector):
             return False
         return self.__hash__() == other.__hash__()
@@ -76,14 +76,14 @@ class Collector:
         """Return True when the collector has no facts."""
         return len(self.collection) == 0
 
-    def reset_cache(self):
+    def reset_cache(self) -> None:
         """Clear cached aggregate values after collection changes."""
         self._cached_sum = None
         self._cached_variance = None
         self._cached_min = None
         self._cached_max = None
 
-    def _filter_obj(self, obj):
+    def _filter_obj(self, obj: object) -> bool:
         for each_filter in self.filter:
             if not each_filter(self, obj):
                 return False
@@ -146,7 +146,7 @@ class Collector:
         if self._cached_min is None:
             if not self.key:
                 raise Exception("Don't know how to compute min as key function is not defined")
-        self._cached_min = min(self.collection, key=self.key)
+            self._cached_min = min(self.collection, key=self.key)
         return self._cached_min
 
     def maximum(self) -> object:

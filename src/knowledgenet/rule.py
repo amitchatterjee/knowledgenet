@@ -4,7 +4,7 @@ This module defines typed descriptors for ``when`` clauses and the executable
 Rule object consumed by runtime sessions.
 """
 
-from typing import Callable
+from collections.abc import Callable
 import uuid
 
 from knowledgenet.ftypes import EventFact
@@ -26,9 +26,9 @@ class Event:
             )
     """
 
-    def __init__(self, group,
-                 matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
-                 var: str | None = None):
+    def __init__(self, group: str,
+                 matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True,
+                 var: str | None = None) -> None:
         self.group = group
         self.var = var
         self.matches = matches
@@ -48,9 +48,9 @@ class Collection:
             )
     """
 
-    def __init__(self, group: str, 
-                 matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
-                 var: str | None = None):
+    def __init__(self, group: str,
+                 matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True,
+                 var: str | None = None) -> None:
         self.group = group
         self.matches = to_tuple(matches)
         self.var = var
@@ -73,9 +73,9 @@ class Fact:
             )
     """
 
-    def __init__(self, of_type: type | str = None, named: str = None, 
-                 matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True, 
-                 group=None, var: str | None = None, **kwargs):
+    def __init__(self, of_type: type | str | None = None, named: str | None = None,
+                 matches: list[Callable] | tuple[Callable] | Callable = lambda ctx, this: True,
+                 group: str | None = None, var: str | None = None, **kwargs: object) -> None:
         if not named and not of_type:
             raise Exception('Either type or named must be specified')
         
@@ -123,11 +123,11 @@ class Rule:
             )
     """
 
-    def __init__(self, id: str | None = None, 
-                 when: list[Fact | Collection] | tuple[Fact | Collection] | Fact | Collection = (), 
-                 then: list[Callable] | tuple[Callable] | Callable = lambda ctx: None, 
-                 order=0, 
-                 run_once=False, retrigger_on_update=True, **kwargs):
+    def __init__(self, id: str | None = None,
+                 when: list[Fact | Collection] | tuple[Fact | Collection, ...] | Fact | Collection = (),
+                 then: list[Callable] | tuple[Callable] | Callable = lambda ctx: None,
+                 order: int = 0,
+                 run_once: bool = False, retrigger_on_update: bool = True, **kwargs: object) -> None:
         self.id = id if id else uuid.uuid4()
         self.order = order
         self.whens = self._preprocess_whens(when)
@@ -137,22 +137,24 @@ class Rule:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def _preprocess_whens(self, whens):
-        whens = to_list(whens)
-        for i, when in enumerate(whens):
+    def _preprocess_whens(self, whens: list[Fact | Collection] | tuple[Fact | Collection, ...] | Fact | Collection) -> tuple[Fact, ...]:
+        whens_list = to_list(whens)
+        for i, when in enumerate(whens_list):
             if type(when) == Collection:
-                whens[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
+                whens_list[i] = Fact(of_type=Collector, group=when.group, matches=when.matches, var=when.var)
             elif type(when) == Event:
-                whens[i] = Fact(of_type=EventFact, group=when.group, matches=when.matches, var=when.var)
+                whens_list[i] = Fact(of_type=EventFact, group=when.group, matches=when.matches, var=when.var)
             elif type(when) != Fact:
                 raise Exception('When clause must only contain Fact, Event and Collection types')
-        return to_tuple(whens) 
+        return to_tuple(whens_list)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Rule({self.id}, order:{self.order})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def __eq__(self, other):
-        return self.id == other.name
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Rule):
+            return NotImplemented
+        return self.id == other.id

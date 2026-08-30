@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowledgenet"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Amit Chatterjee"},
 ]
@@ -14,9 +14,6 @@ dependencies = [
   "opentelemetry-sdk >= 1.39.1",
   "opentelemetry-exporter-otlp >= 1.39.1"
 ]
-
-[dependency-groups]
-dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "pip-tools", "sphinx", "sphinx-markdown-builder"]
 
 description = "Knowledgenet RETE engine"
 requires-python = ">=3.13"
@@ -37,9 +34,41 @@ keywords = [
     "backward chaining",
 ]
 license = "Apache-2.0"
-readme = "readme.md"
+readme = "README.md"
 [project.urls]
 Homepage = "https://github.com/amitchatterjee/knowledgenet"
 Issues = "https://github.com/amitchatterjee/knowledgenet"
 Repository = "https://github.com/amitchatterjee/knowledgenet.git"
 Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/docs"
+
+[dependency-groups]
+dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-markdown-builder", "mypy"]
+
+[tool.uv]
+# Lets local path-dependents (e.g. knowledgenet-examples/autoins) detect source
+# changes on a plain `uv sync`, not just changes to this file. Overrides uv's
+# default cache key, so pyproject.toml itself must stay listed explicitly.
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "src/**/*.py" },
+]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "src"
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+# Ratchet closed (2026-08-30): every module in src/knowledgenet is now fully
+# annotated (was enforced file-by-file via per-module [[tool.mypy.overrides]]
+# during the migration; see git history / the typing plan in .plans/ for that
+# approach if a partial rollback is ever needed instead of the line below).
+# Flip this to false anytime strict typing gets in the way -- it's a single
+# line, no per-module bookkeeping required either direction.
+disallow_untyped_defs = true

@@ -6,7 +6,7 @@ Nodes are concrete rule instances bound to one matched fact combination.
 Leaves cache individual when-clause evaluation outcomes to avoid recomputing
 unchanged predicates after updates.
 
-### *class* knowledgenet.node.Leaf(id, rule, when_index)
+### *class* knowledgenet.node.Leaf(id: str, rule: [Rule](knowledgenet.rule.md#knowledgenet.rule.Rule), when_index: int)
 
 Bases: `object`
 
@@ -15,7 +15,7 @@ Evaluator for one when-clause bound to one fact object.
 Leaf instances cache their last result and are selectively invalidated by
 session update processing.
 
-#### execute(context, fact)
+#### execute(context: SimpleNamespace, fact: object) → tuple[bool, bool]
 
 Evaluate one when-clause and optionally use cached result.
 
@@ -25,7 +25,7 @@ Evaluate one when-clause and optionally use cached result.
 * **Return type:**
   tuple[bool, bool]
 
-### *class* knowledgenet.node.Node(id, rule, session, when_objs)
+### *class* knowledgenet.node.Node(id: str, rule: [Rule](knowledgenet.rule.md#knowledgenet.rule.Rule), session: Session, when_objs: list)
 
 Bases: `object`
 
@@ -34,7 +34,7 @@ Concrete runtime instance of a rule.
 A node binds a Rule to one combination of when-clause objects and manages
 predicate evaluation plus then-action execution for that binding.
 
-#### execute(facts: set) → dict
+#### execute(facts: set) → bool
 
 Execute this node against current facts.
 

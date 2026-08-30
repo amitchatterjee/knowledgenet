@@ -6,11 +6,11 @@ These helpers do not mutate Factset directly. Instead they record requested
 changes in `ctx._changes` so Session can apply merges in a deterministic
 order after node execution.
 
-### knowledgenet.controls.delete(ctx, fact)
+### knowledgenet.controls.delete(ctx: SimpleNamespace, fact: object) → None
 
 Request deletion of fact(s) after current node completes.
 
-### knowledgenet.controls.end(ctx)
+### knowledgenet.controls.end(ctx: SimpleNamespace) → None
 
 Stop all remaining ruleset execution for this transaction.
 
@@ -23,15 +23,15 @@ if not ctx.validation.ok:
     end(ctx)
 ```
 
-### knowledgenet.controls.insert(ctx, fact)
+### knowledgenet.controls.insert(ctx: SimpleNamespace, fact: object) → None
 
 Request insertion of fact(s) after current node completes.
 
-### knowledgenet.controls.next_ruleset(ctx)
+### knowledgenet.controls.next_ruleset(ctx: SimpleNamespace) → None
 
 Stop the current ruleset session and continue with next repository ruleset.
 
-### knowledgenet.controls.switch(ctx, ruleset)
+### knowledgenet.controls.switch(ctx: SimpleNamespace, ruleset: str | None) → None
 
 Stop current session and request jump to a specific ruleset id.
 
@@ -43,7 +43,7 @@ Jump from current ruleset to `rs3`:
 switch(ctx, 'rs3')
 ```
 
-### knowledgenet.controls.update(ctx, fact)
+### knowledgenet.controls.update(ctx: SimpleNamespace, fact: object) → None
 
 Request update propagation for fact(s) modified in place.
 

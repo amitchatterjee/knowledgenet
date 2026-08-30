@@ -1,6 +1,6 @@
 from __future__ import annotations
 from decimal import Decimal
-from collections.abc import Hashable
+from collections.abc import Hashable, Callable
 
 from knowledgenet.core.tracer import trace
 
@@ -12,24 +12,24 @@ class Element:
         self.ordinal = ordinal
         self.weight = weight
 
-    def __str__(self):
+    def __str__(self) -> str:
         #return f"Element:({self.obj}, prev:{self.prev.obj if self.prev else None}, next:{self.next.obj if self.next else None} weight:{self.ord})"
         return f"Element:({self.obj}, weight:{self.weight})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
 
 class Graph:
-    def __init__(self, id, comparator=None):
-        self.first = None
+    def __init__(self, id: str, comparator: Callable[[Hashable, Hashable], int] | None = None) -> None:
+        self.first: Element | None = None
         self.cursors: dict[str, Element | None] = {}
         self.id = id
         self.comparator = comparator
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Graph({self.id})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
 
     def _weight(self, prev: Element | None, next: Element | None) -> Decimal:
@@ -38,7 +38,8 @@ class Graph:
         return (p_weight + n_weight) / Decimal(2)
 
     def add(self, obj:Hashable, ordinal:int=0) -> Element:
-        added_element = None
+        added_element: Element | None = None
+        element: Element | None
         if not self.first:
             # If this is the only element in the list
             element = Element(None, None, obj, ordinal, self._weight(None,None))
@@ -46,7 +47,7 @@ class Graph:
             added_element = element
         else:
             last: Element | None = None
-            element: Element | None = self.first
+            element = self.first
             while element:
                 ins = False
                 if self.comparator:
@@ -65,6 +66,8 @@ class Graph:
                 if last is not None:
                     last.next = added_element
 
+        # By construction, added_element is always set on every path above.
+        assert added_element is not None
         # adjust cursors
         for name,cursor in self.cursors.items():
             if added_element.next == cursor:
@@ -124,30 +127,30 @@ class Graph:
                 
         return next
 
-    def new_cursor(self, cursor_name='default', element: Element | None = None):
+    def new_cursor(self, cursor_name: str = 'default', element: Element | None = None) -> None:
         if not element:
             self.cursors[cursor_name] = self.first
         else:
             self.cursors[cursor_name] = element
 
-    def get_cursor(self, cursor_name='default') -> Element | None:
+    def get_cursor(self, cursor_name: str = 'default') -> Element | None:
         return self.cursors[cursor_name]
 
-    def next(self, cursor_name='default') -> Hashable:
+    def next(self, cursor_name: str = 'default') -> Hashable:
         return (cursor := self.next_element(cursor_name)) and cursor.obj
-    
+
     @trace(level=13, filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
-    def next_element(self, cursor_name='default') -> Element | None:
+    def next_element(self, cursor_name: str = 'default') -> Element | None:
         cursor = self.cursors[cursor_name]
         if not cursor:
             return None
         self.cursors[cursor_name] = cursor.next
         return cursor
-    
+
     @trace(level=13, filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
-    def next_elements(self, cursor_name='default') -> list[Element] | None:
+    def next_elements(self, cursor_name: str = 'default') -> list[Element]:
         cursors = []
-        ordinal = None    
+        ordinal = None
         while cursor := self.cursors[cursor_name]:
             if ordinal is not None and cursor.ordinal != ordinal:
                 break
@@ -155,23 +158,23 @@ class Graph:
             ordinal = cursor.ordinal
             self.cursors[cursor_name] = cursor.next
         return cursors
-    
+
     def compare(self, element1: Element, element2: Element) -> Decimal:
         return element1.weight - element2.weight
 
-    def cursor_is_left_of(self, element: Element, cursor_name='default') -> bool:
+    def cursor_is_left_of(self, element: Element, cursor_name: str = 'default') -> bool:
         cursor = self.cursors[cursor_name]
         return self.compare(cursor, element) < 0 if cursor else False
-        
-    def cursor_is_right_of(self, element: Element, cursor_name='default') -> bool:
+
+    def cursor_is_right_of(self, element: Element, cursor_name: str = 'default') -> bool:
         cursor = self.cursors[cursor_name]
         return self.compare(cursor, element) > 0 if cursor else False
-    
-    def cursor_is_on(self, element: Element, cursor_name='default') -> bool:
+
+    def cursor_is_on(self, element: Element, cursor_name: str = 'default') -> bool:
         cursor = self.cursors[cursor_name]
         return self.compare(cursor, element) == 0 if cursor else False
 
-    def to_list(self, cursor_name='default', element: Element | None = None) -> list:
+    def to_list(self, cursor_name: str = 'default', element: Element | None = None) -> list[Hashable]:
         result = []
         self.new_cursor(cursor_name, element)
         while True:
@@ -180,8 +183,8 @@ class Graph:
                 break
             result.append(obj)
         return result
-    
-    def to_element_list(self, cursor_name='default', element: Element | None = None) -> list:
+
+    def to_element_list(self, cursor_name: str = 'default', element: Element | None = None) -> list[Element]:
         result = []
         self.new_cursor(cursor_name, element)
         while element:= self.next_element(cursor_name):

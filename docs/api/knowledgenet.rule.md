@@ -25,7 +25,7 @@ Rule(
 )
 ```
 
-### *class* knowledgenet.rule.Event(group, matches: list[Callable] | tuple[Callable] | Callable = <function Event.<lambda>>, var: str | None = None)
+### *class* knowledgenet.rule.Event(group: str, matches: list[Callable] | tuple[Callable] | Callable = <function Event.<lambda>>, var: str | None = None)
 
 Bases: `object`
 
@@ -45,7 +45,7 @@ Rule(
 )
 ```
 
-### *class* knowledgenet.rule.Fact(of_type: type | str = None, named: str = None, matches: list[Callable] | tuple[Callable] | Callable = <function Fact.<lambda>>, group=None, var: str | None = None, \*\*kwargs)
+### *class* knowledgenet.rule.Fact(of_type: type | str | None = None, named: str | None = None, matches: list[Callable] | tuple[Callable] | Callable = <function Fact.<lambda>>, group: str | None = None, var: str | None = None, \*\*kwargs: object)
 
 Bases: `object`
 
@@ -68,7 +68,7 @@ Rule(
 )
 ```
 
-### *class* knowledgenet.rule.Rule(id: str | None = None, when: list[[Fact](#knowledgenet.rule.Fact) | [Collection](#knowledgenet.rule.Collection)] | tuple[[Fact](#knowledgenet.rule.Fact) | [Collection](#knowledgenet.rule.Collection)] | [Fact](#knowledgenet.rule.Fact) | [Collection](#knowledgenet.rule.Collection) = (), then: list[Callable] | tuple[Callable] | Callable = <function Rule.<lambda>>, order=0, run_once=False, retrigger_on_update=True, \*\*kwargs)
+### *class* knowledgenet.rule.Rule(id: str | None = None, when: list[~knowledgenet.rule.Fact | ~knowledgenet.rule.Collection] | tuple[~knowledgenet.rule.Fact | ~knowledgenet.rule.Collection, ...] | ~knowledgenet.rule.Fact | ~knowledgenet.rule.Collection=(), then: list[Callable] | tuple[Callable] | Callable = <function Rule.<lambda>>, order: int = 0, run_once: bool = False, retrigger_on_update: bool = True, \*\*kwargs: object)
 
 Bases: `object`
 

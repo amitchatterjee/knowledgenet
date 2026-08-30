@@ -11,23 +11,24 @@ import logging
 import sys
 import os
 import importlib
-from typing import Union
+from types import ModuleType
+from typing import overload, cast
 
 from knowledgenet.rule import Rule
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.util import to_tuple
 
-registry={}
+registry: dict[str, dict[str, list[Rule]]] = {}
 
-def clear():
+def clear() -> None:
     """Clear all discovered repositories, rulesets, and rules.
 
     Useful for tests that need deterministic scanner state across runs.
     """
     registry.clear()
 
-def lookup(repositories:str|list|tuple, id:str=None)->Repository:
+def lookup(repositories:str|list|tuple, id:str|None=None)->Repository:
     """Materialize a Repository from discovered registry entries.
 
     Args:
@@ -68,7 +69,7 @@ def lookup(repositories:str|list|tuple, id:str=None)->Repository:
     ruleset.sort(key=lambda r: r.id)
     return Repository(id, ruleset)
 
-def _load_rules_from_module(module):
+def _load_rules_from_module(module: ModuleType) -> None:
     for name,obj in inspect.getmembers(module):
         if inspect.isfunction(obj):
             # Detect only functions explicitly marked as rule definitions.
@@ -78,8 +79,8 @@ def _load_rules_from_module(module):
                 rule = obj()
                 if rule and type(rule) is not Rule:
                     raise Exception(f"Function {name} must return a Rule object")
-                
-def _find_modules(path):
+
+def _find_modules(path: str) -> list[ModuleType]:
     modules = []
     for file in os.listdir(path):
         if file.endswith(".py") and not file.startswith("__"):
@@ -88,25 +89,42 @@ def _find_modules(path):
             modules.append(importlib.import_module(module_name))
     return modules
 
-def load_rules_from_filepaths(*paths:str|list|tuple):
+@overload
+def load_rules_from_filepaths(*paths: str) -> None: ...
+@overload
+def load_rules_from_filepaths(paths: list[str] | tuple[str, ...]) -> None: ...
+def load_rules_from_filepaths(*paths: str | list[str] | tuple[str, ...]) -> None:  # type: ignore[misc]  # implementation uses *paths; overload 2's single `paths` param is only ever called positionally in practice, never as paths=
     """Discover and register rules from one or more filesystem paths.
 
     Each imported module is inspected for ``@ruledef``-decorated functions.
+    Accepts either one or more individual path strings, or a single list/tuple
+    of path strings -- not a mix of the two.
 
     Example:
         Load rules from directory-based repositories before calling
-        :func:`lookup`::
+        :func:`lookup`, either as separate arguments::
 
             load_rules_from_filepaths(
                 'test/unit/scanner-rules/repo1/rs1',
                 'test/unit/scanner-rules/repo1/override',
                 'test/unit/scanner-rules/repo2/rs10',
             )
+
+        or as a single list/tuple::
+
+            load_rules_from_filepaths([
+                'test/unit/scanner-rules/repo1/rs1',
+                'test/unit/scanner-rules/repo1/override',
+                'test/unit/scanner-rules/repo2/rs10',
+            ])
     """
     if len(paths) == 1:
         paths = to_tuple(*paths)
 
     for path in paths:
+        # Overloads guarantee each element is a str by this point (either all
+        # args were str, or the sole list/tuple arg was flattened above).
+        path = cast(str, path)
         #logging.info(f"Loading path: {path}")
         sys.path.append(path)
         modules = _find_modules(path)
@@ -120,7 +138,7 @@ module_path = my_module.__file__
 # Get the directory containing the module
 module_dir = os.path.dirname(module_path)
 '''
-def load_rules_from_packages(packages:Union[str,list,tuple]):
+def load_rules_from_packages(packages:str|list|tuple) -> None:
     """Discover and register rules from importable package names.
 
     Package roots are resolved via module ``__file__`` and then scanned for
@@ -129,6 +147,7 @@ def load_rules_from_packages(packages:Union[str,list,tuple]):
     packages = to_tuple(packages)
     for package in packages:
         init_module = importlib.__import__(package)
+        assert init_module.__file__ is not None, f"Package {package} has no __file__ (namespace or built-in package?)"
         path = os.path.dirname(init_module.__file__)
         modules = _find_modules(path)
         for module in modules:

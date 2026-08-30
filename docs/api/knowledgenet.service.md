@@ -6,7 +6,7 @@ The service coordinates end-to-end execution of a repository, where each
 ruleset is executed in its own runtime session. Facts emitted from one session
 become inputs to the next session unless flow-control facts change the path.
 
-### *class* knowledgenet.service.Service(repository, id='knowledgenet', global_ctx={}, node_sorter=None)
+### *class* knowledgenet.service.Service(repository: [Repository](knowledgenet.repository.md#knowledgenet.repository.Repository), id: str = 'knowledgenet', global_ctx: dict[str, object] | None = None, node_sorter: Callable[[[Node](knowledgenet.node.md#knowledgenet.node.Node), [Node](knowledgenet.node.md#knowledgenet.node.Node)], int] | None = None)
 
 Bases: `object`
 
@@ -16,7 +16,7 @@ A service is typically initialized once during application startup and
 reused for many transactions. Each call to [`execute()`](#knowledgenet.service.Service.execute) processes one
 transaction and returns the final fact set produced by chained rulesets.
 
-#### execute(facts, start_from=None, trc_level=0, trc_details=0)
+#### execute(facts: set | list, start_from: str | None = None, trc_level: int = 0, trc_details: int = 0) → set | list
 
 Execute a transaction against the repository.
 

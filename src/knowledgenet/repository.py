@@ -9,12 +9,12 @@ class Repository:
     request early termination or switching to a specific ruleset.
     """
 
-    def __init__(self, id: str, rulesets: list[Ruleset]):
+    def __init__(self, id: str, rulesets: list[Ruleset]) -> None:
         self.id = id
         self.rulesets = rulesets
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Repository({self.id})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()

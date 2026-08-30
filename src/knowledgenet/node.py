@@ -7,8 +7,15 @@ unchanged predicates after updates.
 
 import logging
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 from knowledgenet.core.tracer import trace
+from knowledgenet.rule import Rule
+
+if TYPE_CHECKING:
+    # Deferred: knowledgenet.core.session imports Node, so a top-level import
+    # here would be circular.
+    from knowledgenet.core.session import Session
 
 class Leaf:
     """Evaluator for one when-clause bound to one fact object.
@@ -17,14 +24,15 @@ class Leaf:
     session update processing.
     """
 
-    def __init__(self, id, rule, when_index):
+    def __init__(self, id: str, rule: Rule, when_index: int) -> None:
         self.id = id
         self.rule = rule
         self.when_index = when_index
         self.executed = False
+        self.result: bool | None = None
 
     @trace()
-    def execute(self, context, fact):
+    def execute(self, context: SimpleNamespace, fact: object) -> tuple[bool, bool]:
         """Evaluate one when-clause and optionally use cached result.
 
         Returns:
@@ -32,23 +40,27 @@ class Leaf:
             whether evaluation was skipped due to cache hit.
         """
         if self.executed:
+            # Set together with self.executed=True below, and cleared together
+            # by Node.reset_whens -- never None while self.executed is True.
+            assert self.result is not None
             # Return the previous result
             return True, self.result
         # Else, evaluate the expression
-        if self.rule.whens[self.when_index].var:
-            setattr(context, self.rule.whens[self.when_index].var, fact)
-        self.result = True 
+        var = self.rule.whens[self.when_index].var
+        if var:
+            setattr(context, var, fact)
+        self.result = True
         for match in self.rule.whens[self.when_index].matches:
             self.result = self.result and match(context, fact)
             if not self.result:
                 break
         self.executed = True
         return False, self.result
-    
-    def __str__(self):
+
+    def __str__(self) -> str:
         return f"Leaf({self.id})"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
 class Node:
@@ -58,16 +70,16 @@ class Node:
     predicate evaluation plus then-action execution for that binding.
     """
 
-    def __init__(self, id, rule, session, when_objs):
+    def __init__(self, id: str, rule: Rule, session: "Session", when_objs: list) -> None:
         self.id = id
         self.rule = rule
         self.session = session
         self.when_objs = when_objs
-        self.context = None
-        self.changes = None
+        self.context: SimpleNamespace | None = None
+        self.changes: dict | None = None
 
         # Create when expression execution context
-        self.leaves = []
+        self.leaves: list[Leaf] = []
         for i, when in enumerate(rule.whens):
             self.leaves.append(Leaf(f"{self.id}[{i}]", rule, i))
 
@@ -90,7 +102,7 @@ class Node:
         return False
 
     @trace()
-    def execute(self, facts:set)->dict:
+    def execute(self, facts:set)->bool:
         """Execute this node against current facts.
 
         The method evaluates leaves in rule order, uses cached leaf outcomes
@@ -127,17 +139,20 @@ class Node:
         return True
 
     @trace()
-    def _execute_thens(self):
+    def _execute_thens(self) -> dict:
         for then in self.rule.thens:
             # Execute each function/lambda included in the rule
             then(self.context)
+        assert self.context is not None
         return self.context._changes
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Node({self.id}, rule:{self.rule}, whens:{self.when_objs})"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
-    
-    def __eq__(self, other):
-      return self.id == other.id
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Node):
+            return NotImplemented
+        return self.id == other.id

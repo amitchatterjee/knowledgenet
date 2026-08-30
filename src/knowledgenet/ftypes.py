@@ -1,7 +1,6 @@
 """Infrastructure fact types used by the runtime and rule DSL."""
 
 import hashlib
-from typing import Callable, Union
 
 from knowledgenet.container import Collector
 from knowledgenet.util import to_tuple
@@ -13,11 +12,11 @@ class Switch:
     :class:`knowledgenet.service.Service` after each ruleset session.
     """
 
-    def __init__(self, ruleset: str):
+    def __init__(self, ruleset: str | None) -> None:
         self.ruleset = ruleset
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Switch({self.ruleset})"
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
 class EventFact:
@@ -32,11 +31,11 @@ class EventFact:
             EventFact(group='c1-events', on_types=C1)
     """
 
-    def __init__(self, group: str, on_types: list[type] | tuple[type] | set[type] | type, **kwargs):
+    def __init__(self, group: str, on_types: list[type] | tuple[type] | set[type] | type, **kwargs: object) -> None:
         self.on_types = to_tuple(on_types)
         if Collector in self.on_types or EventFact in self.on_types:
             raise Exception("EventFact on_types cannot contain Collector or EventFact")
-        self.group = group        
+        self.group = group
         self._init_args = kwargs
         for key,value in kwargs.items():
             setattr(self, key, value)
@@ -48,19 +47,19 @@ class EventFact:
             hasher.update(str(value).encode())
         self._int_hash = int(hasher.hexdigest(), 16)
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear accumulated change buckets for this event cycle."""
-        self.added = set()
-        self.updated = set()
-        self.deleted = set()
+        self.added: set = set()
+        self.updated: set = set()
+        self.deleted: set = set()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"EventFact({self.group}, args={self._init_args}, types={[each.__name__ for each in self.on_types]})"
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self._int_hash
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, EventFact):
             return self.__hash__() == other.__hash__()
         return False
@@ -77,7 +76,7 @@ class Wrapper:
             Wrapper(of_type='wrapper', wraps=C1(10))
     """
 
-    def __init__(self, of_type:str|type=None, named:str=None, **kwargs):
+    def __init__(self, of_type:str|type|None=None, named:str|None=None, **kwargs: object) -> None:
         if not named and not of_type:
             raise Exception('Either type or named must be specified')
         
@@ -85,6 +84,9 @@ class Wrapper:
             raise Exception('type and named cannot be specified together')
         
         of_type = named if named else of_type
+        # By construction, exactly one of named/of_type was truthy above, so
+        # of_type is never None here -- the raises above guarantee it.
+        assert of_type is not None
 
         self.of_type = of_type
         self._init_args = kwargs
@@ -101,14 +103,14 @@ class Wrapper:
             hasher.update(str(value).encode())
         self._int_hash = int(hasher.hexdigest(), 16)
 
-    def __str__(self):
+    def __str__(self) -> str:
         descriptor = f"name={self._init_args['name']}" if 'name' in self._init_args else f"args={self._init_args}"
         return f"Wrapper({self.of_type}, {descriptor})"
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self._int_hash
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Wrapper):
             return self.__hash__() == other.__hash__()
         return False

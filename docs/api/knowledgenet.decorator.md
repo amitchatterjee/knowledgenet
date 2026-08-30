@@ -5,7 +5,7 @@ Decorator helpers for declarative rule registration.
 The `ruledef` decorator marks rule factory functions so scanner discovery can
 identify, execute, and register them in the global registry.
 
-### knowledgenet.decorator.ruledef(\*decorator_args, \*\*decorator_kwargs)
+### knowledgenet.decorator.ruledef(\*decorator_args: Any, \*\*decorator_kwargs: Any) → Callable
 
 Decorate a function that returns a Rule and register it in the global registry.
 
