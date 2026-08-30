@@ -1,6 +1,7 @@
 # Add a typed interface, modernize type hints to Python 3.14 idioms, and modernize dev tooling (pip → uv, CI)
 
-Status: **INPROG** — plan only, implementation not started.
+Status: **INPROG** — Phase 0 and Phase 1 implemented and verified (tests passing). Phases 2-6 not
+started.
 
 ## Context
 
@@ -117,7 +118,7 @@ disallow_untyped_defs = true
 (`no_implicit_optional` is mypy's default since ~0.990 and needs no explicit setting; it's what
 flags the `param: str = None` cases below.)
 
-### Phase 0 — Transition dev tooling from pip to uv (tooling, no source changes)
+### Phase 0 — Transition dev tooling from pip to uv (tooling, no source changes) — **DONE (2026-08-28)**
 
 Runs before Phase 1 so Phase 1's new CI workflow can be written uv-native from the start instead of
 being redone. Current flow, per `docs/readme-development.md`: manual `python3.14 -m venv .venv` +
@@ -179,7 +180,15 @@ process itself.
   `../knowledgenet/.venv`" convention keeps working unchanged — no edit needed there unless the path
   or activation story actually changes.
 
-### Phase 1 — Tooling baseline (no source changes)
+**Verified:** `.venv` recreated via `uv venv --python 3.14` + `uv sync --group dev` (66 packages
+resolved, `knowledgenet` importable); `uv.lock` committed and confirmed not gitignored;
+`pyproject.toml` reorganized and `pip-tools` dropped from `dev`; a `[[tool.uv.index]]` "testpypi"
+entry added (publishing itself stays on `twine`/`.pypirc` per the decision above); all three
+documented `uv run sphinx-*` commands (apidoc, HTML build, Markdown build) run clean; `docs/
+readme-development.md`, `CLAUDE.md`, and `README.md` (renamed from `readme.md`, with a new PyPI
+install section) updated. Committed in `e7bdcc3` and `10f2323`.
+
+### Phase 1 — Tooling baseline (no source changes) — **DONE (2026-08-28)**
 
 - Add `mypy` to the `dev` group in `pyproject.toml` (alongside `pytest`, `ruff` is not currently used
   in this repo and is out of scope to introduce here — this plan is about typing, not linting).
@@ -194,6 +203,16 @@ process itself.
   types: [published]` trigger and existing steps are untouched, just finally reachable by GitHub.
 - Commit the baseline numbers above as the starting point; every later phase's Verification step
   re-runs `mypy src/knowledgenet` and reports the new count.
+
+**Verified:** `mypy` added to `dev`, `[tool.mypy]` config added, `uv sync --group dev` installed
+mypy 2.3.1 cleanly. `.github/workflows/ci.yml` created (uv-native, `astral-sh/setup-uv@v10`).
+`.github/workflow/python-publish.yml` renamed to `.github/workflows/python-publish.yml` via `git mv`
+(history-preserving; not yet pushed, so the Actions-tab/`git log --follow` checks in Verification #2
+are still outstanding). `uv run mypy src/knowledgenet` gives **45 errors in 11 files** — confirmed
+this is the real baseline-with-config (not a mistake: bare `mypy` with no config still reproduces
+44/10 exactly), caused by the `knowledgenet.helper` override catching a genuine untyped-`**kwargs`
+gap in `helper.py:13`, deferred to Phase 5 as documented in Verification #2. `uv run pytest -rPX -s`
+run manually by the user: **passed**.
 
 ### Phase 2 — Fix the real bugs mypy's baseline run surfaced
 
@@ -322,9 +341,15 @@ Phase 1 is green on the default branch.
    baseline); `uv build` produces a `dist/*.whl` + `.tar.gz` of the same shape `python -m build` did;
    `uv.lock` is committed. Confirm every command block in `docs/readme-development.md` was actually
    updated (no leftover bare `pip install`/`piptools compile` instructions).
-2. After Phase 1: `uv run mypy src/knowledgenet` runs (config picked up from `pyproject.toml`, default
-   profile) and reproduces the 44-error baseline exactly — confirms the config itself introduces no
-   behavior change before any source edits. Push a throwaway commit to confirm
+2. After Phase 1: `uv run mypy src/knowledgenet` runs (config picked up from `pyproject.toml`) and
+   reports **45 errors in 11 files**, not the bare-mypy 44/10 baseline — verified: bare `mypy` with no
+   config still reproduces 44/10 exactly, so the +1/+1 delta comes entirely from the config's own
+   `knowledgenet.helper` `disallow_untyped_defs` override (present in `[tool.mypy]` from the start, not
+   added later) catching `helper.py:13`'s `assign(ctx: SimpleNamespace, **kwargs)->bool` — the
+   `**kwargs` has no annotation. This is expected and left as-is (Phase 1 is no-source-changes); the
+   fix (`**kwargs: object`, matching the Design's stated convention for this library's
+   dynamic-attribute pattern) belongs in Phase 5 when `helper.py`'s override is reached in the normal
+   module order. Push a throwaway commit to confirm
    `.github/workflows/ci.yml` actually triggers on GitHub. Also confirm `git log --follow` on the
    relocated `.github/workflows/python-publish.yml` still shows its original history (a `git mv`
    rename, not a delete+recreate), and that it now shows up under the repo's Actions tab as a

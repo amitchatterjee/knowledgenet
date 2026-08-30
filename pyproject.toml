@@ -42,10 +42,25 @@ Repository = "https://github.com/amitchatterjee/knowledgenet.git"
 Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/docs"
 
 [dependency-groups]
-dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-markdown-builder"]
+dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-markdown-builder", "mypy"]
 
 [[tool.uv.index]]
 name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
+
+[tool.mypy]
+python_version = "3.13"
+mypy_path = "src"
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+# Ratchet: flips to true globally once Phase 4 finishes; per-module overrides below
+# turn it on file-by-file as each is completed, so partial progress stays enforced
+# instead of silently regressing.
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "knowledgenet.helper"
+disallow_untyped_defs = true
