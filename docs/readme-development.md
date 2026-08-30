@@ -115,6 +115,12 @@ Generated outputs:
 ## Publish package to PyPi:
 Note: For all the commands below, you must cd to the project home directory.  
 ```bash
+# Clean out dist/ first -- `uv build` does not do this, and `twine upload dist/*`
+# below uploads everything in the directory, including artifacts left over from
+# previous version builds. Skipping this risks accidentally re-uploading (or
+# publishing to a different index) an old release.
+rm -rf dist/
+
 uv build
 # Replace <repository> with either testpypi or pypi.
 uv run twine upload --repository <repository> dist/*
