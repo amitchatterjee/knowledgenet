@@ -2,7 +2,7 @@
 
 Infrastructure fact types used by the runtime and rule DSL.
 
-### *class* knowledgenet.ftypes.EventFact(group: str, on_types: list[type] | tuple[type] | set[type] | type, \*\*kwargs)
+### *class* knowledgenet.ftypes.EventFact(group: str, on_types: list[type] | tuple[type] | set[type] | type, \*\*kwargs: object)
 
 Bases: `object`
 
@@ -19,11 +19,11 @@ Monitor inserts/updates/deletes of C1 facts:
 EventFact(group='c1-events', on_types=C1)
 ```
 
-#### reset()
+#### reset() → None
 
 Clear accumulated change buckets for this event cycle.
 
-### *class* knowledgenet.ftypes.Switch(ruleset: str)
+### *class* knowledgenet.ftypes.Switch(ruleset: str | None)
 
 Bases: `object`
 
@@ -32,7 +32,7 @@ Control-flow fact used to redirect service execution.
 A `Switch` fact is emitted by control helpers and consumed by
 [`knowledgenet.service.Service`](knowledgenet.service.md#knowledgenet.service.Service) after each ruleset session.
 
-### *class* knowledgenet.ftypes.Wrapper(of_type: str | type = None, named: str = None, \*\*kwargs)
+### *class* knowledgenet.ftypes.Wrapper(of_type: str | type | None = None, named: str | None = None, \*\*kwargs: object)
 
 Bases: `object`
 

@@ -10,7 +10,7 @@ from knowledgenet.factset import Factset
 from knowledgenet.node import Node
 from knowledgenet.core.session import Session
 
-def assign(ctx: SimpleNamespace, **kwargs)->bool:
+def assign(ctx: SimpleNamespace, **kwargs: object)->bool:
     """Assign values onto the rule context and return True.
 
     This pattern enables concise match expressions such as

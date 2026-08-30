@@ -6,7 +6,7 @@ The scanner imports rule modules, executes functions marked with
 `@ruledef`, and stores resulting Rule instances in an in-memory registry
 organized as `registry[repository][ruleset] -> list[Rule]`.
 
-### knowledgenet.scanner.clear()
+### knowledgenet.scanner.clear() → None
 
 Clear all discovered repositories, rulesets, and rules.
 
@@ -45,14 +45,14 @@ load_rules_from_filepaths([
 ])
 ```
 
-### knowledgenet.scanner.load_rules_from_packages(packages: str | list | tuple)
+### knowledgenet.scanner.load_rules_from_packages(packages: str | list | tuple) → None
 
 Discover and register rules from importable package names.
 
 Package roots are resolved via module `__file__` and then scanned for
 sibling Python modules.
 
-### knowledgenet.scanner.lookup(repositories: str | list | tuple, id: str = None) → [Repository](knowledgenet.repository.md#knowledgenet.repository.Repository)
+### knowledgenet.scanner.lookup(repositories: str | list | tuple, id: str | None = None) → [Repository](knowledgenet.repository.md#knowledgenet.repository.Repository)
 
 Materialize a Repository from discovered registry entries.
 

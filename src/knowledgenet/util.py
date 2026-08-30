@@ -1,26 +1,26 @@
 """General-purpose utility helpers shared across Knowledgenet modules."""
 
-from typing import List, Any
+from typing import Any
 
-def to_tuple(obj):
+def to_tuple(obj: object) -> tuple:
     """Convert a scalar or iterable value into a tuple.
 
     Scalars become single-item tuples.
     """
     return obj if isinstance(obj, tuple) else tuple(obj) if isinstance(obj, (list, set, frozenset)) else (obj,)
 
-def to_list(obj):
+def to_list(obj: object) -> list:
     """Convert a scalar or iterable value into a list.
 
     Scalars become single-item lists.
     """
     return obj if isinstance(obj, list) else list(obj) if isinstance(obj, (tuple, set, frozenset)) else [obj]
 
-def to_frozenset(obj):
+def to_frozenset(obj: object) -> frozenset:
     """Convert a scalar or iterable value into a frozenset."""
     return obj if isinstance(obj, frozenset) else frozenset(obj) if isinstance(obj, (list, tuple, set)) else frozenset([obj])
 
-def of_type(fact):
+def of_type(fact: object) -> type | str:
     """Return the effective type for a fact.
 
     Wrapper facts expose their logical ``of_type`` instead of concrete Wrapper

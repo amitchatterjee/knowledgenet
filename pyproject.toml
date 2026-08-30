@@ -65,11 +65,10 @@ mypy_path = "src"
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_unreachable = true
-# Ratchet: flips to true globally once Phase 4 finishes; per-module overrides below
-# turn it on file-by-file as each is completed, so partial progress stays enforced
-# instead of silently regressing.
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "knowledgenet.helper"
+# Ratchet closed (2026-08-30): every module in src/knowledgenet is now fully
+# annotated (was enforced file-by-file via per-module [[tool.mypy.overrides]]
+# during the migration; see git history / the typing plan in .plans/ for that
+# approach if a partial rollback is ever needed instead of the line below).
+# Flip this to false anytime strict typing gets in the way -- it's a single
+# line, no per-module bookkeeping required either direction.
 disallow_untyped_defs = true

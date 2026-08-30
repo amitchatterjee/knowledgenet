@@ -21,8 +21,8 @@ Read `docs/concepts.md` before making non-trivial changes — it defines the cor
 
 - Python 3.13+ (3.14 recommended).
 - Managed with [uv](https://docs.astral.sh/uv/) (install once per machine: `curl -LsSf https://astral.sh/uv/install.sh | sh`, or `pip install --user uv`).
-- Virtualenv lives at `.venv` in this repo root, created/managed by uv: `uv venv --python 3.14`. This same venv is also used for `knowledgenet-examples` work — there is no separate venv per project.
-- Dev tools + runtime deps: `uv sync --group dev` (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder, plus base runtime deps). `uv sync` alone installs just the runtime deps.
+- Virtualenv lives at `.venv` in this repo root, created/managed by uv: `uv venv --python 3.14`. `knowledgenet-examples` (e.g. `autoins`) has moved to its own per-example venv and no longer shares this one — see that repo's own CLAUDE.md.
+- Dev tools + runtime deps: `uv sync --group dev` (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder, mypy, plus base runtime deps). `uv sync` alone installs just the runtime deps.
 - Run commands via `uv run <cmd>` (e.g. `uv run pytest ...`), or `source .venv/bin/activate` and run bare commands as before.
 
 ## Testing
@@ -37,6 +37,17 @@ uv run pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_th
 ```
 
 When adding or changing behavior in `src/knowledgenet/`, add or update the corresponding test under `test/unit/`.
+
+## Type checking
+
+```bash
+uv run mypy src/knowledgenet
+```
+
+Every module has a full typed interface (`disallow_untyped_defs = true` in `pyproject.toml`'s
+`[tool.mypy]`, enforced package-wide, not per-module). New/changed code in `src/knowledgenet/` must
+stay fully annotated — `uv run mypy src/knowledgenet` should report zero issues before considering
+work done. CI runs the same command on every push.
 
 ## Building API docs
 

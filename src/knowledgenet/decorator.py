@@ -5,13 +5,16 @@ identify, execute, and register them in the global registry.
 """
 
 from knowledgenet.scanner import registry
+from knowledgenet.rule import Rule
 
 
 import inspect
 import os
 from functools import wraps
+from collections.abc import Callable
+from typing import Any
 
-def ruledef(*decorator_args, **decorator_kwargs):
+def ruledef(*decorator_args: Any, **decorator_kwargs: Any) -> Callable:
     """Decorate a function that returns a Rule and register it in the global registry.
 
     The wrapped function is executed by scanners during discovery. Repository and
@@ -30,9 +33,9 @@ def ruledef(*decorator_args, **decorator_kwargs):
                     then=lambda ctx: insert(ctx, Classification(ctx.person, 'minor'))
                 )
     """
-    def ruledef_wrapper(func):
+    def ruledef_wrapper(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Rule | None:
             if 'enabled' in decorator_kwargs and not decorator_kwargs['enabled']:
                 return None
 
@@ -57,7 +60,7 @@ def ruledef(*decorator_args, **decorator_kwargs):
         # Mark this wrapper explicitly as a rule definition so scanners
         # can reliably detect rule functions without relying on
         # `__wrapped__` (which other decorators may also set via wraps).
-        wrapper.__ruledef__ = True
+        wrapper.__ruledef__ = True  # type: ignore[attr-defined]  # functools.wraps hides this dynamic attribute from mypy's structural view of the wrapper
         return wrapper
     if decorator_args and callable(decorator_args[0]):
         # Decorator called without arguments

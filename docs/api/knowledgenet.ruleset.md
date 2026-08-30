@@ -2,7 +2,7 @@
 
 Ruleset model for grouping related rules into an execution phase.
 
-### *class* knowledgenet.ruleset.Ruleset(id: str, rules: [Rule](knowledgenet.rule.md#knowledgenet.rule.Rule) | tuple[[Rule](knowledgenet.rule.md#knowledgenet.rule.Rule)] | list[[Rule](knowledgenet.rule.md#knowledgenet.rule.Rule)], global_ctx={})
+### *class* knowledgenet.ruleset.Ruleset(id: str, rules: [Rule](knowledgenet.rule.md#knowledgenet.rule.Rule) | tuple[[Rule](knowledgenet.rule.md#knowledgenet.rule.Rule)] | list[[Rule](knowledgenet.rule.md#knowledgenet.rule.Rule)], global_ctx: dict[str, object] | None = None)
 
 Bases: `object`
 

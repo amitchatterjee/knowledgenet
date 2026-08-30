@@ -36,7 +36,7 @@ You can add the above to $HOME/.bashrc to automatically activate the venv when e
 ```bash
 uv sync --group dev
 ```
-This installs the base runtime dependencies plus dev tools (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder) into `.venv`, and creates/updates `uv.lock`.
+This installs the base runtime dependencies plus dev tools (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder, mypy) into `.venv`, and creates/updates `uv.lock`.
 
 ## Install runtime dependencies:
 Only needed if you want the base runtime dependencies without the dev tools above (e.g. to run the library without testing/building it):
@@ -74,6 +74,17 @@ uv run pytest -rPX -vv -s 'test/unit/test_basic.py::test_one_rule_single_when_th
 uv run debugpy --listen 0.0.0.0:5678 --wait-for-client -m pytest -rPX -vv -s
 ```
 (If you've activated `.venv` via `source .venv/bin/activate`, the bare `python -m pytest ...` form still works unchanged.)
+
+## Run the type checker:
+
+```bash
+uv run mypy src/knowledgenet
+```
+Configuration lives in `pyproject.toml`'s `[tool.mypy]` section: `disallow_untyped_defs = true` is
+enforced across the whole package (every module has a full typed interface). This is a single line
+you can flip to `false` if strict typing gets in the way for some exploratory work — no per-module
+bookkeeping needed either direction. CI (`.github/workflows/ci.yml`) runs this same command on every
+push, so a clean local run means CI's type-check step will pass too.
 
 ## Build package artifacts:
 Note: For all the commands below, you must cd to the project home directory.  

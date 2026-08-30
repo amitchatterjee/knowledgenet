@@ -8,9 +8,12 @@ become inputs to the next session unless flow-control facts change the path.
 from time import time
 import logging
 from contextvars import ContextVar
+from collections.abc import Callable
 
 from knowledgenet.core.session import Session
 from knowledgenet.ftypes import Switch
+from knowledgenet.node import Node
+from knowledgenet.repository import Repository
 from knowledgenet.core.tracer import trace
 
 trace_level = ContextVar('trace_level', default=0)
@@ -24,25 +27,27 @@ class Service:
     transaction and returns the final fact set produced by chained rulesets.
     """
 
-    def __init__(self, repository, id="knowledgenet", global_ctx={}, node_sorter=None):
+    def __init__(self, repository: Repository, id: str = "knowledgenet", global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None) -> None:
+        if global_ctx is None:
+            global_ctx = {}
         self.id = id
         self.repository = repository
         self.global_ctx = global_ctx
         self.node_sorter = node_sorter
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Service({self.repository.id})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def _find_switch(self, facts):
+    def _find_switch(self, facts: set | list) -> Switch | None:
         for fact in facts:
             if isinstance(fact, Switch):
                 return fact
         return None
 
-    def execute(self, facts, start_from=None, trc_level=0, trc_details=0):
+    def execute(self, facts: set | list, start_from: str | None = None, trc_level: int = 0, trc_details: int = 0) -> set | list:
         """Execute a transaction against the repository.
 
         Args:
@@ -69,7 +74,7 @@ class Service:
         return self._execute_service(facts, start_from)
  
     @trace()
-    def _execute_service(self, facts, start_from):
+    def _execute_service(self, facts: set | list, start_from: str | None) -> set | list:
         service_id = f"{self.repository.id}:{int(round(time() * 1000))}"
         logging.debug("Executing service: %s", service_id)
         resulting_facts = facts

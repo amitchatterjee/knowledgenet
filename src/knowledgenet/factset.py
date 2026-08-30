@@ -6,6 +6,7 @@ and for propagating inserts, updates, and deletes through dependent artifacts.
 """
 
 import logging
+from collections.abc import Callable
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
 from knowledgenet.core.tracer import trace
@@ -14,35 +15,35 @@ from knowledgenet.util import of_type
 class Factset:
     """Stores runtime facts and helper indexes for matching and projection."""
 
-    def __init__(self):
-        self.facts = set()
+    def __init__(self) -> None:
+        self.facts: set[object] = set()
         self._init_dictionaries()
 
-    def _init_dictionaries(self):
+    def _init_dictionaries(self) -> None:
         self._type_to_facts: dict[type | str, set[object]] = {}
 
-        self._type_to_collectors: dict[type, set[Collector]] = {}
+        self._type_to_collectors: dict[type | str, set[Collector]] = {}
         self._group_to_collectors: dict[str, set[Collector]] = {}
 
-        self._group_to_events: dict[frozenset[type], set[EventFact]] = {}
-        self._type_to_events: dict[type, set[EventFact]] = {}
+        self._group_to_events: dict[str, set[EventFact]] = {}
+        self._type_to_events: dict[type | str, set[EventFact]] = {}
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Factset({self.facts})"
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return self.__str__()
-    
+
     # TODO - In order to support polymorphism in conditions, we need to not only add the fact type to type_to_facts dictionary, but also all the base classes. I need to think through this a bit more.
-    def _get_class_hierarchy(self, typ):
-        hierarchy = []
+    def _get_class_hierarchy(self, typ: type | None) -> list[type]:
+        hierarchy: list[type] = []
         while typ:
             hierarchy.append(typ)
             typ = typ.__base__
         return hierarchy
 
     @trace(level=12)
-    def add_facts(self, f):
+    def add_facts(self, f: set | list) -> tuple[set, set[Collector | EventFact]]:
         """Add new facts and update collector and event projections.
 
         Returns a tuple of newly inserted facts and derived facts whose state was
@@ -66,7 +67,7 @@ class Factset:
                         fact.add(matching_fact)
 
         # Initialize the newly-added facts
-        updated_facts = set()
+        updated_facts: set[Collector | EventFact] = set()
 
         # Handle addition of a Event facts next. The next loop may use the facts added here
         for fact in new_facts:
@@ -100,20 +101,20 @@ class Factset:
         return new_facts, updated_facts - new_collectors
     
     @trace(level=12)
-    def update_facts(self, facts):
+    def update_facts(self, facts: set | list) -> set[Collector | EventFact]:
         """Propagate updates of existing facts to dependent helper facts.
 
         Updating a fact can invalidate collector caches and append entries to
         EventFact.updated. Returned facts are helper facts that changed as a
         result of the update.
         """
-        updated_facts = set()
+        updated_facts: set[Collector | EventFact] = set()
         for fact in facts:
             typ = of_type(fact)
             if typ == Collector:
                 continue
 
-            if type == EventFact:
+            if typ == EventFact:
                 continue
 
             # For application-defined facts
@@ -131,14 +132,14 @@ class Factset:
         return updated_facts
 
     @trace(level=12)
-    def del_facts(self, facts):
+    def del_facts(self, facts: set | list) -> set[Collector | EventFact]:
         """Delete facts and update indexes plus dependent helper facts.
 
         For domain facts, collectors may remove members and events receive
         deleted notifications. For Collector/EventFact facts, index entries are
         removed directly.
         """
-        updated_facts = set()
+        updated_facts: set[Collector | EventFact] = set()
         for fact in facts:
             if fact not in facts:
                 logging.warning("Fact: %s not found", fact)
@@ -179,31 +180,31 @@ class Factset:
                 updated_facts.update(self._type_to_events[typ])
         return updated_facts
 
-    def _add_to_type_facts_dict(self, fact):
+    def _add_to_type_facts_dict(self, fact: object) -> None:
         facts_list = self._type_to_facts[of_type(fact)] \
             if of_type(fact) in self._type_to_facts else set()
         facts_list.add(fact)
         self._type_to_facts[of_type(fact)] = facts_list
 
-    def _add_to_type_collectors_dict(self, collector):
+    def _add_to_type_collectors_dict(self, collector: Collector) -> None:
         collectors_list = self._type_to_collectors[collector.of_type] \
             if collector.of_type in self._type_to_collectors else set()
         collectors_list.add(collector)
         self._type_to_collectors[collector.of_type] = collectors_list
 
-    def add_to_group_collectors_dict(self, fact):
+    def add_to_group_collectors_dict(self, fact: Collector) -> None:
         """Register a collector in the group-to-collector index."""
         cset = self._group_to_collectors[fact.group] if fact.group in self._group_to_collectors else set()
         cset.add(fact)
         self._group_to_collectors[fact.group] = cset
 
-    def _add_to_group_events_dict(self, event):
+    def _add_to_group_events_dict(self, event: EventFact) -> None:
         events_list = self._group_to_events[event.group] \
             if event.group in self._group_to_events else set()
         events_list.add(event)
         self._group_to_events[event.group] = events_list
 
-    def _add_to_type_events_dict(self, event_fact):
+    def _add_to_type_events_dict(self, event_fact: EventFact) -> None:
         for typ in event_fact.on_types:
             events_list = self._type_to_events[typ] \
                 if typ in self._type_to_events else set()
@@ -211,7 +212,7 @@ class Factset:
             self._type_to_events[typ] = events_list
 
     @trace(level=12)
-    def find(self, of_type, group=None, filter=lambda obj:True):
+    def find(self, of_type: type | str, group: str | None = None, filter: Callable[[object], bool] = lambda obj:True) -> set:
         """Find facts by type, optionally scoped by group for helper facts.
 
         Args:
