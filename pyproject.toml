@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "knowledgenet"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Amit Chatterjee"},
 ]
@@ -43,6 +43,15 @@ Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/doc
 
 [dependency-groups]
 dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-markdown-builder", "mypy"]
+
+[tool.uv]
+# Lets local path-dependents (e.g. knowledgenet-examples/autoins) detect source
+# changes on a plain `uv sync`, not just changes to this file. Overrides uv's
+# default cache key, so pyproject.toml itself must stay listed explicitly.
+cache-keys = [
+  { file = "pyproject.toml" },
+  { file = "src/**/*.py" },
+]
 
 [[tool.uv.index]]
 name = "testpypi"

@@ -12,16 +12,20 @@ Clear all discovered repositories, rulesets, and rules.
 
 Useful for tests that need deterministic scanner state across runs.
 
-### knowledgenet.scanner.load_rules_from_filepaths(\*paths: str | list | tuple)
+### knowledgenet.scanner.load_rules_from_filepaths(\*paths: str) → None
+
+### knowledgenet.scanner.load_rules_from_filepaths(paths: list[str] | tuple[str, ...]) → None
 
 Discover and register rules from one or more filesystem paths.
 
 Each imported module is inspected for `@ruledef`-decorated functions.
+Accepts either one or more individual path strings, or a single list/tuple
+of path strings – not a mix of the two.
 
 ### Example
 
 Load rules from directory-based repositories before calling
-[`lookup()`](#knowledgenet.scanner.lookup):
+[`lookup()`](#knowledgenet.scanner.lookup), either as separate arguments:
 
 ```default
 load_rules_from_filepaths(
@@ -29,6 +33,16 @@ load_rules_from_filepaths(
     'test/unit/scanner-rules/repo1/override',
     'test/unit/scanner-rules/repo2/rs10',
 )
+```
+
+or as a single list/tuple:
+
+```default
+load_rules_from_filepaths([
+    'test/unit/scanner-rules/repo1/rs1',
+    'test/unit/scanner-rules/repo1/override',
+    'test/unit/scanner-rules/repo2/rs10',
+])
 ```
 
 ### knowledgenet.scanner.load_rules_from_packages(packages: str | list | tuple)

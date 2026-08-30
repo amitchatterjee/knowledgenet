@@ -34,7 +34,7 @@ Concrete runtime instance of a rule.
 A node binds a Rule to one combination of when-clause objects and manages
 predicate evaluation plus then-action execution for that binding.
 
-#### execute(facts: set) → dict
+#### execute(facts: set) → bool
 
 Execute this node against current facts.
 

@@ -1,6 +1,6 @@
 import json
 import threading
-from typing import Sequence
+from typing import Sequence, Any
 
 from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 
@@ -42,7 +42,7 @@ class FileSpanExporter(SpanExporter):
 
     def _span_to_dict(self, span: object) -> dict:
         # span is typically an opentelemetry.sdk.trace._Span
-        d = {
+        d: dict[str, Any] = {
             "name": getattr(span, "name", None),
             "context": {
                 "span_id": getattr(getattr(span, "context", None), "span_id", None),

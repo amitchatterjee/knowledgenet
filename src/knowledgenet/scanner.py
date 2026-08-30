@@ -11,14 +11,14 @@ import logging
 import sys
 import os
 import importlib
-from typing import Union
+from typing import Union, overload
 
 from knowledgenet.rule import Rule
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.repository import Repository
 from knowledgenet.util import to_tuple
 
-registry={}
+registry: dict[str, dict[str, list[Rule]]] = {}
 
 def clear():
     """Clear all discovered repositories, rulesets, and rules.
@@ -88,20 +88,34 @@ def _find_modules(path):
             modules.append(importlib.import_module(module_name))
     return modules
 
-def load_rules_from_filepaths(*paths:str|list|tuple):
+@overload
+def load_rules_from_filepaths(*paths: str) -> None: ...
+@overload
+def load_rules_from_filepaths(paths: list[str] | tuple[str, ...]) -> None: ...
+def load_rules_from_filepaths(*paths):
     """Discover and register rules from one or more filesystem paths.
 
     Each imported module is inspected for ``@ruledef``-decorated functions.
+    Accepts either one or more individual path strings, or a single list/tuple
+    of path strings -- not a mix of the two.
 
     Example:
         Load rules from directory-based repositories before calling
-        :func:`lookup`::
+        :func:`lookup`, either as separate arguments::
 
             load_rules_from_filepaths(
                 'test/unit/scanner-rules/repo1/rs1',
                 'test/unit/scanner-rules/repo1/override',
                 'test/unit/scanner-rules/repo2/rs10',
             )
+
+        or as a single list/tuple::
+
+            load_rules_from_filepaths([
+                'test/unit/scanner-rules/repo1/rs1',
+                'test/unit/scanner-rules/repo1/override',
+                'test/unit/scanner-rules/repo2/rs10',
+            ])
     """
     if len(paths) == 1:
         paths = to_tuple(*paths)

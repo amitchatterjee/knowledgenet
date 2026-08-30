@@ -2,7 +2,7 @@
 
 General-purpose utility helpers shared across Knowledgenet modules.
 
-### knowledgenet.util.merge(d1: dict[str, object], d2: dict[str, object]) → dict[str, object]
+### knowledgenet.util.merge(d1: dict[str, Any], d2: dict[str, Any]) → dict[str, Any]
 
 Recursively merge two dictionaries, preferring right-hand values.
 

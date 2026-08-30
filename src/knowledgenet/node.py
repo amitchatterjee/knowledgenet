@@ -90,7 +90,7 @@ class Node:
         return False
 
     @trace()
-    def execute(self, facts:set)->dict:
+    def execute(self, facts:set)->bool:
         """Execute this node against current facts.
 
         The method evaluates leaves in rule order, uses cached leaf outcomes

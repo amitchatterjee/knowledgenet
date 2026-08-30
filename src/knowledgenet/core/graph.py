@@ -38,7 +38,8 @@ class Graph:
         return (p_weight + n_weight) / Decimal(2)
 
     def add(self, obj:Hashable, ordinal:int=0) -> Element:
-        added_element = None
+        added_element: Element | None = None
+        element: Element | None
         if not self.first:
             # If this is the only element in the list
             element = Element(None, None, obj, ordinal, self._weight(None,None))
@@ -46,7 +47,7 @@ class Graph:
             added_element = element
         else:
             last: Element | None = None
-            element: Element | None = self.first
+            element = self.first
             while element:
                 ins = False
                 if self.comparator:
@@ -65,6 +66,8 @@ class Graph:
                 if last is not None:
                     last.next = added_element
 
+        # By construction, added_element is always set on every path above.
+        assert added_element is not None
         # adjust cursors
         for name,cursor in self.cursors.items():
             if added_element.next == cursor:

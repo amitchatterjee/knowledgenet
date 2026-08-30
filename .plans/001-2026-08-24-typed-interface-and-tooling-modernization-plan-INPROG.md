@@ -1,6 +1,6 @@
 # Add a typed interface, modernize type hints to Python 3.14 idioms, and modernize dev tooling (pip → uv, CI)
 
-Status: **INPROG** — Phase 0 and Phase 1 implemented and verified (tests passing). Phases 2-6 not
+Status: **INPROG** — Phases 0, 1, and 2 implemented and verified (tests passing). Phases 3-6 not
 started.
 
 ## Context
@@ -214,7 +214,7 @@ this is the real baseline-with-config (not a mistake: bare `mypy` with no config
 gap in `helper.py:13`, deferred to Phase 5 as documented in Verification #2. `uv run pytest -rPX -s`
 run manually by the user: **passed**.
 
-### Phase 2 — Fix the real bugs mypy's baseline run surfaced
+### Phase 2 — Fix the real bugs mypy's baseline run surfaced — **DONE (2026-08-30)**
 
 Not annotation additions — actual defects, fixed regardless of what the rest of this plan does:
 
@@ -241,6 +241,25 @@ Not annotation additions — actual defects, fixed regardless of what the rest o
   as a union that then can't be indexed/appended to consistently); give it an explicit
   `dict[str, Any]` since span shapes are genuinely heterogeneous (`getattr` off an untyped OTel SDK
   object).
+
+**Verified:** All bullets above implemented. `scanner.py:load_rules_from_filepaths` resolved via
+checking every real caller in both repos (`test/unit/test_scanning.py`: multiple plain-`str` args;
+`knowledgenet-examples/autoins/src/rule_runner.py`: single `list[str]` arg) — no caller ever mixes
+the two, so the fix is two `@overload` signatures (`*paths: str` / `paths: list[str] | tuple[str,
+...]`) rather than extending `_find_modules` to support an untested mixed shape; runtime body
+unchanged. Fixing `core/session.py`'s invalid `tuple[Element:int]` syntax let mypy check those
+function bodies for the first time (the parse error had been silently suppressing checks), which
+surfaced that `_add_facts`/`_delete_facts`'s "leftmost" value is genuinely nullable throughout —
+`_minimum`'s `element1` param (whose own `if not element1:` guard already assumed this) and the two
+return types were widened to `Element | None` accordingly. Also fixed, found adjacent to the planned
+work: `_add_facts`'s early-return path returned literal `0` instead of the already-empty `new_facts`
+set (harmless today since every caller discards that slot, but inconsistent with the return type);
+and `container.py:minimum()` had its cache-write line indented one level too shallow (unlike
+`maximum()` right below it), so it recomputed on every call instead of ever using its cache — a
+pure performance fix, no return-value change. `uv run mypy src/knowledgenet` dropped from 45 errors
+in 11 files to **10 errors in 6 files**, and all 10 remaining are pre-existing items already scoped
+to Phase 3 (implicit-Optional signatures) or Phase 5 (`perm.py`, `container.py:collection`,
+`helper.py`) — no new errors introduced. `uv run pytest -rPX -s` run manually by the user: **passed**.
 
 ### Phase 3 — Modernize old-style typing (mechanical, no behavior change)
 

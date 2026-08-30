@@ -43,10 +43,10 @@ class Collector:
             setattr(self, key, value) # type: ignore
 
         self.collection = set()
-        self._cached_sum = None
-        self._cached_variance = None
-        self._cached_min = None
-        self._cached_max = None
+        self._cached_sum: Number | None = None
+        self._cached_variance: float | None = None
+        self._cached_min: object | None = None
+        self._cached_max: object | None = None
 
         hasher = hashlib.sha256(group.encode())
         for key,value in sorted(kwargs.items()): # type: ignore
@@ -146,7 +146,7 @@ class Collector:
         if self._cached_min is None:
             if not self.key:
                 raise Exception("Don't know how to compute min as key function is not defined")
-        self._cached_min = min(self.collection, key=self.key)
+            self._cached_min = min(self.collection, key=self.key)
         return self._cached_min
 
     def maximum(self) -> object:

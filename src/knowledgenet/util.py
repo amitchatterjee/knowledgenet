@@ -1,6 +1,6 @@
 """General-purpose utility helpers shared across Knowledgenet modules."""
 
-from typing import List
+from typing import List, Any
 
 def to_tuple(obj):
     """Convert a scalar or iterable value into a tuple.
@@ -29,7 +29,7 @@ def of_type(fact):
     from knowledgenet.ftypes import Wrapper
     return type(fact) if type(fact) != Wrapper else fact.of_type
 
-def merge(d1: dict[str,object], d2: dict[str,object]) -> dict[str,object]:
+def merge(d1: dict[str,Any], d2: dict[str,Any]) -> dict[str,Any]:
     """Recursively merge two dictionaries, preferring right-hand values.
 
     Nested dict values are merged recursively, list values are merged by index,

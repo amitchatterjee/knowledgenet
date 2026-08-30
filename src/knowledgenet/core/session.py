@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Union, Any
 
 from knowledgenet.ftypes import EventFact, Wrapper
 from knowledgenet.core.tracer import trace
@@ -86,7 +86,7 @@ class Session:
         return self.output_facts.facts
     
     @trace(level=11)
-    def _delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element:int]:
+    def _delete_facts(self, deleted_facts: Union[set,list], current_leftmost: Element)->tuple[Element|None, set, Any]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.output_facts.del_facts(deduped_deletes)
         logging.debug("%s: Iterating through graph with deleted facts: %s", self, deduped_deletes)
@@ -107,8 +107,8 @@ class Session:
         return new_leftmost, deduped_deletes, changed_collectors
 
     @trace(level=11)
-    def _update_facts(self, execution_node: Node, facts: Union[set,list], 
-                       current_leftmost: Element)->tuple[Element:int]:
+    def _update_facts(self, execution_node: Node, facts: Union[set,list],
+                       current_leftmost: Element)->tuple[Element, set]:
         deduped_updates = set(facts) # Remove duplicates
         updated_facts = self.output_facts.update_facts(deduped_updates)
         new_leftmost = current_leftmost
@@ -146,12 +146,12 @@ class Session:
         return when_objs
 
     @trace(level=11)
-    def _add_facts(self, facts: Union[set,list], current_leftmost:Element=None)->tuple[Element:int]:
+    def _add_facts(self, facts: Union[set,list], current_leftmost:Element|None=None)->tuple[Element|None, set, Any]:
         # The new_facts variable contains a (deduped) set
         new_facts,updated_facts = self.output_facts.add_facts(facts)
         # If all the facts are duplicates, then return
         if not new_facts:
-            return current_leftmost, 0, updated_facts
+            return current_leftmost, new_facts, updated_facts
 
         new_leftmost = current_leftmost
         logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
@@ -172,7 +172,7 @@ class Session:
         logging.debug("%s: Inserted into graph, count: %d, updated facts: %s, new leftmost: %s", self, len(new_facts), updated_facts, new_leftmost)
         return new_leftmost, new_facts, updated_facts
     
-    def _minimum(self, element1:Element, element2:Element)->Element:
+    def _minimum(self, element1:Element|None, element2:Element)->Element:
         if not element1:
             return element2
         min = element2 if self.graph.compare(element1, element2) >= 0 else element1
