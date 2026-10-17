@@ -1,7 +1,7 @@
 import functools
-from time import time
 import inspect
 from contextlib import AbstractContextManager
+from contextvars import ContextVar
 from types import TracebackType
 from collections.abc import Callable
 from typing import Any, Literal
@@ -22,6 +22,11 @@ class PassThruTraceContext(AbstractContextManager["PassThruTraceContext"]):
     def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None) -> Literal[False]:
         return False
 
+# Stateless (no per-call data), so one instance is safely shared across every
+# disabled/filtered-out call instead of allocating a new one each time - this
+# is the common case at runtime (tracing off or below a call's level).
+_PASS_THRU = PassThruTraceContext()
+
 otel_tracer = otel_trace.get_tracer(__name__)
 
 def trace_details_to_max_size(trace_details: int) -> int:
@@ -38,14 +43,25 @@ def normalize_attribute(value: object, trace_details: int) -> object:
         str_val = str_val[0:max_size] + '...'
     return str_val
 
-def trace_context_factory(level: int, filter: Callable[[tuple, dict], bool] | None, f_func: Callable, f_args: tuple, f_kwargs: dict) -> AbstractContextManager[Any]:
-    from knowledgenet.service import trace_level, trace_details
-    trace_details_val = trace_details.get()
-    trace_level_val = trace_level.get()
+_service_context_vars: tuple[ContextVar, ContextVar] | None = None
+
+def _get_context_vars() -> tuple[ContextVar, ContextVar]:
+    # Deferred import breaks the service.py <-> tracer.py import cycle
+    # (service.py imports `trace` from this module at load time). Cached
+    # after the first resolution - the ContextVar objects never change once
+    # both modules have finished loading, so there's no need to re-resolve
+    # the import on every one of the (potentially millions of) traced calls.
+    global _service_context_vars
+    if _service_context_vars is None:
+        from knowledgenet.service import trace_level, trace_details
+        _service_context_vars = (trace_level, trace_details)
+    return _service_context_vars
+
+def trace_context_factory(level: int, filter: Callable[[tuple, dict], bool] | None, f_func: Callable, f_args: tuple, f_kwargs: dict, trace_level_val: int, trace_details_val: int) -> AbstractContextManager[Any]:
     filter_pass = filter(f_args, f_kwargs) if filter else True
     to_trace = trace_level_val >= level and filter_pass
     if not to_trace:
-        return PassThruTraceContext()
+        return _PASS_THRU
 
     object_id: object = None
     name: str | None = None
@@ -85,21 +101,24 @@ def trace(*decorator_args: Any, **decorator_kwargs: Any) -> Callable:
     def trace2_wrapper(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            #print(f'{func.__name__}({args}, {kwargs}), level={level}, filter={filter}')
-            from knowledgenet.service import trace_details
-            trace_details_val = trace_details.get()
+            trace_level_cv, trace_details_cv = _get_context_vars()
+            trace_level_val = trace_level_cv.get()
+            trace_details_val = trace_details_cv.get()
             ret = None
-            with trace_context_factory(level, filter, func, args, kwargs) as trace_ctx:
+            with trace_context_factory(level, filter, func, args, kwargs, trace_level_val, trace_details_val) as trace_ctx:
                 ret = func(*args, **kwargs)
-                if ret is not None:
+                # Skip normalizing (stringifying) the return value entirely when
+                # this call wasn't actually traced - set_attribute on the
+                # pass-through context is a no-op, but normalize_attribute's
+                # work (str() on arbitrary objects) isn't, and there's no point
+                # paying for it just to discard the result.
+                if ret is not None and trace_ctx is not _PASS_THRU:
                     trace_ctx.set_attribute('return', normalize_attribute(ret, trace_details_val))
             return ret
         return wrapper
     if decorator_args and callable(decorator_args[0]):
         # Decorator called without arguments
-        #print('without', decorator_args, decorator_kwargs)
         return trace2_wrapper(decorator_args[0])
     else:
         # Decorator called with arguments
-        #print('with', decorator_args, decorator_kwargs)
         return trace2_wrapper
