@@ -33,6 +33,11 @@ class Session:
     def execute(self) -> set:
         self.output_facts = Factset()
         self.graph = Graph(id=self.id, comparator=cast(Callable[[Hashable, Hashable], int] | None, self.node_sorter))
+        # Reverse index: fact -> the graph Elements whose node.when_objs
+        # references it. Lets _update_facts/_delete_facts find only the nodes
+        # a changed fact could actually affect, instead of scanning every
+        # node currently in the graph.
+        self._fact_to_elements: dict[Hashable, set[Element]] = {}
         logging.debug("%s: Initializing graph", self)
         leftmost,_, updated_facts = self._add_facts(self.input_facts)
         logging.debug("%s: Executing rules on graph", self)
@@ -44,6 +49,7 @@ class Session:
             # Execute the rule on the node
             result = node.execute(self.output_facts)
             if node.rule.run_once:
+                self._deindex_node(element)
                 e = self.graph.delete_element(element)
                 if element == leftmost:
                     leftmost = e
@@ -95,20 +101,24 @@ class Session:
     def _delete_facts(self, deleted_facts: set|list, current_leftmost: Element)->tuple[Element|None, set, Any]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.output_facts.del_facts(deduped_deletes)
-        logging.debug("%s: Iterating through graph with deleted facts: %s", self, deduped_deletes)
-        cursor_name = 'merge'
-        self.graph.new_cursor(cursor_name=cursor_name)
+        logging.debug("%s: Finding nodes affected by deleted facts: %s", self, deduped_deletes)
+        affected_elements: set[Element] = set()
+        for fact in deduped_deletes:
+            affected_elements.update(self._fact_to_elements.get(fact, ()))
+        # Process in graph (weight) order, not index/set-iteration order: the
+        # "jump to successor" branch below is only correct if, by the time we
+        # check whether the element being deleted is the current new_leftmost,
+        # every earlier-in-the-graph deletion has already been applied -
+        # exactly what the original full-scan cursor walk did implicitly.
         new_leftmost: Element | None = current_leftmost
-        while element := self.graph.next_element(cursor_name):
-            node = cast(Node, element.obj)
-            overlap = [value for value in node.when_objs if value in deduped_deletes]
-            if len(overlap):
-                next_element = self.graph.delete_element(element)
-                if new_leftmost is not None and element.obj == new_leftmost.obj:
-                    # If the leftmost object is being deleted
-                    new_leftmost = next_element
-                else:
-                    new_leftmost = self._minimum(new_leftmost, element)
+        for element in sorted(affected_elements, key=lambda e: e.weight):
+            next_element = self.graph.delete_element(element)
+            self._deindex_node(element)
+            if new_leftmost is not None and element.obj == new_leftmost.obj:
+                # If the leftmost object is being deleted
+                new_leftmost = next_element
+            else:
+                new_leftmost = self._minimum(new_leftmost, element)
 
         logging.debug("%s: Deleted facts from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, len(deduped_deletes), changed_collectors, new_leftmost)
         return new_leftmost, deduped_deletes, changed_collectors
@@ -119,11 +129,16 @@ class Session:
         deduped_updates = set(facts) # Remove duplicates
         updated_facts = self.output_facts.update_facts(deduped_updates)
         new_leftmost = current_leftmost
-        logging.debug("%s: Iterating through graph with updated facts: %s", self, deduped_updates)
-        cursor_name = 'merge'
-        self.graph.new_cursor(cursor_name=cursor_name)
-        node = execution_node
-        while element:= self.graph.next_element(cursor_name):
+        logging.debug("%s: Finding nodes affected by updated facts: %s", self, deduped_updates)
+        affected_elements: set[Element] = set()
+        for fact in deduped_updates:
+            affected_elements.update(self._fact_to_elements.get(fact, ()))
+        # reset_whens is a no-op for any node not touching deduped_updates, so
+        # only visiting the affected elements (instead of every node in the
+        # graph) changes nothing observable here - and unlike _delete_facts,
+        # nothing here mutates the graph, so the min-reduction below doesn't
+        # depend on visiting order.
+        for element in affected_elements:
             node = cast(Node, element.obj)
             if node == execution_node and not node.rule.retrigger_on_update:
                 # if this node updated the object and the rule option is not to retrigger on updare
@@ -135,7 +150,10 @@ class Session:
         if len(updated_facts) > 0:
             logging.debug("%s: An update resulted in changes to collectors: %s", self, updated_facts)
             # As a part of updated, additional collectors may have been affected, update the graph accordingly
-            new_leftmost, chg_count = self._update_facts(node, updated_facts, new_leftmost)
+            # (matches the pre-optimization behavior of using whichever node
+            # ends up at the tail of the graph as the next execution_node)
+            tail_node = cast(Node, self.graph.last.obj) if self.graph.last else execution_node
+            new_leftmost, chg_count = self._update_facts(tail_node, updated_facts, new_leftmost)
         logging.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, len(deduped_updates), deduped_updates, new_leftmost)
         return new_leftmost, deduped_updates
 
@@ -167,13 +185,14 @@ class Session:
             when_objs = self._get_matching_objs(rule)
             if when_objs:
                 # Get all the permutations associated with the objects
-                perms = combinations(when_objs, new_facts)                
+                perms = combinations(when_objs, new_facts)
                 logging.debug("%s: %s, permutations: %s", self, rule, perms)
                 # insert to the graph
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
                     node = Node(node_id, rule, self, each)
                     element = self.graph.add(node, node.rule.order)
+                    self._index_node(element)
                     logging.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)
         logging.debug("%s: Inserted into graph, count: %d, updated facts: %s, new leftmost: %s", self, len(new_facts), updated_facts, new_leftmost)
@@ -184,3 +203,17 @@ class Session:
             return element2
         min = element2 if self.graph.compare(element1, element2) >= 0 else element1
         return min
+
+    def _index_node(self, element: Element) -> None:
+        node = cast(Node, element.obj)
+        for fact in node.when_objs:
+            self._fact_to_elements.setdefault(fact, set()).add(element)
+
+    def _deindex_node(self, element: Element) -> None:
+        node = cast(Node, element.obj)
+        for fact in node.when_objs:
+            elements = self._fact_to_elements.get(fact)
+            if elements is not None:
+                elements.discard(element)
+                if not elements:
+                    del self._fact_to_elements[fact]
