@@ -1,4 +1,4 @@
-from __future__ import annotations
+import bisect
 from decimal import Decimal
 from collections.abc import Hashable, Callable
 
@@ -22,9 +22,20 @@ class Element:
 class Graph:
     def __init__(self, id: str, comparator: Callable[[Hashable, Hashable], int] | None = None) -> None:
         self.first: Element | None = None
+        self.last: Element | None = None
         self.cursors: dict[str, Element | None] = {}
         self.id = id
         self.comparator = comparator
+        # Ordinal-based fast path (comparator is None): for each distinct
+        # ordinal currently present, the last element of its contiguous run
+        # (same-ordinal elements always stay contiguous by construction), and
+        # the small set of distinct ordinals, kept sorted. Lets add() splice
+        # directly instead of scanning the whole list to find where a new
+        # ordinal belongs. Unused (and left empty) when a comparator is set -
+        # that path keeps the original O(graph size) scan, since an arbitrary
+        # comparator can't be indexed this way and nothing shows it's hot.
+        self._ordinal_tail: dict[int, Element] = {}
+        self._sorted_ordinals: list[int] = []
 
     def __str__(self) -> str:
         return f"Graph({self.id})"
@@ -37,44 +48,77 @@ class Graph:
         n_weight = next.weight if next else p_weight + Decimal(100)
         return (p_weight + n_weight) / Decimal(2)
 
-    def add(self, obj:Hashable, ordinal:int=0) -> Element:
-        added_element: Element | None = None
-        element: Element | None
-        if not self.first:
-            # If this is the only element in the list
-            element = Element(None, None, obj, ordinal, self._weight(None,None))
-            self.first = element
-            added_element = element
+    def add(self, obj: Hashable, ordinal: int = 0) -> Element:
+        if self.comparator:
+            added_element = self._add_scan(obj, ordinal)
         else:
-            last: Element | None = None
-            element = self.first
-            while element:
-                ins = False
-                if self.comparator:
-                    ins = True if self.comparator(obj, element.obj) < 0 else False
-                else:
-                    ins = True if ordinal < element.ordinal else False
-                if ins:
-                    added_element = self._insert(obj, ordinal, element)
-                    break
-                last = element
-                element = element.next
+            added_element = self._add_by_ordinal(obj, ordinal)
 
-            if not added_element:
-                # Insert it at the rightmost side of the list
-                added_element = Element(last, None, obj, ordinal, self._weight(last, None))
-                if last is not None:
-                    last.next = added_element
+        if added_element.next is None:
+            self.last = added_element
 
-        # By construction, added_element is always set on every path above.
-        assert added_element is not None
         # adjust cursors
-        for name,cursor in self.cursors.items():
+        for name, cursor in self.cursors.items():
             if added_element.next == cursor:
                 # If the element being added is just before the cursor, adjust it
                 self.cursors[name] = added_element
 
         return added_element
+
+    def _add_scan(self, obj: Hashable, ordinal: int) -> Element:
+        # Comparator-based ordering: an arbitrary total order over obj, not
+        # indexable by ordinal the way the default path is. No evidence this
+        # path is ever hot in practice - kept as the original O(graph size)
+        # linear scan rather than building a general order-statistics
+        # structure for an unevidenced cost.
+        if not self.first:
+            first_element = Element(None, None, obj, ordinal, self._weight(None, None))
+            self.first = first_element
+            return first_element
+
+        added_element: Element | None = None
+        last: Element | None = None
+        element: Element | None = self.first
+        while element:
+            ins = self.comparator(obj, element.obj) < 0 if self.comparator else False
+            if ins:
+                added_element = self._insert(obj, ordinal, element)
+                break
+            last = element
+            element = element.next
+
+        if not added_element:
+            added_element = Element(last, None, obj, ordinal, self._weight(last, None))
+            if last is not None:
+                last.next = added_element
+        return added_element
+
+    def _add_by_ordinal(self, obj: Hashable, ordinal: int) -> Element:
+        tail = self._ordinal_tail.get(ordinal)
+        if tail is not None:
+            added_element = self._insert_after(obj, ordinal, tail)
+        else:
+            idx = bisect.bisect_left(self._sorted_ordinals, ordinal)
+            prev = self._ordinal_tail[self._sorted_ordinals[idx - 1]] if idx > 0 else None
+            if prev is not None:
+                added_element = self._insert_after(obj, ordinal, prev)
+            else:
+                next_el = self.first
+                added_element = Element(None, next_el, obj, ordinal, self._weight(None, next_el))
+                if next_el:
+                    next_el.prev = added_element
+                self.first = added_element
+            self._sorted_ordinals.insert(idx, ordinal)
+        self._ordinal_tail[ordinal] = added_element
+        return added_element
+
+    def _insert_after(self, obj: Hashable, ordinal: int, prev: Element) -> Element:
+        next_el = prev.next
+        element = Element(prev, next_el, obj, ordinal, self._weight(prev, next_el))
+        prev.next = element
+        if next_el:
+            next_el.prev = element
+        return element
 
     def _insert(self, obj: Hashable, ordinal: int, current: Element) -> Element:
         '''
@@ -120,11 +164,27 @@ class Graph:
                 # Removing the only element from the list
                 self.first = None
 
+        if self.last is element:
+            self.last = prev
+
+        if self.comparator is None and self._ordinal_tail.get(element.ordinal) is element:
+            # This element was the tail of its ordinal's contiguous run -
+            # the index needs to follow the run's new tail, or be dropped
+            # entirely if this was the run's only element.
+            ordinal = element.ordinal
+            if prev is not None and prev.ordinal == ordinal:
+                self._ordinal_tail[ordinal] = prev
+            else:
+                del self._ordinal_tail[ordinal]
+                idx = bisect.bisect_left(self._sorted_ordinals, ordinal)
+                if idx < len(self._sorted_ordinals) and self._sorted_ordinals[idx] == ordinal:
+                    self._sorted_ordinals.pop(idx)
+
         for name,cursor in self.cursors.items():
             if element == cursor:
                 # If this element is currently being iterated on, move the pointer forward
                 self.cursors[name] = next
-                
+
         return next
 
     def new_cursor(self, cursor_name: str = 'default', element: Element | None = None) -> None:
