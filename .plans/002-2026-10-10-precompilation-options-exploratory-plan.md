@@ -1,8 +1,21 @@
 # Explore precompilation options for faster rule evaluation
 
-Status: **PROPOSED — not started**. This is a research/spike plan: each phase produces a
-measurement and a go/no-go judgement, not shipped code. No phase here commits the project to a
-rewrite; the output is a recommendation that a separate, later implementation plan would act on.
+Status: **Phase 0 DONE (2026-10-17); Phases 1-6 PAUSED pending re-scoping** — see below. This was a
+research/spike plan: each phase was meant to produce a measurement and a go/no-go judgement, not
+shipped code. Phase 0 ran as intended, but what it found was urgent and actionable enough that it
+turned into real shipped fixes instead of just a data point — see
+`003-2026-10-17-rete-engine-performance-fixes.md`, which is where that work actually lives.
+
+**Phase 0's finding revises this plan's own premise.** The Context section below assumed rule
+bodies dominate runtime (per prior discussion, before any profiling existed) - that's why
+precompiling rule bodies looked like the lever worth exploring. Actual profiling (first at a tiny
+50-claim smoke scale, then properly at 100-500 claims) found the opposite: `autoins`'s own code
+(rule bodies *and* its platform code combined) is under 1% of total runtime; `knowledgenet`'s own
+engine bookkeeping is ~77%+, even after four rounds of engine-side fixes (003). Before resuming
+Phases 1-6 here, re-examine whether PyPy/mypyc/Nuitka/Codon/Rust are still the right next move at
+all — 003's own Phase 5 (an unfixed `O(n^2)`-ish `Factset.find()` re-scan) is a concrete, scoped,
+high-confidence engine-side fix that's plausibly higher-leverage than any of them, precisely
+because rule bodies were never where the time was going.
 
 ## Context
 
@@ -68,17 +81,23 @@ Decision criteria recorded for each candidate in Phase 6's writeup:
 - **Reversibility** — can it be adopted incrementally (e.g. PyPy is a Python-version swap; Nuitka is
   a build step) or does it require a fork/parallel codebase?
 
-### Phase 0 — Profiling baseline (no tooling changes)
+### Phase 0 — Profiling baseline (no tooling changes) — **DONE (2026-10-17)**
 
-Run `autoins` under `cProfile` (and/or `py-spy` for sampling, if installed) against its existing
-test data, and break down time spent in:
-- `knowledgenet/core/graph.py`, `factset.py`, `node.py` (engine bookkeeping), vs.
-- time attributed to the actual `matches=`/`then=` callables defined in `autoins/rules/*.py`.
+Ran via `autoins/test/perf/{generate_data.py,profile_engine.py}` (built as part of this phase) —
+synthetic volume datasets at 50-500 claims, `cProfile`'d `Service.execute()` directly, bucketed by
+source repo.
 
-This is the number the whole plan hinges on — it either confirms or corrects the "rule bodies
-dominate" premise from the prior conversation before any tool is evaluated. Record the split as a
-percentage and call out which specific rules/rulesets are hottest (useful context for later phases
-even if the overall split is lopsided).
+**Result: the "rule bodies dominate" premise was wrong.** `knowledgenet` (engine) is ~77%+ of
+runtime; `autoins` (rule bodies *and* its own platform code combined) is under 1%; the remainder is
+mostly stdlib overhead the engine itself triggers (`logging.debug`, `ContextVar.get`). Measured at
+multiple scales (100/150/200/300/500 claims, see `003-2026-10-17-rete-engine-performance-fixes.md`
+for the full numbers) — not a one-off reading.
+
+This number is why Phases 1-6 below are paused rather than continued: they were designed to attack
+rule-body cost specifically, and rule bodies turned out not to be where the time goes. Also
+surfaced, as a side effect of profiling at realistic scale: `Service.execute()` scaled roughly
+cubically with claim count and 500 claims didn't complete at all — a concrete algorithmic problem,
+not a tooling question, which is what actually got acted on (see 003).
 
 ### Phase 1 — PyPy spike
 
