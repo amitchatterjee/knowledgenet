@@ -211,6 +211,21 @@ class Factset:
             events_list.add(event_fact)
             self._type_to_events[typ] = events_list
 
+    def _population(self, of_type: type | str, group: str | None = None) -> set:
+        """Return the live index set backing ``of_type``/``group`` - no copy.
+
+        Internal fast path for Session's hot loop (_get_matching_objs), which
+        never filters and only reads the result. The returned set IS the
+        index storage, not a copy - callers must treat it as read-only.
+        Rule-author code should use the public ``find()`` below instead,
+        which always returns a safe-to-mutate copy.
+        """
+        if of_type == Collector:
+            return self._group_to_collectors[group] if group in self._group_to_collectors else set()
+        if of_type == EventFact:
+            return self._group_to_events[group] if group in self._group_to_events else set()
+        return self._type_to_facts[of_type] if of_type in self._type_to_facts else set()
+
     @trace(level=12)
     def find(self, of_type: type | str, group: str | None = None, filter: Callable[[object], bool] = lambda obj:True) -> set:
         """Find facts by type, optionally scoped by group for helper facts.
@@ -222,15 +237,8 @@ class Factset:
             filter: Predicate applied to each candidate result.
 
         Returns:
-            Set of matching facts (possibly empty).
+            Set of matching facts (possibly empty). Always a fresh copy,
+            safe for the caller to hold onto or mutate independently of the
+            factset's own indexes.
         """
-        if of_type == Collector:
-            return {each for each in self._group_to_collectors[group] if filter(each)} \
-                if group in self._group_to_collectors else set()
-        
-        if of_type == EventFact:
-            return {each for each in self._group_to_events[group] if filter(each)}\
-                if group in self._group_to_events else set()
-        
-        return {each for each in self._type_to_facts[of_type] if filter(each)} \
-            if of_type in self._type_to_facts else set()
+        return {each for each in self._population(of_type, group) if filter(each)}
