@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from knowledgenet.core.tracer import trace
+from knowledgenet.factset import Factset
 from knowledgenet.rule import Rule
 
 if TYPE_CHECKING:
@@ -31,7 +32,12 @@ class Leaf:
         self.executed = False
         self.result: bool | None = None
 
-    @trace()
+    # @trace() - commented out: innermost hot loop (5.7M calls at 300 claims),
+    # defaulted to level=1 ("application code" per docs/rule-service.md's
+    # trc_level convention) even though this is RETE-internal - @trace()'s
+    # per-call overhead isn't worth paying here even disabled. Uncomment to
+    # restore (consider level=13+ to match the rest of the RETE-internal
+    # tracing convention instead of the app-level default).
     def execute(self, context: SimpleNamespace, fact: object) -> tuple[bool, bool]:
         """Evaluate one when-clause and optionally use cached result.
 
@@ -101,8 +107,10 @@ class Node:
                 return True
         return False
 
-    @trace()
-    def execute(self, facts:set)->bool:
+    # @trace() - commented out, see Leaf.execute above (2.86M calls at 300
+    # claims, same level=1-default-but-RETE-internal issue). Uncomment to
+    # restore.
+    def execute(self, facts: Factset)->bool:
         """Execute this node against current facts.
 
         The method evaluates leaves in rule order, uses cached leaf outcomes
@@ -138,7 +146,7 @@ class Node:
         logging.debug("%s: Result from when execution. Changes:%s", self, self.changes)
         return True
 
-    @trace()
+    # @trace() - commented out, see Leaf.execute above. Uncomment to restore.
     def _execute_thens(self) -> dict:
         for then in self.rule.thens:
             # Execute each function/lambda included in the rule

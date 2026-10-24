@@ -199,7 +199,11 @@ class Graph:
     def next(self, cursor_name: str = 'default') -> Hashable:
         return (cursor := self.next_element(cursor_name)) and cursor.obj
 
-    @trace(level=13, filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
+    # @trace(level=13, filter=lambda args,kwargs: len(args) < 2 or args[1] == 'default')
+    # - commented out: main RETE traversal loop (session.py's `while element
+    # := self.graph.next_element()`), 2.78M calls at 300 claims - now the
+    # dominant remaining @trace() cost after node.py/container.py were
+    # de-instrumented. Uncomment to restore.
     def next_element(self, cursor_name: str = 'default') -> Element | None:
         cursor = self.cursors[cursor_name]
         if not cursor:
