@@ -1,7 +1,9 @@
 # Fix the RETE engine's super-linear scaling, found via Phase 0 profiling
 
 Status: **INPROG** — Phases 1-4 DONE and verified (each independently tested, measured, and
-confirmed against `autoins`). Phase 5 identified, not started.
+confirmed against `autoins`). Phase 5 identified, not started (see its section below for why -
+the investigation that started it led to Phase 6 instead). Phase 6 (`@trace()` overhead on
+RETE-internal hot paths) DONE and verified.
 
 ## Context
 
@@ -199,6 +201,58 @@ enough that it's probably the highest-leverage next step, but needs its own read
 pass (`Factset.add_facts`/`del_facts`/`update_facts`, and whatever else calls `find()` directly)
 before designing anything, per this plan's own methodology.
 
+**Investigated, not yet started:** before implementing the above, re-profiled per this plan's own
+"profile first, never assume" rule - `perm.py`'s `combinations()`/`_append_matching`/`_append_all`
+turned out to be negligible at this point (~0.1% of total runtime, absent from a 300-claim
+profile's top 15 entirely). The real cost at that moment was `@trace()`'s per-call overhead, not
+`Factset.find()`'s re-scan - see Phase 6 below, done instead. Phase 5's actual fix (incrementally
+maintained per-when-clause populations) is still unimplemented and, per the scaling analysis in
+"Time-vs-facts relationship" below, is now more clearly necessary than ever: the engine's
+time-vs-facts relationship is still measurably super-linear even after Phase 6.
+
+### Phase 6 — `core/tracer.py`: `@trace()`'s per-call overhead on RETE-internal hot paths — DONE
+
+**Found:** investigating Phase 5's listed next step above before implementing it surfaced a
+bigger, unrelated cost. `@trace()`'s `wrapper()` (tracer.py) was ~41-53% of total engine time
+across tens of millions of calls, *even with tracing fully disabled* (`trc_level=0`, `autoins`'s
+default) - every `@trace()`-decorated call pays for an extra stack frame, two `ContextVar.get()`
+reads, a `trace_context_factory()` call, and a context-manager `__enter__`/`__exit__` pair before
+it can determine there's nothing to trace. Nearly all of the call volume came from three
+functions decorated at the engine's innermost, hottest layer: `Node.execute`/`Leaf.execute`/
+`Node._execute_thens` (`node.py`) - decorated with bare `@trace()`, defaulting to level=1, the
+"application code" band per `docs/rule-service.md`'s own convention, despite being RETE-internal
+- plus `Collector.add`/`remove` (`container.py`, already correctly tagged level=14) and
+`Graph.next_element` (`graph.py`, already correctly tagged level=13, called once per node
+traversal in `session.py`'s main execution loop).
+
+**Fix:** commented out (not deleted - restorable with a one-line uncomment if ever needed for
+engine-internal debugging) the `@trace()` decorators on exactly those five call sites. Didn't
+touch `tracer.py`'s mechanism itself, and left every other `@trace()` site alone (`session.py`
+level 11, `factset.py` level 12, `node.py`'s `reset_whens` level 13, `graph.py`'s
+`next_elements`) - none of them individually contributed a significant share of the call count.
+
+Also fixed incidentally: removing `@trace()` from `Node.execute` exposed a latent type error
+`mypy` couldn't previously see - the decorator's loose `Callable` signature had been erasing the
+wrapped function's real parameter types from type-checking (same class of issue Phase 5's
+`_population()` work ran into). `Node.execute`'s `facts` parameter was annotated `set` but its
+only call site (`session.py`) passes a `Factset`, matching `helper.factset(ctx)`'s documented
+return type - corrected to `Factset`.
+
+**Verified:** `mypy src/knowledgenet` clean. 123/123 `knowledgenet` unit tests pass (no new tests
+needed - comment-only and type-annotation changes to already-tested code paths). `autoins`
+rebuilt (`uv sync --reinstall-package knowledgenet`), 5/5 tests pass.
+
+**Measured** (`test/perf/profile_engine.py`, same harness, clean data each run):
+
+| claims | before Phase 6 | after node.py/container.py | after graph.py (final) |
+|---|---|---|---|
+| 300 | 6.55s | 4.86s (-26%) | 3.69s (-44%) |
+| 500 | 27.4s | 19.1s (-30%) | 15.8s (-42%) |
+
+`wrapper()` call count at 300 claims: 11.67M -> 2.86M (after node.py/container.py) -> 82,958
+(after `graph.py`'s `next_element`, which alone had been 97% of what remained). Combined effect:
+roughly 1.75-1.8x faster than immediately before this phase.
+
 ## Overall measured result (Phases 1-4 combined, clean re-measurement, same harness/seed)
 
 | claims | original baseline | after Phases 1-4 | speedup |
@@ -218,6 +272,46 @@ graph/population size, so the win compounds. The remaining non-linearity is Phas
 ~22%, `autoins` application code (both rule bodies *and* its own platform code - `entities.py`,
 `fact_io.py`) **under 1%**. This inverts the premise `002`'s Context section started from (that rule
 bodies dominate runtime) - see that plan's Phase 0 section for the resulting revision.
+
+### Current state after Phase 6 (clean re-measurement, same harness/seed)
+
+| claims | original baseline (pre-Phase 1) | current (Phases 1-6) | speedup |
+|---|---|---|---|
+| 100 | 3.78s | 0.217s | 17.4x |
+| 150 | 14.87s | 0.585s | 25.4x |
+| 200 | 40.27s | 1.094s | 36.8x |
+| 300 | not part of original baseline sweep | 3.690s | - |
+| 400 | not part of original baseline sweep | 8.072s | - |
+| 500 | never completed (60s+ timeout) | 15.797s | infeasible -> feasible |
+
+Speedup keeps growing with scale, consistent with the pattern noted above - but see the next
+subsection: growth with scale is itself evidence the relationship still isn't linear, even now.
+
+### Time-vs-facts relationship: still measurably super-linear (disclaimer-laden linear fit)
+
+Asked (by the user) to characterize the current `time = coefficient * facts + base` relationship
+*assuming it's linear*. Least-squares fit over the six points above (facts = 2*claims + 4):
+**coefficient ~= 0.0188 s/fact, base ~= -5.50s**, R^2 ~= 0.90.
+
+**This "fit" should not be used for anything - it's recorded here only as a documented answer to
+the question actually asked, not as a model to extrapolate from:**
+- The base term is negative (~-5.50s), which is physically impossible (time can't be negative at
+  zero facts). That alone is the signature of forcing a line through data that actually curves.
+- Residuals (`y - y_hat`) go +, +, -, -, -, + across the six points in increasing-facts order - a
+  clean U-shape, the textbook fingerprint of a straight line fit to convex (upward-curving) data.
+- Doubling facts from 404->804 gives 7.4x the time (1.09s -> 8.07s), not ~2x; a linear
+  relationship would predict ~2x. Even a quadratic relationship would only predict ~4x.
+- This matches Phase 5's own finding (never fully resolved - see that phase's "Investigated, not
+  yet started" note above): Node creation and matching cost were measured growing ~O(n^2) to
+  O(n^2.9) before Phase 5's partial (~10%) mitigation, and Phase 6 only removed a constant
+  per-call cost - it did nothing to the underlying growth exponent.
+
+**Conclusion:** the relationship is not linear, and treating it as such (e.g. to predict time at
+claim counts beyond what's been measured) would significantly underestimate actual cost at scale.
+Phase 5's originally-identified fix - incrementally maintained per-when-clause (type, group)
+populations in `Factset`/`Session`, instead of `Factset.find()`'s full re-scan on every
+`_add_facts` call - remains the candidate that targets this curvature directly, and is now the
+clearest remaining lever if further scaling work is wanted.
 
 ## Explicitly out of scope
 
