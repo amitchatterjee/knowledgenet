@@ -1,10 +1,20 @@
 # Explore precompilation options for faster rule evaluation
 
-Status: **Phase 0 DONE (2026-10-17); Phases 1-6 PAUSED pending re-scoping** — see below. This was a
+Status: **PAUSED (2026-10-26)** — Phase 0 DONE (2026-10-17); Phases 1-2 DISQUALIFIED, Phase 3
+DONE-NEGATIVE (all 2026-10-26); paused before Phase 4 (Codon), to resume later. This was a
 research/spike plan: each phase was meant to produce a measurement and a go/no-go judgement, not
 shipped code. Phase 0 ran as intended, but what it found was urgent and actionable enough that it
 turned into real shipped fixes instead of just a data point — see
-`003-2026-10-17-rete-engine-performance-fixes.md`, which is where that work actually lives.
+`003-2026-10-17-rete-engine-performance-fixes.md`, which is where that work actually lives (also
+currently paused). Phase 1 (PyPy) was disqualified on resumption without running a benchmark; Phase
+2 (mypyc) was disqualified after a real compile attempt surfaced a structural incompatibility; Phase
+3 (Nuitka) compiled and ran correctly but measured **36%/34% slower than plain CPython** at 300/500
+claims, two-for-two - a real negative result, not a blocker (see their sections below). One
+incidental finding from Phase 2 (a scanner.py reflection fix) was kept as a permanent,
+independently-useful fix regardless. So far, nothing beats the plain CPython 3.14 baseline. To
+resume: start at Phase 4 (Codon feasibility check, expected fast disqualification per the
+Candidates section), then Phase 5 (Rust/PyO3 micro-benchmark) and Phase 6 (writeup) - Cython
+(candidate 3) stays un-run, it shares mypyc's Phase 2 disqualification.
 
 **Phase 0's finding revises this plan's own premise.** The Context section below assumed rule
 bodies dominate runtime (per prior discussion, before any profiling existed) - that's why
@@ -50,6 +60,10 @@ one tool is the answer.
    what's being left on the table by not touching rule bodies.
 3. **Cython** — same disqualification/rationale as mypyc; not run as its own spike unless Phase 2's
    mypyc numbers suggest it's worth a second data point (Cython's optimizer differs from mypyc's).
+   **Not run (2026-10-26):** Phase 2 disqualified mypyc on a structural issue (native classes can't
+   hold the dynamic, post-`__init__` attributes `Rule`/`Fact`/`Collector`/etc. rely on by design) -
+   Cython's own native-class extension types have the same `__dict__`-less-by-default tension, so
+   there's nothing here to learn that Phase 2 didn't already establish.
 4. **Nuitka** (whole-program AOT compiler, preserves full Python semantics) — no type annotations
    required, so survives the constraint, but gains on genuinely dynamic duck-typed code are
    typically modest (not Rust/mypyc-level) since it still has to emulate CPython's object model
@@ -99,35 +113,131 @@ surfaced, as a side effect of profiling at realistic scale: `Service.execute()` 
 cubically with claim count and 500 claims didn't complete at all — a concrete algorithmic problem,
 not a tooling question, which is what actually got acted on (see 003).
 
-### Phase 1 — PyPy spike
+### Phase 1 — PyPy spike — **DISQUALIFIED (2026-10-26), not run**
 
-Install `pypy3` (matching the project's 3.13+ floor), create a PyPy-backed venv for `autoins` +
+**Found:** On resuming this plan, checked PyPy availability against the project's `requires-python
+= ">=3.13"` floor (`pyproject.toml:19`) before installing anything. Fedora's dnf repo only offers
+`pypy3.11` (Python 3.11 semantics) — already short of the 3.13 floor. Checked upstream directly
+rather than assume dnf was just behind: [pypy.org/download](https://pypy.org/download.html) and the
+[build directory](https://downloads.python.org/pypy/) confirm the latest PyPy release (v8.0.1, and
+every version before it) tops out at **Python 3.12** — there is no PyPy build targeting 3.13 from
+any source, not a packaging gap specific to Fedora.
+
+**Decision:** Disqualified without running a benchmark. Dropping to 3.11 (dnf) or even 3.12
+(upstream) to run this spike would mean either relaxing `requires-python` for the spike (and then
+the result wouldn't actually describe the 3.13 runtime the project ships) or testing a version the
+project has already moved past — neither produces a number worth acting on. User decision
+(2026-10-26): don't go back to 3.11; skip PyPy and proceed directly to Phase 2 (mypyc). If PyPy
+ever ships a 3.13+ build, this phase can be reopened using the method below, otherwise unchanged:
+
+~~Install `pypy3` (matching the project's 3.13+ floor), create a PyPy-backed venv for `autoins` +
 local-source `knowledgenet` (same `[tool.uv.sources]` path-dependency setup as the CPython venv,
 or a plain `pypy3 -m venv` if `uv` + PyPy interact badly — check first), run the same autoins
 workload, compare wall-clock against Phase 0's baseline. Check `opentelemetry-sdk`/
 `opentelemetry-exporter-otlp` import and basic span export work under PyPy before trusting the
 timing (if they don't, note whether tracing can be disabled for the benchmark without invalidating
 the comparison). No source changes to `knowledgenet` or `autoins` — the entire point is "does this
-work and get faster with zero code changes."
+work and get faster with zero code changes."~~
 
-### Phase 2 — mypyc ceiling measurement
+### Phase 2 — mypyc ceiling measurement — **DISQUALIFIED (2026-10-26), no benchmark number**
 
-Add `mypyc` as a one-off dev-only build step (not committed to `pyproject.toml`'s normal build),
+**Found (1 of 2), fixed and kept regardless of mypyc's fate:** Compiled `src/knowledgenet` with
+`mypyc` (via `uv run --with setuptools -- mypyc knowledgenet`, from a scratch copy of the package —
+clean compile, zero errors, all 19 modules). Running it against `autoins` failed at
+`scanner.lookup()` with every rule silently unregistered. Root cause: `scanner.py`'s
+`_load_rules_from_module()` gated rule discovery on `inspect.isfunction(obj)`. mypyc compiles
+`decorator.py`'s `ruledef()` closure into a native callable object (type
+`knowledgenet.decorator.wrapper_ruledef_ruledef_wrapper_obj`), not a `types.FunctionType` —
+`__ruledef__` was still set correctly, but `isfunction()` returned `False` for it, so the scanner's
+own filter silently skipped every decorated rule before ever checking the marker.
+
+**Fix:** Changed the outer filter in `scanner.py:_load_rules_from_module` from
+`inspect.isfunction(obj)` to `callable(obj)`, keeping the existing `getattr(obj, '__ruledef__',
+False)` inner check unchanged. Verified this is a strict widening, not a behavior change: under
+plain CPython a `@ruledef`-decorated function is already both `isfunction()==True` and
+`callable()==True`, so every rule registered today still registers identically; the only change is
+that non-`FunctionType` callables (mypyc's native closures) now also reach the `__ruledef__` gate,
+which only the `ruledef` decorator itself ever sets, so there's no new false-positive risk. Grepped
+for other `inspect.isfunction`/`isclass` usage - only one other site (`core/tracer.py:78`), unrelated
+to rule discovery, and it already falls back to a bare `callable()` OR-condition regardless. Added
+`test/unit/test_scanning.py::test_rule_loading_non_function_callable`, which simulates the
+mypyc-closure shape (callable, not `types.FunctionType`, `__ruledef__` set) without needing an
+actual mypyc build, so this stays covered in ordinary CPython CI. `uv run mypy src/knowledgenet` →
+clean; `uv run pytest -q` → 124/124 (123 + the new test). **Kept in the codebase independent of
+mypyc's outcome below** - it's a real, low-risk robustness fix on its own merits, not spike-only.
+
+**Found (2 of 2), disqualifying - not fixed:** After the scanner fix, rule *discovery* works but
+rule *construction* doesn't: `ruledef`'s wrapper does `rule.ruleset = ...` / `rule.repository = ...`
+*after* `Rule(...)` is constructed (relying on every Python object having a `__dict__` by default).
+mypyc compiles classes into a fixed, struct-like native layout inferred from what `__init__` assigns
+by literal name - there's no `__dict__` fallback, so this fails with `AttributeError: 'Rule' object
+has no attribute 'ruleset' and no __dict__ for setting new attributes`. This isn't Rule-specific:
+grepped for the `**kwargs` + `setattr(self, key, value)` pattern (deliberately used so rule authors
+and platform code can attach arbitrary metadata/fields) and found it at 5 sites across 3 files -
+`rule.py` (`Fact`, `Rule`), `ftypes.py` (2 classes), `container.py` (`Collector`). This is the same
+underlying tension already flagged as disqualifying for Codon in the Candidates section above
+(mypyc needs the same staticness Codon does, just for class shape instead of rule-body typing) - it
+just surfaces differently (a native-class layout error, not a parse/compile rejection).
+
+A real workaround exists (a custom `__setattr__`/`__delattr__` per affected class routing known
+literal names to native fields and everything else to a manual dict -
+[mypy PR #19937](https://github.com/python/mypy/pull/19937),
+[mypyc issue #1149](https://github.com/mypyc/mypyc/issues/1149)), but it would touch 5 call sites
+across 3 public-API files (`rule.py`, `ftypes.py`, `container.py` - all under the "preserve existing
+public APIs" rule in `CLAUDE.md`) just to make mypyc's native-class model tolerate a pattern the
+engine uses by design. Decision (2026-10-26, user): don't do this - document mypyc as disqualified
+by this pattern and move to Phase 3 (Nuitka), which preserves full Python semantics including
+dynamic attributes by design and so isn't expected to hit this.
+
+~~Add `mypyc` as a one-off dev-only build step (not committed to `pyproject.toml`'s normal build),
 compile `src/knowledgenet` (already satisfies `disallow_untyped_defs = true` package-wide per
 `001-...-DONE.md`) into a native extension, leave `autoins/rules/*.py` untouched/interpreted, run
 the same workload. This isolates "engine-only, natively compiled" speedup in a real compiled
-artifact (not just Phase 0's profile percentage) — the gap between this number and Phase 0's
+artifact (not just Phase 0's profile percentage) - the gap between this number and Phase 0's
 engine-time percentage is the realistic ceiling for any engine-only compilation approach (mypyc,
-Cython, or Rust+PyO3 equally), without yet touching rule-body typing.
+Cython, or Rust+PyO3 equally), without yet touching rule-body typing.~~
 
-### Phase 3 — Nuitka spike
+### Phase 3 — Nuitka spike — **DONE (2026-10-26): compiles and runs correctly, but slower than CPython**
 
-Compile `autoins`'s `rule_runner.py` entrypoint plus `knowledgenet` and `autoins` source as a
-standalone Nuitka executable (`--standalone` or `--onefile`), unmodified source, run against the
-same workload. Note build time and binary size alongside the runtime number — both are real costs
-of this option even if runtime improves. Confirm the `opentelemetry-*` dependency chain actually
-compiles (Nuitka's C-extension/compiled-dependency support is the main practical risk here, not
-semantics).
+Installed Nuitka 4.3.1 ad hoc (`uv run --with nuitka`, not added to `pyproject.toml`) plus the
+system `patchelf` package (`sudo dnf install -y patchelf` — standalone mode on Linux requires it;
+user installed it). Compiled `test/perf/profile_engine.py` (same entrypoint used for every other
+phase's timing comparison, not `rule_runner.py` directly, so numbers stay apples-to-apples across
+phases) via `python -m nuitka --standalone`, unmodified `knowledgenet`/`autoins` source.
+
+**Two flags were required beyond a plain `--standalone` build** - both forced by this engine's
+design, not incidental: `--include-package=autoins` and `--include-package=knowledgenet`. Without
+them the build "succeeds" but fails at runtime (`ModuleNotFoundError`), because rule modules are
+discovered and `importlib.import_module()`'d dynamically from a user-supplied directory at runtime
+(`scanner.load_rules_from_filepaths`) - Nuitka's static import-following from the entry script has
+no way to see that `knowledgenet.decorator` (imported only from inside those dynamically-loaded,
+never-statically-reachable rule files) is needed, so it isn't bundled unless told explicitly. This
+is a real, generalizable packaging note for any Nuitka adoption of this engine, independent of the
+benchmark result.
+
+**Compatibility risk from the Open Questions section did not materialize:** the full
+`opentelemetry-api`/`opentelemetry-sdk`/`opentelemetry-exporter-otlp` chain, including `grpcio` and
+`certifi`, compiled and linked without issue (Nuitka's data-files plugin even picked up
+`certifi/cacert.pem` and `grpc/_cython/_credentials/roots.pem` automatically). Build time ~2.5
+minutes; `profile_engine.dist/` is 82 MB (42 MB binary + bundled interpreter/deps).
+
+**Measured (apples-to-apples, same machine, same session, `--mode time` harness, 3 runs averaged):**
+
+| claims | facts | CPython 3.14 (interpreted) | Nuitka (standalone, compiled) | delta |
+|---|---|---|---|---|
+| 300 | 604 | 3753.9 ms | 5102.4 ms | **+36% slower** |
+| 500 | 1004 | 15382.7 ms | 20590.7 ms | **+34% slower** |
+
+**Conclusion: Nuitka is a net regression for this workload, not a speedup**, consistently across
+two scales. This goes further than the Candidates section's prediction of merely "modest" gains -
+preserving full Python semantics (including this engine's pervasive dynamic `setattr`/duck-typing)
+means Nuitka's compiled C code still has to emulate CPython's dynamic object model faithfully, and
+that emulation overhead outweighs whatever it saves on bytecode dispatch. It's also plausible
+CPython 3.14's own interpreter optimizations (this project's floor) are already fast enough on this
+kind of workload that a generic AOT compile has nothing left to win. No further Nuitka tuning
+attempted (e.g. `--lto`, PGO) - the gap is large and consistent enough at two scales that marginal
+compiler-flag tuning is very unlikely to flip the sign, and that kind of tuning would anyway erode
+the "zero source/config change" premise this phase was testing.
 
 ### Phase 4 — Codon feasibility check (short, likely a fast no)
 

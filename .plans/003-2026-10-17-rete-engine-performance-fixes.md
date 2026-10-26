@@ -1,9 +1,13 @@
 # Fix the RETE engine's super-linear scaling, found via Phase 0 profiling
 
-Status: **INPROG** — Phases 1-4 DONE and verified (each independently tested, measured, and
-confirmed against `autoins`). Phase 5 identified, not started (see its section below for why -
-the investigation that started it led to Phase 6 instead). Phase 6 (`@trace()` overhead on
-RETE-internal hot paths) DONE and verified.
+Status: **PAUSED** (2026-10-26) — Phases 1-4 and 6 DONE and verified (each independently tested,
+measured, and confirmed against `autoins`). Phase 5 identified, not started (see its section
+below for why - the investigation that started it led to Phase 6 instead). Deliberately paused
+here, not abandoned: work is shifting to `002-2026-10-10-precompilation-options-exploratory-plan.md`'s
+precompilation spikes (PyPy/mypyc/Nuitka/Codon/Rust). To resume this plan later, start from Phase
+5's "Investigated, not yet started" note and the "Time-vs-facts relationship" section below - both
+point at the same fix (incrementally maintained per-when-clause populations in `Factset`/
+`Session`), which remains the clearest lever on the engine's residual super-linear scaling.
 
 ## Context
 
