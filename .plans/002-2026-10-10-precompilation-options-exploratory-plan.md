@@ -1,20 +1,24 @@
 # Explore precompilation options for faster rule evaluation
 
-Status: **PAUSED (2026-10-26)** — Phase 0 DONE (2026-10-17); Phases 1-2 DISQUALIFIED, Phase 3
-DONE-NEGATIVE (all 2026-10-26); paused before Phase 4 (Codon), to resume later. This was a
-research/spike plan: each phase was meant to produce a measurement and a go/no-go judgement, not
-shipped code. Phase 0 ran as intended, but what it found was urgent and actionable enough that it
-turned into real shipped fixes instead of just a data point — see
-`003-2026-10-17-rete-engine-performance-fixes.md`, which is where that work actually lives (also
-currently paused). Phase 1 (PyPy) was disqualified on resumption without running a benchmark; Phase
-2 (mypyc) was disqualified after a real compile attempt surfaced a structural incompatibility; Phase
-3 (Nuitka) compiled and ran correctly but measured **36%/34% slower than plain CPython** at 300/500
-claims, two-for-two - a real negative result, not a blocker (see their sections below). One
-incidental finding from Phase 2 (a scanner.py reflection fix) was kept as a permanent,
-independently-useful fix regardless. So far, nothing beats the plain CPython 3.14 baseline. To
-resume: start at Phase 4 (Codon feasibility check, expected fast disqualification per the
-Candidates section), then Phase 5 (Rust/PyO3 micro-benchmark) and Phase 6 (writeup) - Cython
-(candidate 3) stays un-run, it shares mypyc's Phase 2 disqualification.
+Status: **DONE (2026-10-30)** — all phases complete (Phase 0: 2026-10-17; Phases 1-6: 2026-10-26
+and 2026-10-30). This was a research/spike plan: each phase was meant to produce a measurement and
+a go/no-go judgement, not shipped code - that's exactly how it landed. Phase 0 ran as intended, but
+what it found was urgent and actionable enough that it turned into real shipped fixes instead of
+just a data point — see `003-2026-10-17-rete-engine-performance-fixes.md`, which is where that work
+actually lives (currently paused, not abandoned). Phase 1 (PyPy) was disqualified on resumption
+without running a benchmark; Phase 2 (mypyc) was disqualified after a real compile attempt surfaced
+a structural incompatibility; Phase 3 (Nuitka) compiled and ran correctly but measured **36%/34%
+slower than plain CPython** at 300/500 claims, two-for-two; Phase 4 (Codon) was disqualified even
+more fundamentally than expected; Phase 5 (Rust/PyO3, one isolated hot bookkeeping operation)
+measured a real but modest **1.3-1.7x** speedup, capped by per-call PyO3 crossing overhead and by
+CPython's own list operations already being C. Cython (candidate 3) was never run - it shares
+mypyc's Phase 2 disqualification. **Bottom line (Phase 6): no precompilation option clears the bar
+as a drop-in adoption today** - see Phase 6's table and recommendation below for the full
+comparison and the two live paths forward (plan 003's own unfinished Phase 5, or a real scoped Rust
+port of specific engine internals - both out of this plan's scope). One incidental finding from
+Phase 2 (a scanner.py reflection fix, widening rule discovery to `callable()` instead of
+`inspect.isfunction()`) was kept as a permanent, independently-useful fix regardless of mypyc's
+fate.
 
 **Phase 0's finding revises this plan's own premise.** The Context section below assumed rule
 bodies dominate runtime (per prior discussion, before any profiling existed) - that's why
@@ -239,32 +243,118 @@ attempted (e.g. `--lto`, PGO) - the gap is large and consistent enough at two sc
 compiler-flag tuning is very unlikely to flip the sign, and that kind of tuning would anyway erode
 the "zero source/config change" premise this phase was testing.
 
-### Phase 4 — Codon feasibility check (short, likely a fast no)
+### Phase 4 — Codon feasibility check — **DONE (2026-10-30): disqualified, fast no, confirmed**
 
-Attempt to run Codon's compiler against one small, already-simple rule file (pick the smallest
-ruleset, e.g. `03_contract/eligibility_rules.py`) without modification. Expect and document the
-specific incompatibilities (dynamic `setattr`-based kwargs, `@ruledef` decorator machinery,
-duck-typed `this`/`ctx`) rather than attempting workarounds — this phase exists to turn "probably
-disqualified" into a documented, specific reason, in case the question comes up again later.
+Downloaded the official Codon 0.20.5 Linux x86_64 release tarball directly from GitHub releases
+(`exaloop/codon`) and extracted it to a scratch directory - not the `curl | bash` installer script,
+to keep the download auditable before running anything from it. Ran its `codon` binary directly
+against `rules/03_contract/eligibility_rules.py` unmodified, as the plan specified.
 
-### Phase 5 — Rust/PyO3 micro-benchmark (narrow, not a port)
+**Result: fails immediately, before reaching any of the expected semantic issues.**
+`codon run rules/03_contract/eligibility_rules.py` →
+`error: no module named 'knowledgenet.decorator'`. Tried `CODON_PATH=/home/amit/git/knowledgenet/src`
+(Codon's own documented module-search mechanism, confirmed working against a trivial hand-written,
+fully-typed probe package) - still `no module named 'knowledgenet'`, even for the bare `import
+knowledgenet` with nothing else in it (an 11-line docstring-only `__init__.py`).
 
-Not a port of the engine. Pick one concrete, isolated hot operation identified by Phase 0 (likely a
-`FactSet` indexing/lookup or alpha-node matching operation) and reimplement *just that function* as
-a small Rust extension via PyO3 (`maturin develop`), called from otherwise-unmodified
-`knowledgenet` internals. Microbenchmark that one function in isolation (Python version vs.
-PyO3-backed version) to get a real native-code-speedup number for engine-internal work, independent
-of Phase 2's mypyc ceiling — this cross-checks whether mypyc's native-compilation ceiling is close
-to Rust's, or whether Rust buys meaningfully more for this kind of pointer-chasing/hashing code.
+**Why, confirmed against Codon's own docs
+([Python from Codon](https://docs.exaloop.io/integrations/python/python-from-codon/)):** Codon
+draws a hard line between two kinds of imports - its own native-dialect modules (resolved via
+`CODON_PATH`, and actually compiled) and "Python modules" (anything written as ordinary CPython
+code, including every file in `knowledgenet` and `autoins`), which are reachable *only* via
+`from python import ...` or the `@python` decorator. Both of those interop paths are documented to
+run on an **embedded CPython runtime** - "instead of being compiled by Codon" - with values
+marshalled across the boundary via `__to_py__`/`__from_py__`. There is no mechanism to have Codon
+natively compile an existing, unmodified pure-Python package at all; the only bridge to one adds
+CPython-boundary marshalling overhead on top of plain, uncompiled CPython execution.
 
-### Phase 6 — Comparative writeup and recommendation
+**Conclusion:** this disqualifies Codon more fundamentally than the Context section anticipated -
+it's not that `@ruledef`'s dynamic `setattr`/kwargs or duck-typed `this`/`ctx` fail Codon's static
+type checker (that would require first getting knowledgenet's source *into* Codon's compiler, which
+never happens); it's that nothing written as ordinary Python, compiled or not, is eligible for
+Codon's compiler at all without a full rewrite into Codon's own restricted dialect - which is a port,
+not a precompilation option, and so stays out of scope per the "no change to rule-author syntax"
+hard constraint in Context. No further investigation attempted (e.g. forcing the interop path) -
+it would, by the docs' own description, just be measuring uncompiled CPython through an extra
+marshalling boundary, which can only be slower, never a precompilation win.
 
-Table of all five candidates against the Design section's decision criteria, filled in with Phases
-0-5's actual numbers (not estimates). Explicit recommendation: most likely either "PyPy, zero-code-
-change adoption, re-evaluate if dependency compatibility is a blocker" or "no precompilation option
-clears the bar without violating the untyped-rules constraint, revisit if that constraint changes."
-This phase's output is the input to a future implementation plan — it does not itself change any
-source file in `knowledgenet` or `autoins`.
+### Phase 5 — Rust/PyO3 micro-benchmark (narrow, not a port) — **DONE (2026-10-30)**
+
+**Picked operation:** not `Factset.find()`/`_population()` as first suggested - its real hot-path
+call always uses the default no-op filter (`lambda obj: True`), so it's really just "copy a
+Python set," which is already a highly-optimized CPython C path with nothing for an FFI-crossing
+Rust version to win against. Also ruled out `Collector.add`/`remove` (`container.py`) - both call
+into arbitrary rule-author filter callables (`self._filter_obj`), so timing them would mostly
+measure the cost of calling back into Python through the Rust boundary, not native-code speedup.
+
+Picked instead: `Graph`'s ordinal-indexed bookkeeping (`core/graph.py`'s `_ordinal_tail`/
+`_sorted_ordinals`, maintained by `_add_by_ordinal` and the matching half of `delete_element`) -
+pure `bisect.bisect_left` + dict lookup + list insert/pop over plain ints, no rule-author callback
+anywhere in it, and already known to be hot (this index backs every `Graph.add`/`delete_element`
+call, i.e. once per fact insertion/deletion). Reimplemented just the index maintenance (not
+`Element` construction/pointer relinking, which is Python-object-bound either way) as a small
+`#[pyclass]` via PyO3 (`maturin develop --release`, scratch crate, not added to either repo) with
+`insert(ordinal)`/`remove(ordinal)` methods structurally identical to the Python original, swapping
+`_ordinal_tail`'s per-ordinal `Element` reference for a plain run-length counter (irrelevant to the
+index-maintenance cost being measured).
+
+**Method:** generated one fixed sequence of insert/remove operations (ordinals drawn from a
+plausible distinct-ordinal range), ran it once-call-per-operation (not batched - matching how
+`Graph.add`/`delete_element` would actually invoke it from otherwise-unmodified Python, so PyO3's
+per-call crossing cost is paid in the number, not hidden) against a pure-Python class and the Rust
+extension class, same op sequence, multiple scales.
+
+**Measured:**
+
+| ops | distinct ordinals | Python (best of 3) | Rust/PyO3 (best of 3) | speedup |
+|---|---|---|---|---|
+| 100,000 | 500 | 7.03 ms | 5.41 ms | 1.31x |
+| 400,000 | 2,000 | 30.96 ms | 21.18 ms | 1.47x |
+| 1,000,000 | 20,000 | 175.71 ms | 104.88 ms | 1.68x |
+| 2,000,000 | 50,000 | 672.40 ms | 450.06 ms | 1.49x |
+
+**Conclusion: a real but modest win, ~1.3-1.7x, not the order-of-magnitude some expect from "port
+to Rust."** Two things cap it: (1) each operation already pays one Python-to-native call crossing
+through PyO3, comparable in overhead to the Python method call it replaces, so the per-call tax is
+paid on both sides, not eliminated; (2) `list.insert`/`.pop` on the Python side is already a C
+implementation (CPython's own `listobject.c`), so there's no interpreted-vs-compiled gap on that
+part specifically - the win comes mostly from the dict hashing and bisect comparisons running as
+native code instead of bytecode. No comparison point against Phase 2's mypyc ceiling was possible -
+Phase 2 was disqualified before producing any benchmark number (see its section above), not just a
+lower number - so this phase's result stands on its own rather than cross-checking against it.
+Scaling this finding to the whole engine would require actually porting `Graph` (and everything
+structurally like it) to Rust, which is explicitly out of scope per this plan's own "no engine
+port" boundary (see Explicitly out of scope) - a real, larger decision for a future plan, not
+something this spike should extrapolate into a recommendation on its own.
+
+### Phase 6 — Comparative writeup and recommendation — **DONE (2026-10-30)**
+
+| Candidate | End-to-end speedup | Rule-author syntax constraint | Compatibility risk | Packaging/deployment delta | Reversibility |
+|---|---|---|---|---|---|
+| **PyPy** | Not measured - disqualified before benchmarking | None | **Disqualifying**: no PyPy build targets this project's 3.13+ floor, from any source (latest is 3.12) | n/a | n/a |
+| **mypyc** | Not measured - disqualified before benchmarking | None for rule bodies (only engine internals compiled) | **Disqualifying**: native classes have no `__dict__`; `Rule`/`Fact`/`Collector`'s post-construction dynamic attributes (by design) break at runtime, not compile time | Dev-only build step, not in normal `pyproject.toml` build | High in principle (opt-in build step) but blocked before reversibility mattered |
+| **Cython** | Not run | Same as mypyc | Same disqualification as mypyc (native extension types, same `__dict__`-less default) | n/a | n/a |
+| **Nuitka** | **Measured, negative: 34-36% *slower*** than plain CPython at 300/500 claims | None - full Python semantics preserved | Low - the `opentelemetry`/`grpc` chain compiled without issue; needs `--include-package=knowledgenet` since rules are discovered dynamically at runtime, outside static import-following | New build artifact (standalone binary + bundled runtime, 82 MB dist for this workload), ~2.5 min build | Fully reversible (build step only, no source changes) but moot given the regression |
+| **Codon** | Not measured - disqualified before any benchmark was possible | Would require a full rewrite into Codon's own dialect - violates the hard constraint outright | **Disqualifying, structurally**: no mechanism to compile an unmodified pure-Python package at all; only route in is `from python import`/`@python` interop, which runs on an embedded, uncompiled CPython | Would be a parallel codebase, not a build step | None - not adoptable without the rewrite the constraint rules out |
+| **Rust + PyO3** | **Measured, positive but narrow: 1.3-1.7x** on one isolated hot bookkeeping function (`Graph`'s ordinal index), not measured end-to-end | None for rule bodies; would require porting specific engine-internal functions (not rule-author code) to Rust | Low for the specific function tested; unknown/unassessed at full-engine scope | Would add a Rust toolchain + PyO3/maturin build step per ported function - more invasive than any other candidate per unit of code touched | Incremental in principle (one function at a time) - the only candidate where that's structurally true |
+
+**Recommendation: no precompilation option clears the bar as a drop-in adoption today.** Four of
+five candidates are disqualified or net-negative without any source changes; the fifth (Rust/PyO3)
+shows a real but modest win confined to one isolated, non-representative-of-the-whole-engine
+function, and scaling it up would mean actually porting engine internals - a genuinely separate,
+larger effort (already flagged as "the separate, larger effort discussed in conversation" in
+Context, and explicitly out of scope here per Explicitly out of scope below). This confirms Phase
+0's own finding from the other direction: `autoins`'s rule bodies were never where the time went
+(under 1% of runtime), so no tool whose speedup mechanism depends on compiling rule-author code
+(mypyc's ceiling measurement, Cython, Codon) was ever going to move the needle even if each were
+otherwise compatible - and the two candidates that *do* preserve full Python/engine-internal
+semantics (PyPy, Nuitka) either can't run on this project's Python floor or actively regress
+performance. If a decisive speedup is still wanted, the two live paths are: (a) finish plan 003's
+own Phase 5 (incrementally maintained per-when-clause populations in `Factset`/`Session`) - already
+identified as the clearest remaining algorithmic lever, no new tooling required; or (b) a real,
+scoped Rust port of specific engine-internal hot spots (`Graph`, `Factset`'s indexes, `Collector`),
+informed by this phase's 1.3-1.7x per-function ceiling - but that is new, larger-scope work, not a
+continuation of this exploratory plan.
 
 ## Explicitly out of scope
 
