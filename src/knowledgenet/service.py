@@ -16,6 +16,10 @@ from knowledgenet.node import Node
 from knowledgenet.repository import Repository
 from knowledgenet.core.tracer import trace
 
+# See node.py's identical comment - cached logger avoids the bare
+# logging.debug()'s extra handlers-check/basicConfig layer on every call.
+logger = logging.getLogger(__name__)
+
 trace_level = ContextVar('trace_level', default=0)
 trace_details = ContextVar('trace_details', default=0)
 
@@ -76,20 +80,20 @@ class Service:
     @trace()
     def _execute_service(self, facts: set | list, start_from: str | None) -> set | list:
         service_id = f"{self.repository.id}:{int(round(time() * 1000))}"
-        logging.debug("Executing service: %s", service_id)
+        logger.debug("Executing service: %s", service_id)
         resulting_facts = facts
         for ruleset in self.repository.rulesets:
             if start_from and ruleset.id != start_from:
                 continue
-            logging.debug("Creating session with service Id: %s, ruleset:%s, facts:%s", service_id, ruleset, resulting_facts)
+            logger.debug("Creating session with service Id: %s, ruleset:%s, facts:%s", service_id, ruleset, resulting_facts)
             session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}", 
                               self.global_ctx, self.node_sorter)
             resulting_facts = session.execute()
-            logging.debug("Executed session: %s", session)
+            logger.debug("Executed session: %s", session)
             if switch_to := self._find_switch(resulting_facts):
                 resulting_facts.remove(switch_to)
                 if not switch_to.ruleset:
                     break
                 return self._execute_service(resulting_facts, switch_to.ruleset)
-        logging.debug("Executed service: %s", service_id)
+        logger.debug("Executed service: %s", service_id)
         return resulting_facts

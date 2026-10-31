@@ -1,13 +1,12 @@
 # Fix the RETE engine's super-linear scaling, found via Phase 0 profiling
 
-Status: **PAUSED** (2026-10-26) — Phases 1-4 and 6 DONE and verified (each independently tested,
-measured, and confirmed against `autoins`). Phase 5 identified, not started (see its section
-below for why - the investigation that started it led to Phase 6 instead). Deliberately paused
-here, not abandoned: work is shifting to `002-2026-10-10-precompilation-options-exploratory-plan.md`'s
-precompilation spikes (PyPy/mypyc/Nuitka/Codon/Rust). To resume this plan later, start from Phase
-5's "Investigated, not yet started" note and the "Time-vs-facts relationship" section below - both
-point at the same fix (incrementally maintained per-when-clause populations in `Factset`/
-`Session`), which remains the clearest lever on the engine's residual super-linear scaling.
+Status: **INPROG** (2026-10-30) — Phases 1-4, 6, and 7 DONE and verified (each independently tested,
+measured, and confirmed against `autoins`). Phase 5 partially done (a real but modest mitigation,
+`761b75d`) - its remaining structural question (combinatorial `Node` growth, see its section's
+2026-10-30 update) is not yet designed and is now the only open item. Resumed 2026-10-30 after a
+pause to work `002-2026-10-10-precompilation-options-exploratory-plan.md`'s precompilation spikes
+(now DONE). Re-profiling first (this plan's own rule) surfaced Phase 7 - a bigger, unrelated cost
+(bare `logging.debug()` overhead) - fixed before returning to Phase 5's harder design question.
 
 ## Context
 
@@ -186,7 +185,38 @@ either way.) 116 unit tests pass. `autoins` 5/5.
 stage of this plan - 29.7s, versus never finishing (60s+ timeout) at every prior stage, including
 right after Phase 3.
 
-### Phase 5 — `Factset.find()` / `_get_matching_objs()`'s full re-scan — IDENTIFIED, NOT STARTED
+### Phase 5 — `Factset.find()` / `_get_matching_objs()`'s full re-scan — PARTIALLY DONE
+
+**Update (2026-10-30):** the diagnosis below led to two real sub-fixes, both committed separately
+from this writeup (`761b75d`, 2026-10-24, authored in a session this plan's history doesn't
+otherwise capture): `Factset._population()` (a copy-free internal read, replacing `find()`'s
+copy-and-filter on the hot `_get_matching_objs` path) and a `(of_type, group) -> rules` relevance
+index (`Session._rules_by_when_key`/`_rules_relevant_to`) that lets `_add_facts` skip calling
+`_get_matching_objs`/`combinations()` entirely for rules none of whose when clauses could match the
+newly-inserted facts. Measured ~9-12% faster at the time. **This was a real but modest mitigation,
+not the structural fix** - by design, it narrows how often the expensive path runs, not the cost of
+`combinations()` itself once a rule *is* relevant. The remaining, still-unfixed cost (confirmed by
+re-profiling after Phase 7 below) is architectural: `combinations()`'s `_append_matching`/
+`_append_all` (Phase 1) is *already* the RETE-correct incremental join (only builds tuples
+containing >=1 new fact, crossed against the other when-clause positions' full, unfiltered
+populations) - but for a rule with a growing-population when clause at a non-new-fact position
+(`autoins`'s `pay_on_no_action`/`select_action`, keyed on `Collection(group='action-collector')`),
+that cross-product is inherently `O(new x existing)` per call, and **every resulting tuple becomes
+a persistent `Node`** (with its own `Leaf` per when-clause) regardless of whether the rule's
+`matches` predicates will ever actually pass - `matches` is evaluated lazily at `Node.execute()`
+time, not at combination-generation time, so a node that can never fire still gets created, indexed,
+and walked on every subsequent graph traversal until its facts are deleted. This is the direct cause
+of the `~93,604`-nodes-at-300-claims / `~256,004`-at-500 growth cited below, and remains open -
+fixing it would mean either pre-filtering combinations by per-when-clause predicates before Node
+creation (a real design change: predicates are currently arbitrary `(ctx, this)` callables with no
+guarantee of being evaluable before all when-clause objects are bound) or accepting the join cost as
+inherent to RETE and instead bounding how many never-fire nodes get *re-walked* per pass. Not
+designed yet - still the clearest remaining structural lever, but a bigger design question than
+Phases 1-4/7's "add a missing index" shape.
+
+<details><summary>Original Phase 5 diagnosis (2026-10-17 through 2026-10-26, superseded by the update above)</summary>
+
+~~Phase 5 — `Factset.find()` / `_get_matching_objs()`'s full re-scan — IDENTIFIED, NOT STARTED~~
 
 Profiling 300 -> 500 claims (after Phase 4) showed total `Node` objects created growing ~`O(n^2)`
 (93,604 -> 256,004) and `combinations()`'s call-cost growing even faster (~`O(n^2.9)`), with overall
@@ -213,6 +243,8 @@ profile's top 15 entirely). The real cost at that moment was `@trace()`'s per-ca
 maintained per-when-clause populations) is still unimplemented and, per the scaling analysis in
 "Time-vs-facts relationship" below, is now more clearly necessary than ever: the engine's
 time-vs-facts relationship is still measurably super-linear even after Phase 6.
+
+</details>
 
 ### Phase 6 — `core/tracer.py`: `@trace()`'s per-call overhead on RETE-internal hot paths — DONE
 
@@ -257,6 +289,59 @@ rebuilt (`uv sync --reinstall-package knowledgenet`), 5/5 tests pass.
 (after `graph.py`'s `next_element`, which alone had been 97% of what remained). Combined effect:
 roughly 1.75-1.8x faster than immediately before this phase.
 
+### Phase 7 — bare `logging.debug()` calls: module-free-function overhead, even disabled — DONE
+
+**Found (2026-10-30):** resumed work on Phase 5 by re-profiling first, per this plan's own
+methodology, rather than designing straight from the plan's text (which predates Phase 6 and the
+761b75d mitigation documented in Phase 5's update above). The profile's `other` bucket - stdlib
+code reached from `knowledgenet`, not `autoins` - was 45% of total runtime at 300 claims (4.84s of
+10.70s), and within it `logging/__init__.py`'s module-level `debug()` free function plus the
+`Logger.debug()`/`isEnabledFor()` it delegates to accounted for ~3.8s on their own (5.5M calls),
+making this bigger than every remaining engine-side cost combined. Same structural shape as Phases
+2 and 6 (hot-path overhead paid even when the thing it's for - tracing, here logging - is disabled),
+one more layer out: `node.py`'s `Node.execute`/`Leaf.execute` and `core/session.py`'s hot methods
+called bare `logging.debug(...)` (the module-level free function, not a cached `Logger`), which on
+every call re-checks `len(root.handlers) == 0` (and would call `basicConfig()` if so) before
+delegating to `root.debug()` - an extra, redundant call-chain layer paid 5.5M times at this scale,
+concentrated in `node.py`'s per-leaf execution loop (called once per `Node.execute`, i.e. roughly
+once per graph traversal of every node, matching the `~93,604`-nodes-and-growing count from Phase
+5's update above).
+
+**Fix:** added one cached `logger = logging.getLogger(__name__)` per affected module and replaced
+`logging.debug(...)` with `logger.debug(...)` at every call site in `node.py`, `core/session.py`,
+and `service.py` - the three modules whose debug calls actually showed up in the hot path. Left
+`ruleset.py` (one call, fired once per `Ruleset` construction - not hot) and `factset.py` (one
+`logging.warning` call, only reached on an already-rare "fact not found" branch) untouched -
+mechanically identical fix, but no measured benefit there, so skipped per this plan's "surgical
+changes" convention. Output is unchanged: a module-scoped `Logger` with no explicit level set
+resolves its effective level by walking up to `root` (`NOTSET` propagation) and still sends records
+to `root`'s handlers (`propagate=True`, the default) - verified against `autoins/src/rule_runner.py`,
+which configures logging via `logging.basicConfig(level=..., handlers=[...])` directly on `root`,
+exactly the case this propagation relies on. The only thing removed is the bare `debug()` function's
+own `len(root.handlers) == 0`-check-and-maybe-`basicConfig()` body, never the `isEnabledFor()` check
+that actually decides whether a record is emitted.
+
+**Verified:** `mypy src/knowledgenet` clean (20 source files). 124/124 `knowledgenet` unit tests
+pass (no new tests needed - logging statements aren't behavior under test; same output via
+propagation, verified by inspection of the stdlib `logging` module's documented hierarchy semantics
+rather than by a new test). `autoins` rebuilt (`uv sync --reinstall-package knowledgenet`), 5/5
+tests pass (checksum-matched expected outputs unchanged, confirming this is purely a
+performance change).
+
+**Measured** (`test/perf/profile_engine.py`, same harness, clean data each run):
+
+| claims | before Phase 7 | after Phase 7 | speedup |
+|---|---|---|---|
+| 300 (profile mode, tottime) | 10.70s | 7.91s | 1.35x |
+| 300 (time mode, avg of 3) | - | 2.42s | - |
+| 500 (time mode, avg of 3) | 15.8s (Phase 6 final) | 10.63s | 1.49x |
+
+`other` bucket's `logging/__init__.py` module-level `debug()` tottime dropped out of the profile's
+top-15 entirely (replaced by `Logger.debug()`/`isEnabledFor()` alone, now attributed to `logging`'s
+`Logger` layer rather than the removed free-function wrapper). Phase 5's open structural question
+(combinatorial `Node` growth) remains - this phase removed a large but orthogonal constant-ish
+factor, not the underlying growth exponent.
+
 ## Overall measured result (Phases 1-4 combined, clean re-measurement, same harness/seed)
 
 | claims | original baseline | after Phases 1-4 | speedup |
@@ -290,6 +375,14 @@ bodies dominate runtime) - see that plan's Phase 0 section for the resulting rev
 
 Speedup keeps growing with scale, consistent with the pattern noted above - but see the next
 subsection: growth with scale is itself evidence the relationship still isn't linear, even now.
+
+**After Phase 7** (2026-10-30, `--mode time` harness, avg of 3 runs each): 300 claims 2.42s (was
+3.69s), 500 claims 10.63s (was 15.80s) - both ~1.4-1.5x faster, consistent with Phase 7's own
+measurement above. Not re-run at every scale in the table above (100/150/200/400) since Phase 7's
+fix is call-count-proportional, not scale-dependent in kind - the ~1.4-1.5x factor is expected to
+hold roughly uniformly across scales, unlike Phases 3/4/5 which changed the growth *shape*. The
+super-linearity conclusion in the next subsection is unaffected: Phase 7, like Phase 6, removed a
+cost roughly proportional to existing call counts, not the underlying growth exponent.
 
 ### Time-vs-facts relationship: still measurably super-linear (disclaimer-laden linear fit)
 

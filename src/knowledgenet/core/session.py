@@ -13,6 +13,10 @@ from knowledgenet.rule import Rule
 from knowledgenet.ruleset import Ruleset
 from knowledgenet.util import of_type
 
+# See node.py's identical comment - cached logger avoids the bare
+# logging.debug()'s extra handlers-check/basicConfig layer on every call.
+logger = logging.getLogger(__name__)
+
 class Session:
     def __init__(self, ruleset:Ruleset, facts: set|list, id: str, global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None) -> None:
         if global_ctx is None:
@@ -51,9 +55,9 @@ class Session:
         # could possibly match, instead of querying Factset.find() for every
         # when clause of every rule on every call.
         self._rules_by_when_key = self._build_rules_by_when_key()
-        logging.debug("%s: Initializing graph", self)
+        logger.debug("%s: Initializing graph", self)
         leftmost,_, updated_facts = self._add_facts(self.input_facts)
-        logging.debug("%s: Executing rules on graph", self)
+        logger.debug("%s: Executing rules on graph", self)
 
         self.graph.new_cursor(element=leftmost)
         while element := self.graph.next_element():
@@ -79,32 +83,32 @@ class Session:
                     deleted_facts = node.changes['delete']
                     leftmost, deleted, updated_facts =  self._delete_facts(deleted_facts, leftmost)
                     all_updates.update(updated_facts)
-                    logging.debug("%s: Deleted facts: %s", self, deleted)
+                    logger.debug("%s: Deleted facts: %s", self, deleted)
 
                 if 'insert' in node.changes:
                     new_facts = node.changes['insert']
                     leftmost, _, updated_facts = self._add_facts(new_facts, leftmost)
                     all_updates.update(updated_facts)
-                    logging.debug("%s: Inserted facts: %s", self, new_facts)
+                    logger.debug("%s: Inserted facts: %s", self, new_facts)
 
                 if 'update' in node.changes:
                     all_updates.update(node.changes['update'])
 
                 if len(all_updates):
                     leftmost, _ = self._update_facts(node, all_updates, leftmost)
-                    logging.debug("%s: Updated facts: %s", self, all_updates)
+                    logger.debug("%s: Updated facts: %s", self, all_updates)
 
                 if 'break' in node.changes:
-                    logging.debug("%s: Breaking session: destination: next_ruleset", self)
+                    logger.debug("%s: Breaking session: destination: next_ruleset", self)
                     break
                     
                 if 'switch' in node.changes:
                     # Terminate the session execution
-                    logging.debug("%s: Ending session: destination: %s", self, node.changes['switch'])
+                    logger.debug("%s: Ending session: destination: %s", self, node.changes['switch'])
                     self.output_facts.add_facts([node.changes['switch']])
                     break
 
-                logging.debug("%s: After all merges were completed: leftmost changed element: %s, current element: %s", self, leftmost, element)
+                logger.debug("%s: After all merges were completed: leftmost changed element: %s, current element: %s", self, leftmost, element)
 
                 if element is not leftmost:
                     self.graph.new_cursor(element=leftmost)
@@ -114,7 +118,7 @@ class Session:
     def _delete_facts(self, deleted_facts: set|list, current_leftmost: Element)->tuple[Element|None, set, Any]:
         deduped_deletes = set(deleted_facts)
         changed_collectors = self.output_facts.del_facts(deduped_deletes)
-        logging.debug("%s: Finding nodes affected by deleted facts: %s", self, deduped_deletes)
+        logger.debug("%s: Finding nodes affected by deleted facts: %s", self, deduped_deletes)
         affected_elements: set[Element] = set()
         for fact in deduped_deletes:
             affected_elements.update(self._fact_to_elements.get(fact, ()))
@@ -133,7 +137,7 @@ class Session:
             else:
                 new_leftmost = self._minimum(new_leftmost, element)
 
-        logging.debug("%s: Deleted facts from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, len(deduped_deletes), changed_collectors, new_leftmost)
+        logger.debug("%s: Deleted facts from graph, count: %d, changed_collectors: %s, new leftmost: %s", self, len(deduped_deletes), changed_collectors, new_leftmost)
         return new_leftmost, deduped_deletes, changed_collectors
 
     @trace(level=11)
@@ -142,7 +146,7 @@ class Session:
         deduped_updates = set(facts) # Remove duplicates
         updated_facts = self.output_facts.update_facts(deduped_updates)
         new_leftmost = current_leftmost
-        logging.debug("%s: Finding nodes affected by updated facts: %s", self, deduped_updates)
+        logger.debug("%s: Finding nodes affected by updated facts: %s", self, deduped_updates)
         affected_elements: set[Element] = set()
         for fact in deduped_updates:
             affected_elements.update(self._fact_to_elements.get(fact, ()))
@@ -161,13 +165,13 @@ class Session:
                 new_leftmost = self._minimum(new_leftmost, element)
 
         if len(updated_facts) > 0:
-            logging.debug("%s: An update resulted in changes to collectors: %s", self, updated_facts)
+            logger.debug("%s: An update resulted in changes to collectors: %s", self, updated_facts)
             # As a part of updated, additional collectors may have been affected, update the graph accordingly
             # (matches the pre-optimization behavior of using whichever node
             # ends up at the tail of the graph as the next execution_node)
             tail_node = cast(Node, self.graph.last.obj) if self.graph.last else execution_node
             new_leftmost, chg_count = self._update_facts(tail_node, updated_facts, new_leftmost)
-        logging.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, len(deduped_updates), deduped_updates, new_leftmost)
+        logger.debug("%s: Updated graph, count: %d, updated facts: %s, new leftmost: %s", self, len(deduped_updates), deduped_updates, new_leftmost)
         return new_leftmost, deduped_updates
 
     def _get_matching_objs(self, rule: Rule) -> list[set] | None:
@@ -276,7 +280,7 @@ class Session:
             return current_leftmost, new_facts, updated_facts
 
         new_leftmost = current_leftmost
-        logging.debug("%s: Adding to graph, facts: %s", self, new_facts)
+        logger.debug("%s: Adding to graph, facts: %s", self, new_facts)
 
         relevant_rule_ids = self._rules_relevant_to(new_facts)
         for rule in self.rules:
@@ -291,16 +295,16 @@ class Session:
             if when_objs:
                 # Get all the permutations associated with the objects
                 perms = combinations(when_objs, new_facts)
-                logging.debug("%s: %s, permutations: %s", self, rule, perms)
+                logger.debug("%s: %s, permutations: %s", self, rule, perms)
                 # insert to the graph
                 for each in perms:
                     node_id = f"{self.id}:{rule.id}:{each}"
                     node = Node(node_id, rule, self, each)
                     element = self.graph.add(node, node.rule.order)
                     self._index_node(element)
-                    logging.debug("%s: Added node: %s", self, element)
+                    logger.debug("%s: Added node: %s", self, element)
                     new_leftmost = self._minimum(new_leftmost, element)
-        logging.debug("%s: Inserted into graph, count: %d, updated facts: %s, new leftmost: %s", self, len(new_facts), updated_facts, new_leftmost)
+        logger.debug("%s: Inserted into graph, count: %d, updated facts: %s, new leftmost: %s", self, len(new_facts), updated_facts, new_leftmost)
         return new_leftmost, new_facts, updated_facts
     
     def _minimum(self, element1:Element|None, element2:Element)->Element:

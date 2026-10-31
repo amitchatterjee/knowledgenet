@@ -18,6 +18,16 @@ if TYPE_CHECKING:
     # here would be circular.
     from knowledgenet.core.session import Session
 
+# Module-level logger, not the bare logging.debug()/logging.warning()
+# free functions: those re-check `len(root.handlers) == 0` (and may call
+# basicConfig()) on every single call before delegating to Logger.debug()
+# - redundant work paid on every call of the per-leaf hot loop below. A
+# cached logger skips straight to Logger.debug()'s own isEnabledFor() check,
+# same output, since propagate=True still sends records to the root
+# handlers any application (e.g. autoins's rule_runner.py) configured via
+# logging.basicConfig(). See .plans/003 Phase 7.
+logger = logging.getLogger(__name__)
+
 class Leaf:
     """Evaluator for one when-clause bound to one fact object.
 
@@ -131,7 +141,7 @@ class Node:
         # Evaluate all when clauses
         for i, when in enumerate(self.leaves):
             cached, result = when.execute(self.context, self.when_objs[i])
-            logging.debug("%s: Executed when expression for index: %d, cached/result: %s:%s", self, i, cached, result) 
+            logger.debug("%s: Executed when expression for index: %d, cached/result: %s:%s", self, i, cached, result) 
             all_cached = all_cached and cached
             if not result:
                 return False
@@ -141,9 +151,9 @@ class Node:
             return False
         
         # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug("%s: All when clauses satisfied, going to execute the then clauses", self)
+        logger.debug("%s: All when clauses satisfied, going to execute the then clauses", self)
         self.changes = self._execute_thens()
-        logging.debug("%s: Result from when execution. Changes:%s", self, self.changes)
+        logger.debug("%s: Result from when execution. Changes:%s", self, self.changes)
         return True
 
     # @trace() - commented out, see Leaf.execute above. Uncomment to restore.
