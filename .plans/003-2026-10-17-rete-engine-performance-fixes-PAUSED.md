@@ -1,12 +1,15 @@
 # Fix the RETE engine's super-linear scaling, found via Phase 0 profiling
 
-Status: **INPROG** (2026-10-30) — Phases 1-4, 6, and 7 DONE and verified (each independently tested,
+Status: **PAUSED** (2026-10-31) — Phases 1-4, 6, and 7 DONE and verified (each independently tested,
 measured, and confirmed against `autoins`). Phase 5 partially done (a real but modest mitigation,
 `761b75d`) - its remaining structural question (combinatorial `Node` growth, see its section's
-2026-10-30 update) is not yet designed and is now the only open item. Resumed 2026-10-30 after a
-pause to work `002-2026-10-10-precompilation-options-exploratory-plan.md`'s precompilation spikes
-(now DONE). Re-profiling first (this plan's own rule) surfaced Phase 7 - a bigger, unrelated cost
-(bare `logging.debug()` overhead) - fixed before returning to Phase 5's harder design question.
+2026-10-30 update) is not yet designed and is now the only open item. Paused 2026-10-31 at the
+user's request (reluctant to make further engine changes at this time) - resume by designing Phase
+5's structural fix (see its section below for the two sketched directions) when ready. Previously
+resumed 2026-10-30 after a pause to work `002-2026-10-10-precompilation-options-exploratory-plan.md`'s
+precompilation spikes (now DONE); that resumption's re-profiling surfaced Phase 7 - a bigger,
+unrelated cost (bare `logging.debug()` overhead) - fixed before returning to Phase 5's harder
+design question.
 
 ## Context
 
