@@ -19,10 +19,6 @@ if TYPE_CHECKING:
     # here would be circular.
     from knowledgenet.core.session import Session
 
-# A cached Logger, not the bare logging.debug()/logging.warning() free
-# functions - those re-check handler/basicConfig state on every call before
-# delegating to Logger.debug(), which matters in the per-leaf hot loop below.
-# Output is unchanged: propagate=True still sends records to root's handlers.
 logger = logging.getLogger(__name__)
 
 class Leaf:
