@@ -89,7 +89,9 @@ class Collector:
                 return False
         return True
 
-    @trace(level=14)
+    # @trace(level=14) - commented out: innermost hot loop (165K-461K calls at
+    # 300-500 claims), @trace()'s per-call overhead isn't worth paying here
+    # even disabled. Uncomment to restore level-14 Collector tracing.
     def add(self, obj: object) -> bool:
         """Attempt to add one fact to the collection.
 
@@ -107,7 +109,7 @@ class Collector:
         self.reset_cache()
         return True
 
-    @trace(level=14)
+    # @trace(level=14) - commented out, see add() above. Uncomment to restore.
     def remove(self, obj: object) -> bool:
         """Attempt to remove one fact from the collection.
 

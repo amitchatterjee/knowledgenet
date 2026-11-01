@@ -71,7 +71,12 @@ def lookup(repositories:str|list|tuple, id:str|None=None)->Repository:
 
 def _load_rules_from_module(module: ModuleType) -> None:
     for name,obj in inspect.getmembers(module):
-        if inspect.isfunction(obj):
+        # callable(), not inspect.isfunction(): a mypyc-compiled @ruledef
+        # wrapper is a native callable object, not a types.FunctionType, so
+        # isfunction() would silently skip every rule when knowledgenet is
+        # compiled. __ruledef__ is only ever set by the ruledef decorator,
+        # so this stays exactly as selective.
+        if callable(obj):
             # Detect only functions explicitly marked as rule definitions.
             if getattr(obj, '__ruledef__', False):
                 #print(f"{name}:{obj}")

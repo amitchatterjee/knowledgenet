@@ -207,3 +207,54 @@ def test_comparator_disregard_ordinal():
     assert len(result) == 6
     for i in range(0, len(result)):
         assert i-1 == result[i].val
+
+def test_same_ordinal_ties_preserve_insertion_order():
+    # Distinct objects (unlike test_next_elements' identical int placeholders)
+    # so insertion order is actually distinguishable in the result.
+    g = Graph(str(uuid.uuid4()))
+    g.add('a', 5)
+    g.add('b', 5)
+    g.add('c', 5)
+    assert g.to_list() == ['a', 'b', 'c']
+    # A later, distinct ordinal still lands after the whole tied run
+    g.add('d', 5)
+    g.add('e', 10)
+    assert g.to_list() == ['a', 'b', 'c', 'd', 'e']
+
+def test_same_ordinal_ties_interleaved_with_other_ordinals():
+    g = Graph(str(uuid.uuid4()))
+    g.add('a', 1)
+    g.add('b', 3)
+    g.add('c', 1)   # ties with 'a' at ordinal 1, must land after 'a', before 'b'
+    g.add('d', 2)   # new ordinal between the 1-run and the 3-run
+    g.add('e', 3)   # ties with 'b' at ordinal 3, must land after 'b'
+    assert g.to_list() == ['a', 'c', 'd', 'b', 'e']
+
+def test_delete_tail_of_ordinal_bucket_then_reinsert():
+    g = Graph(str(uuid.uuid4()))
+    g.add('a', 5)
+    node_b = g.add('b', 5)
+    g.delete_element(node_b)  # 'b' was the ordinal-5 bucket's tail
+    g.add('c', 5)             # must land after 'a', the new tail
+    assert g.to_list() == ['a', 'c']
+
+def test_delete_only_element_of_ordinal_then_insert_neighbor():
+    g = Graph(str(uuid.uuid4()))
+    g.add('a', 1)
+    node_b = g.add('b', 5)   # ordinal 5's only element
+    g.add('c', 10)
+    g.delete_element(node_b)  # ordinal-5 bucket must be dropped entirely
+    g.add('d', 5)             # re-introducing ordinal 5 must slot between 'a' and 'c' again
+    assert g.to_list() == ['a', 'd', 'c']
+
+def test_last_pointer_tracks_tail_through_adds_and_deletes():
+    g = Graph(str(uuid.uuid4()))
+    assert g.last is None
+    node_a = g.add('a', 1)
+    assert g.last is node_a
+    node_b = g.add('b', 5)
+    assert g.last is node_b
+    g.add('c', 3)  # inserted in the middle - tail unchanged
+    assert g.last is node_b
+    g.delete_element(node_b)
+    assert g.last is not None and g.last.obj == 'c'

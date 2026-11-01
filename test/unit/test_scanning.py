@@ -1,8 +1,12 @@
 
 import sys
+from types import ModuleType
 
+from knowledgenet import scanner
 from knowledgenet.scanner import load_rules_from_filepaths, lookup
 from knowledgenet.service import Service
+from knowledgenet.decorator import ruledef
+from knowledgenet.rule import Rule, Fact
 
 from test_helpers.unit_facts import C1, R1
 from test_helpers.unit_util import find_result_of_type
@@ -56,3 +60,34 @@ def test_scanning_from_filepath():
 def test_non_existent_repo():
     with pytest.raises(Exception):
         lookup('norepo')
+
+class _OpaqueCallable:
+    """Stands in for a mypyc-compiled @ruledef closure: callable, but not a
+    types.FunctionType -- inspect.isfunction() returns False for it, same as
+    for a real mypyc-compiled wrapper. Scanning must still pick it up via the
+    __ruledef__ attribute alone (see scanner._load_rules_from_module)."""
+    def __init__(self, func):
+        self._func = func
+        self.__ruledef__ = True
+
+    def __call__(self, *args, **kwargs):
+        return self._func(*args, **kwargs)
+
+def test_rule_loading_non_function_callable():
+    @ruledef(id='rule.opaque', ruleset='rs-opaque', repository='repo-opaque')
+    def make_rule():
+        return Rule(when=Fact(of_type=C1, matches=lambda ctx, this: True),
+            then=lambda ctx: None)
+
+    opaque = _OpaqueCallable(make_rule)
+    import inspect
+    assert not inspect.isfunction(opaque)
+    assert callable(opaque)
+
+    fake_module = ModuleType('fake_opaque_rules')
+    fake_module.make_rule = opaque  # type: ignore[attr-defined]
+    scanner._load_rules_from_module(fake_module)
+
+    repository = lookup('repo-opaque')
+    assert repository.rulesets[0].id == 'rs-opaque'
+    assert repository.rulesets[0].rules[0].id == 'rule.opaque'

@@ -6,16 +6,20 @@ unchanged predicates after updates.
 """
 
 import logging
+from time import perf_counter
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
-from knowledgenet.core.tracer import trace
+from knowledgenet.core.tracer import trace, tracing_enabled
+from knowledgenet.factset import Factset
 from knowledgenet.rule import Rule
 
 if TYPE_CHECKING:
     # Deferred: knowledgenet.core.session imports Node, so a top-level import
     # here would be circular.
     from knowledgenet.core.session import Session
+
+logger = logging.getLogger(__name__)
 
 class Leaf:
     """Evaluator for one when-clause bound to one fact object.
@@ -31,7 +35,6 @@ class Leaf:
         self.executed = False
         self.result: bool | None = None
 
-    @trace()
     def execute(self, context: SimpleNamespace, fact: object) -> tuple[bool, bool]:
         """Evaluate one when-clause and optionally use cached result.
 
@@ -77,6 +80,8 @@ class Node:
         self.when_objs = when_objs
         self.context: SimpleNamespace | None = None
         self.changes: dict | None = None
+        self.leaf_results: list[tuple[str, bool, float]] = []
+        self.then_duration: float | None = None
 
         # Create when expression execution context
         self.leaves: list[Leaf] = []
@@ -101,8 +106,8 @@ class Node:
                 return True
         return False
 
-    @trace()
-    def execute(self, facts:set)->bool:
+    @trace(summary_attr=('leaf_results', 'then_duration'))
+    def execute(self, facts: Factset)->bool:
         """Execute this node against current facts.
 
         The method evaluates leaves in rule order, uses cached leaf outcomes
@@ -118,12 +123,21 @@ class Node:
         if not self.context:
             self.context = SimpleNamespace(_facts=facts, _node=self, _session=self.session)
         self.context._changes={}
-        
+
+        # Per-when/then timing is only computed when it will actually be
+        # captured by @trace() above - perf_counter() is cheap, but not free
+        # at this call volume.
+        trace_timing = tracing_enabled()
+        self.leaf_results = []
+        self.then_duration = None
         all_cached = True
         # Evaluate all when clauses
         for i, when in enumerate(self.leaves):
+            start = perf_counter() if trace_timing else 0.0
             cached, result = when.execute(self.context, self.when_objs[i])
-            logging.debug("%s: Executed when expression for index: %d, cached/result: %s:%s", self, i, cached, result) 
+            if trace_timing:
+                self.leaf_results.append((when.id, result, perf_counter() - start))
+            logger.debug("%s: Executed when expression for index: %d, cached/result: %s:%s", self, i, cached, result)
             all_cached = all_cached and cached
             if not result:
                 return False
@@ -131,14 +145,16 @@ class Node:
         # If all the executions were cached, there is no need to execute the then
         if all_cached:
             return False
-        
+
         # If we are here, it means all the when conditions were satisfied, execute the then expression
-        logging.debug("%s: All when clauses satisfied, going to execute the then clauses", self)
+        logger.debug("%s: All when clauses satisfied, going to execute the then clauses", self)
+        then_start = perf_counter() if trace_timing else 0.0
         self.changes = self._execute_thens()
-        logging.debug("%s: Result from when execution. Changes:%s", self, self.changes)
+        if trace_timing:
+            self.then_duration = perf_counter() - then_start
+        logger.debug("%s: Result from when execution. Changes:%s", self, self.changes)
         return True
 
-    @trace()
     def _execute_thens(self) -> dict:
         for then in self.rule.thens:
             # Execute each function/lambda included in the rule

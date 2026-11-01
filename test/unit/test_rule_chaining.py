@@ -133,6 +133,38 @@ def test_chaining_with_walkback_on_delete():
     matching = find_result_of_type(Ch1, result_facts)
     assert len(matching)==0
 
+def test_delete_multiple_facts_in_one_batch_leaves_untouched_node_reachable():
+    # A single then= deleting two facts at once batches both into one
+    # _delete_facts call (len(deduped_deletes) > 1). The two deleted facts'
+    # nodes (mark_1, mark_3) sit on either side of an untouched node
+    # (mark_2) in graph order (same order=1, FIFO by rule-list position) -
+    # if the walkback after a batch delete mis-tracks the new leftmost, the
+    # cursor resumes past mark_2 and it never fires.
+    c1, c2, c3 = C1(1), C1(2), C1(3)
+    trigger = C1(99)
+
+    rule_delete_two = Rule(id='delete_two', order=0,
+                when=Fact(of_type=C1, matches=lambda ctx, this: this.val == 99),
+                then=lambda ctx: (delete(ctx, c1), delete(ctx, c3)))
+    rule_mark_1 = Rule(id='mark_1', order=1,
+                when=Fact(of_type=C1, matches=lambda ctx, this: this.val == 1),
+                then=lambda ctx: insert(ctx, R1('saw-1')))
+    rule_mark_2 = Rule(id='mark_2', order=1,
+                when=Fact(of_type=C1, matches=lambda ctx, this: this.val == 2),
+                then=lambda ctx: insert(ctx, R1('saw-2')))
+    rule_mark_3 = Rule(id='mark_3', order=1,
+                when=Fact(of_type=C1, matches=lambda ctx, this: this.val == 3),
+                then=lambda ctx: insert(ctx, R1('saw-3')))
+
+    facts = [c1, c2, c3, trigger]
+    result_facts = Service(Repository('repo1', [Ruleset('rs1',
+        [rule_delete_two, rule_mark_1, rule_mark_2, rule_mark_3])])).execute(facts)
+
+    markers = {r.vals[0] for r in find_result_of_type(R1, result_facts)}
+    # c1 and c3 are deleted (by delete_two, order=0) before mark_1/mark_3
+    # (order=1) ever execute, so only mark_2 should have fired.
+    assert markers == {'saw-2'}
+
 def test_multiple_combinations():
     rule_1 = Rule(id='r1',
                 when=[Fact(of_type=P1, matches=lambda ctx, this: assign(ctx, parent=this)),

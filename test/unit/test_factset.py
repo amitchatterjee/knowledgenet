@@ -81,4 +81,28 @@ def test_collector_updates():
     assert c2 in collector1.collection
     assert c3 in collector1.collection
 
+def test_find_returns_a_copy_safe_to_mutate():
+    factset = Factset()
+    c1 = C1(10)
+    factset.add_facts([c1])
+
+    result = factset.find(of_type=C1)
+    assert result == {c1}
+    result.add(C1(20))  # mutating the result must not affect the factset
+    assert factset.find(of_type=C1) == {c1}
+
+def test_population_returns_the_live_index_set():
+    # _population() is the internal fast path Session's hot loop uses instead
+    # of find() - it must skip find()'s copy, returning the actual index set.
+    factset = Factset()
+    c1 = C1(10)
+    factset.add_facts([c1])
+
+    assert factset._population(C1) is factset._type_to_facts[C1]
+    assert factset._population(C1) == {c1}
+
+    collector = Collector(of_type=C1, group='group1', name='x')
+    factset.add_facts([collector])
+    assert factset._population(Collector, 'group1') is factset._group_to_collectors['group1']
+
 # TODO - more to come
