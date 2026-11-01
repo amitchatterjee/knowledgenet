@@ -1,11 +1,17 @@
 # Fix the RETE engine's super-linear scaling, found via Phase 0 profiling
 
-Status: **PAUSED** (2026-10-31) — Phases 1-4, 6, and 7 DONE and verified (each independently tested,
-measured, and confirmed against `autoins`). Phase 5 partially done (a real but modest mitigation,
-`761b75d`) - its remaining structural question (combinatorial `Node` growth, see its section's
-2026-10-30 update) is not yet designed and is now the only open item. Paused 2026-10-31 at the
-user's request (reluctant to make further engine changes at this time) - resume by designing Phase
-5's structural fix (see its section below for the two sketched directions) when ready. Previously
+Status: **PAUSED** (2026-10-31) — Phases 1-4, 6, 7, and 8 DONE and verified (each independently
+tested, measured, and confirmed against `autoins`). Phase 5 partially done (a real but modest
+mitigation, `761b75d`) - its remaining structural question (combinatorial `Node` growth, see its
+section's 2026-10-30 update) is not yet designed and is the only open item, and the reason this plan
+stays marked paused overall. Phase 8 (2026-10-31) was a narrow, explicitly-requested exception to
+the pause below - the user found `node.py`'s when/then tracing missing in real `autoins` trace
+output (a Phase 6 side effect), asked for it investigated and fixed, and that one scoped item
+(including a same-day refinement narrowing the restored tracing to `Node.execute` only, carrying a
+leaf-results summary, once the actual requirement turned out to be narrower than "trace
+everything") is now done; the broader pause on Phase 5/engine work otherwise stands. Paused 2026-10-31 at the user's
+request (reluctant to make further engine changes at this time) - resume Phase 5 by designing its
+structural fix (see its section below for the two sketched directions) when ready. Previously
 resumed 2026-10-30 after a pause to work `002-2026-10-10-precompilation-options-exploratory-plan.md`'s
 precompilation spikes (now DONE); that resumption's re-profiling surfaced Phase 7 - a bigger,
 unrelated cost (bare `logging.debug()` overhead) - fixed before returning to Phase 5's harder
@@ -344,6 +350,153 @@ top-15 entirely (replaced by `Logger.debug()`/`isEnabledFor()` alone, now attrib
 `Logger` layer rather than the removed free-function wrapper). Phase 5's open structural question
 (combinatorial `Node` growth) remains - this phase removed a large but orthogonal constant-ish
 factor, not the underlying growth exponent.
+
+### Phase 8 — restore when/then tracing without Phase 6's full disabled-path cost — DONE
+
+**Found (2026-10-31):** Phase 6 above didn't just raise the trace level on `node.py`'s
+`Leaf.execute`/`Node.execute`/`Node._execute_thens` - it **deleted their `@trace()` decorators
+entirely**. No `trc_level` brings a deleted decorator's span back. This was discovered because the
+user, inspecting real `autoins` trace output, found no "when" execution spans at all - not a
+threshold issue, a real regression. Worse: the bare `@trace()` these methods carried defaulted to
+`level=1`, and `docs/rule-service.md` documents `trc_level<=10` as reserved for "tun[ing] rules and
+application code" (`>10` is Knowledgenet-internal) - which when-clauses passed and whether a `then`
+fired is exactly what a rule author wants visible at the *lowest* tracing level, and Phase 6 removed
+it from the one band meant to show it. Nothing in Phase 6's verification could have caught this:
+`autoins` runs at `trc_level=0` by default, and no test inspected trace *content*, only final
+output.
+
+**Root cause of why Phase 6 removed the decorators instead of just raising their level:**
+`tracer.py`'s `trace()` wrapper paid real cost on every call **before** the level check could take
+effect - two `ContextVar.get()` reads, a full `trace_context_factory()` call (which unconditionally
+evaluated `filter`, if any, before the level comparison), and a `with`-statement's
+`__enter__`/`__exit__` dispatch through `PassThruTraceContext` - regardless of whether tracing ended
+up enabled. Choosing a different `level=` doesn't change this; the tax was paid just for the
+decorator being present (microbenchmark: ~181ns/call tax on a disabled, `level=13` call vs. ~17ns
+undecorated - about 11x).
+
+**Fix:** restructured `wrapper()` in `core/tracer.py` to check `trace_level_cv.get() < level`
+*first*, before reading `trace_details`, before calling `trace_context_factory()` (so `filter`, if
+any, never runs either), before entering any context manager - the disabled path now just calls
+straight through to the wrapped function. Also inlined the old `_get_context_vars()` helper
+directly into `wrapper` (it had exactly one caller; the extra function-call layer was pure overhead
+on every traced call in the program). `trace_context_factory`'s signature dropped its now-unused
+`level`/`trace_level_val` parameters, since the caller guarantees the level check already passed.
+**Noted behavior change, low risk:** `filter` is now only evaluated once the level condition alone
+doesn't already disqualify tracing (previously it ran unconditionally) - only observable if a
+filter has side effects; the one filter in the codebase (`core/graph.py`'s `next_elements`) is a
+pure predicate, documented as a required contract going forward via a comment on
+`trace_context_factory`.
+
+With the disabled path now cheap, restored `node.py`'s three decorators exactly as they were
+(bare `@trace()`, default `level=1`) - scoped to `node.py` only per the user's explicit choice;
+`Collector.add`/`remove` (`container.py`, `level=14`) and `Graph.next_element` singular
+(`core/graph.py`, `level=13`+filter) were removed for the identical reason and the same fix would
+apply, but they're Knowledgenet-internal-band (`>10`), not the user-facing when/then tracing this
+investigation was about - left commented out, revisit later if ever needed.
+
+**Verified:** `mypy src/knowledgenet` clean. 126/126 `knowledgenet` unit tests pass (124 pre-existing
++ 2 new): `test_trace_disabled_never_calls_trace_context_factory` (mirrors Phase 2's
+`normalize_attribute`-spy pattern, but spies on `trace_context_factory` itself, proving the new
+short-circuit is real) and `test_when_then_execution_is_traced_at_application_level` (runs a
+minimal one-rule ruleset at `trc_level=1`, spies on `otel_tracer.start_as_current_span`, asserts
+`Leaf.execute`/`Node.execute`/`Node._execute_thens` spans actually fire - closes the exact
+verification gap that let the original regression ship unnoticed). `autoins` rebuilt (`uv sync
+--reinstall-package knowledgenet`), 5/5 tests pass (checksum-matched, confirming zero output change
+at `trc_level=0`, autoins's default). Manually confirmed via `rule_runner.py --traceLevel 1` with
+`OTEL_ENABLED=true OTEL_TRACES_EXPORTER=file`: all three span names (`knowledgenet.node.Leaf.execute`,
+`knowledgenet.node.Node.execute`, `knowledgenet.node.Node._execute_thens`) appear in real trace
+output - the actual thing this investigation started from.
+
+**Measured** (microbenchmark: 2M calls, disabled `level=13` call vs. undecorated, `timeit`):
+
+| | before Phase 8 | after Phase 8 | 
+|---|---|---|
+| tax per disabled call | ~181ns (11x undecorated) | ~71ns (4.2x undecorated) |
+
+**Measured** (`test/perf/profile_engine.py --mode time`, same harness, `trc_level=0`, avg of 3 runs,
+after restoring `node.py`'s decorators on top of the cheaper wrapper):
+
+| claims | after Phase 7 (no when/then tracing) | after Phase 8 (when/then tracing restored) | cost of restored visibility |
+|---|---|---|---|
+| 300 | 2.42s | 3.42s | 1.41x slower |
+| 500 | 10.63s | 13.38s | 1.26x slower |
+
+This is a real, accepted tradeoff, not a side effect to be surprised by later: restoring when/then
+visibility at `node.py`'s innermost loop (5.7M/2.86M calls at 300 claims) costs something even with
+the wrapper's disabled-path tax cut by ~2.5x, because that loop's call count is high enough that
+even a much-smaller per-call tax still adds up. The alternative (Phase 6's original fix) traded
+all of this away permanently for speed; Phase 8 instead fixes the wrapper's cost structurally and
+accepts a smaller, now-measured cost in exchange for keeping rule-author-facing tracing working at
+all. `Collector`/`Graph.next_element` singular were not restored in this pass (see Fix above) - if
+they ever are, the same cheaper wrapper applies and the same kind of before/after measurement
+should be taken, scoped to whatever `level` is actually used for them.
+
+**Refinement (2026-10-31), same day:** reconsidered which of the three restored decorators were
+actually needed, given the real requirement was narrower than "trace every when/then call": know
+which leaves returned `True`, and know that `then` ran. `Node.execute`'s own return value (already
+captured by the existing wrapper) already answers the second question, and `then`'s own side
+effects are already covered by `Session`/`Factset`'s own `@trace()`d methods - neither needed
+`Leaf.execute` or `Node._execute_thens` to carry their own spans. Removed `@trace()` from both
+again (this time for good, not as a disabled-path-cost workaround), and gave `tracer.py`'s `trace()`
+a small opt-in extension, `summary_attr=`: on the already-traced branch only, it reads a named
+attribute off the decorated method's `self` after the call and attaches it to the span, reusing the
+existing return-value-capture code path rather than adding new OTel plumbing. `Node.execute` now
+collects the ids of leaves that returned `True` into `self.leaf_results` as it loops (cheap - plain
+list append, no stringification unless actually traced) and is decorated
+`@trace(summary_attr='leaf_results')`. Net effect: only `Node.execute` carries a span; it shows
+which when-clauses passed and whether `then` fired, with no separate `Leaf.execute`/
+`_execute_thens` spans at all.
+
+**Verified:** `mypy src/knowledgenet` clean. 128/128 tests pass (126 from the first Phase 8 pass,
+minus the now-inapplicable `test_when_then_execution_is_traced_at_application_level`, plus 3 new:
+`test_trace_summary_attr_captures_named_attribute_when_enabled` and
+`test_trace_summary_attr_skipped_when_disabled` unit-test the new `summary_attr` mechanism in
+isolation, `test_node_execute_traced_with_leaf_summary_when_then_not_traced` is the end-to-end
+check - runs a minimal ruleset at `trc_level=1`, asserts no `Leaf.execute`/`_execute_thens` spans
+exist and `Node.execute`'s span carries both `return=True` and a non-empty `leaf_results`).
+`autoins` rebuilt, 5/5 tests pass. Manually confirmed via `rule_runner.py --traceLevel 1` with a
+file exporter: only `knowledgenet.node.Node.execute` appears among `node.py`'s methods, carrying a
+`leaf_results` attribute.
+
+**Measured** (`test/perf/profile_engine.py --mode time`, same harness, `trc_level=0`, avg of 3 runs):
+
+| claims | after Phase 8 (all 3 decorators restored) | after refinement (`Node.execute` only) |
+|---|---|---|
+| 300 | 3.42s | 3.18s |
+| 500 | 13.38s | 12.68s |
+
+A real but modest further win (~7% at 300 claims, ~5% at 500) - smaller than the removed decorators'
+call-count share (`Leaf.execute` alone was 5.6M of the ~8.5M wrapper calls, roughly two-thirds)
+would suggest, because `--mode profile`'s cProfile-inflated per-call cost (~353ns/call observed)
+overstates the real disabled-path tax confirmed by the `timeit` microbenchmark (~71ns/call) -
+`--mode time`'s wall-clock numbers are the trustworthy ones, per this plan's own standing caution
+about profile-mode overhead. Confirmed via re-profiling: `tracer.py`'s `wrapper` call count dropped
+from 8.5M to 2.69M (matching `Node.execute`'s own call count almost exactly - `Leaf.execute`'s calls
+no longer reach `wrapper` at all).
+
+**Second refinement (2026-10-31), same day:** the per-leaf OTel spans removed above also used to
+carry per-leaf *timing* (OTel spans record their own start/end automatically) - the summary
+attribute alone didn't. Added explicit timing instead of reintroducing spans: `tracer.py` gained
+`tracing_enabled(level=1) -> bool`, a cheap standalone check (same `ContextVar` read `wrapper()`'s
+own fast path uses) for a decorated method's own body to know, without the decorator's help,
+whether it's actually being traced right now - needed because `Node.execute`'s body always runs
+regardless of whether it's traced, and `time.perf_counter()` around every leaf (5.6M calls at 300
+claims) isn't free enough to call unconditionally. `Node.execute` now reads `tracing_enabled()`
+once per call and, only if true, times each `when.execute()` call and the `_execute_thens()` call
+with `perf_counter()`, extending `self.leaf_results` to `(leaf_id, result, duration)` tuples and
+adding `self.then_duration`. `summary_attr` on `trace()` was generalized to accept a tuple of
+attribute names (`@trace(summary_attr=('leaf_results', 'then_duration'))`) rather than just one.
+
+**Verified:** `mypy` clean. 129/129 tests pass (1 new: `test_trace_summary_attr_accepts_a_tuple_of_names`;
+the existing end-to-end test extended to assert both a `(leaf_id, True, duration)` tuple and a
+non-`None` `then_duration` appear). `autoins` rebuilt, 5/5 pass. Manually confirmed in real trace
+output: `leaf_results` contains entries like `("...", True, 2.46e-06)` and `then_duration` like
+`1.01e-05` (seconds).
+
+**Measured** (`test/perf/profile_engine.py --mode time`, `trc_level=0`, avg of 3 runs): 300 claims
+3.21s, 500 claims 12.69s - within run-to-run noise of the previous refinement's 3.18s/12.68s,
+confirming the gated timing costs nothing when tracing is off (the `tracing_enabled()` check plus
+two cheap ternaries per leaf, no `perf_counter()` calls at all on the disabled path).
 
 ## Overall measured result (Phases 1-4 combined, clean re-measurement, same harness/seed)
 

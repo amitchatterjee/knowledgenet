@@ -45,21 +45,26 @@ def normalize_attribute(value: object, trace_details: int) -> object:
 
 _service_context_vars: tuple[ContextVar, ContextVar] | None = None
 
-def _get_context_vars() -> tuple[ContextVar, ContextVar]:
-    # Deferred import breaks the service.py <-> tracer.py import cycle
-    # (service.py imports `trace` from this module at load time). Cached
-    # after the first resolution - the ContextVar objects never change once
-    # both modules have finished loading, so there's no need to re-resolve
-    # the import on every one of the (potentially millions of) traced calls.
+def tracing_enabled(level: int = 1) -> bool:
+    # For a decorated function's own body to cheaply decide whether to do
+    # extra work (e.g. per-iteration timing) worth paying for only when it
+    # will actually be captured - mirrors wrapper()'s own level check below,
+    # so pass the same level given to that function's @trace().
     global _service_context_vars
     if _service_context_vars is None:
         from knowledgenet.service import trace_level, trace_details
         _service_context_vars = (trace_level, trace_details)
-    return _service_context_vars
+    trace_level_cv, _ = _service_context_vars
+    return trace_level_cv.get() >= level
 
-def trace_context_factory(level: int, filter: Callable[[tuple, dict], bool] | None, f_func: Callable, f_args: tuple, f_kwargs: dict, trace_level_val: int, trace_details_val: int) -> AbstractContextManager[Any]:
-    filter_pass = filter(f_args, f_kwargs) if filter else True
-    to_trace = trace_level_val >= level and filter_pass
+def trace_context_factory(filter: Callable[[tuple, dict], bool] | None, f_func: Callable, f_args: tuple, f_kwargs: dict, trace_details_val: int) -> AbstractContextManager[Any]:
+    # Callers only invoke this once the level check (see wrapper() below) has
+    # already passed - filter is evaluated here, not before, so a filter
+    # never runs on the (overwhelmingly common) disabled-by-level path. A
+    # filter must therefore be a pure predicate: it is not guaranteed to run
+    # on every call, only when the level alone doesn't already disqualify
+    # tracing.
+    to_trace = filter(f_args, f_kwargs) if filter else True
     if not to_trace:
         return _PASS_THRU
 
@@ -98,14 +103,37 @@ def trace_context_factory(level: int, filter: Callable[[tuple, dict], bool] | No
 def trace(*decorator_args: Any, **decorator_kwargs: Any) -> Callable:
     level = decorator_kwargs.get('level', 1)
     filter = decorator_kwargs.get('filter')
+    # Opt-in: name (or tuple of names) of attribute(s) to read off the
+    # decorated method's `self` after the call and attach to the span, for a
+    # method that's cheaper to run itself than to wrap at finer grain (e.g.
+    # Node.execute summarizing its own per-leaf results instead of tracing
+    # Leaf.execute directly). Only read on the already-traced branch below;
+    # assumes the decorated function is an instance method (`args[0]` is
+    # `self`).
+    summary_attr = decorator_kwargs.get('summary_attr')
+    summary_attrs = (summary_attr,) if isinstance(summary_attr, str) else summary_attr
     def trace2_wrapper(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            trace_level_cv, trace_details_cv = _get_context_vars()
-            trace_level_val = trace_level_cv.get()
+            # Deferred import breaks a service.py <-> tracer.py import cycle;
+            # cached after first resolution since this runs on every call to
+            # every @trace()'d function in the program.
+            global _service_context_vars
+            if _service_context_vars is None:
+                from knowledgenet.service import trace_level, trace_details
+                _service_context_vars = (trace_level, trace_details)
+            trace_level_cv, trace_details_cv = _service_context_vars
+
+            # Common case (tracing off, or this call's level not reached):
+            # skip trace_details' read, trace_context_factory() (so `filter`,
+            # if any, never runs either), and the context-manager dispatch -
+            # call straight through instead.
+            if trace_level_cv.get() < level:
+                return func(*args, **kwargs)
+
             trace_details_val = trace_details_cv.get()
             ret = None
-            with trace_context_factory(level, filter, func, args, kwargs, trace_level_val, trace_details_val) as trace_ctx:
+            with trace_context_factory(filter, func, args, kwargs, trace_details_val) as trace_ctx:
                 ret = func(*args, **kwargs)
                 # Skip normalizing (stringifying) the return value entirely when
                 # this call wasn't actually traced - set_attribute on the
@@ -114,6 +142,11 @@ def trace(*decorator_args: Any, **decorator_kwargs: Any) -> Callable:
                 # paying for it just to discard the result.
                 if ret is not None and trace_ctx is not _PASS_THRU:
                     trace_ctx.set_attribute('return', normalize_attribute(ret, trace_details_val))
+                if summary_attrs and args and trace_ctx is not _PASS_THRU:
+                    for attr_name in summary_attrs:
+                        summary = getattr(args[0], attr_name, None)
+                        if summary is not None:
+                            trace_ctx.set_attribute(attr_name, normalize_attribute(summary, trace_details_val))
             return ret
         return wrapper
     if decorator_args and callable(decorator_args[0]):
