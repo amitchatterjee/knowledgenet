@@ -72,10 +72,7 @@ mypy_path = "src"
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_unreachable = true
-# Ratchet closed (2026-08-30): every module in src/knowledgenet is now fully
-# annotated (was enforced file-by-file via per-module [[tool.mypy.overrides]]
-# during the migration; see git history / the typing plan in .plans/ for that
-# approach if a partial rollback is ever needed instead of the line below).
-# Flip this to false anytime strict typing gets in the way -- it's a single
-# line, no per-module bookkeeping required either direction.
+# Enforced package-wide, not per-module. Flip to false anytime strict typing
+# gets in the way -- it's a single line, no per-module bookkeeping required
+# either direction.
 disallow_untyped_defs = true

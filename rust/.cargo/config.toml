@@ -1,8 +1,8 @@
-# requires-python is >=3.13, but we build against the abi3-py313 stable ABI
-# (one wheel per OS/arch regardless of installed Python 3.13+ version - see
-# .plans/004). PyO3 pins a hard ceiling on the *interpreter* version it will
-# build against per release, which lags behind new CPython releases (e.g.
-# 3.14) even when the abi3-py313 target itself is unaffected. This flag tells
-# PyO3 to trust the stable ABI promise and build anyway rather than refuse.
+# We build against the abi3-py313 stable ABI (one wheel per OS/arch
+# regardless of installed Python 3.13+ version). PyO3 pins a hard ceiling on
+# the *interpreter* version it will build against per release, which lags
+# behind new CPython releases (e.g. 3.14) even when the abi3-py313 target
+# itself is unaffected. This flag tells PyO3 to trust the stable ABI promise
+# and build anyway rather than refuse.
 [env]
 PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1"

@@ -27,12 +27,7 @@ except ImportError:
     _NATIVE_AVAILABLE = False
 
 def _resolve_backend(backend: Backend) -> Literal['native', 'pure']:
-    """Resolve 'auto'/'native'/'pure' against what's actually importable.
-
-    No ported logic consults this yet (.plans/004 Phase 1 is scaffolding
-    only) - it exists so the auto-detection path and the explicit-override
-    error path can be tested before anything depends on them.
-    """
+    """Resolve 'auto'/'native'/'pure' against what's actually importable."""
     if backend == 'pure':
         return 'pure'
     if backend == 'native':
@@ -225,47 +220,17 @@ class Session:
             when_objs.append(objs)
         return when_objs
 
-    # --- Rule relevance index (.plans/003 Phase 5) --------------------------
+    # _rules_by_when_key/_rules_relevant_to let _add_facts skip rules whose
+    # when clauses can't match any of the new facts: combinations()'s
+    # include_only mechanism (core/perm.py) guarantees a rule produces zero
+    # nodes unless at least one when-clause position holds a fact from
+    # new_facts, so a rule with no when clause keyed to any new fact's
+    # (of_type, group) is safe to skip outright without querying Factset.
     #
-    # Problem: _add_facts() (below) used to call _get_matching_objs() - and
-    # therefore query Factset for every when clause - on EVERY rule in
-    # self.rules, on EVERY call, even when none of that rule's when clauses
-    # could possibly match any of the facts just inserted. A rule can only
-    # produce a new node when at least one of its when-clause positions
-    # ends up holding a fact from new_facts: combinations()'s include_only
-    # mechanism (see core/perm.py) guarantees that any combination with NO
-    # new-fact position gets dropped. So a rule none of whose when clauses
-    # match any type/group present in new_facts is mathematically guaranteed
-    # to produce zero nodes for this call - but the old code only discovered
-    # that the slow way, by actually running _get_matching_objs()/
-    # combinations() and getting nothing back.
-    #
-    # Fix, mirroring the same incremental-index pattern Phases 3/4 used at
-    # the graph/session layer, one layer up at the rule-matching layer:
-    # precompute, once per session (rule.whens is fixed for the session's
-    # whole lifetime - see _build_rules_by_when_key, called once from
-    # execute()), a lookup from "when clause key" -> the rules that have a
-    # when clause with that key. _rules_relevant_to(new_facts) then looks up
-    # only the handful of keys this batch of new_facts actually touches, and
-    # _add_facts uses the result to skip calling _get_matching_objs() for
-    # every other rule outright.
-    #
-    # The "key" for a when clause is (of_type, group) for Collector/
-    # EventFact (where group is what actually distinguishes one population
-    # from another of the same class - see _get_matching_objs), or just
-    # (of_type, None) for a plain Fact when clause (group is meaningless
-    # there, so it's normalized away - two Fact(of_type=X) whens must key
-    # the same regardless of whatever unrelated group= a rule author might
-    # have set). _when_key() computes this consistently on both the rule
-    # side (_build_rules_by_when_key) and the fact side (_rules_relevant_to).
-    #
-    # Measured impact (.plans/003 Phase 5): a real but modest ~10% win at
-    # autoins's scale, NOT a structural fix - Service runs one Session per
-    # Ruleset, not per Repository, so self.rules here is already just a
-    # handful of rules (not the whole ruleset's worth), which caps how much
-    # there was to skip in the first place. combinations() itself still has
-    # to scan each RELEVANT rule's when-clause populations in full to locate
-    # the new elements, which remains the dominant cost at scale.
+    # Key shape: (of_type, group) for Collector/EventFact (group distinguishes
+    # populations of the same class - see _get_matching_objs), else
+    # (of_type, None) - group is meaningless for a plain Fact when clause, so
+    # it's normalized away there.
 
     def _when_key(self, of_type: type | str, group: str | None) -> tuple[type | str, str | None]:
         return (of_type, group) if of_type in (Collector, EventFact) else (of_type, None)

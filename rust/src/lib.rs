@@ -1,6 +1,6 @@
-//! Stub native backend (.plans/004 Phase 1). No ported logic yet - this
-//! module exists only to prove the build/import/fallback-detection path
-//! works end to end before anything real moves into it.
+//! Stub native backend - no ported logic yet. Exists to prove the
+//! build/import/fallback-detection path works end to end before anything
+//! real moves into it.
 
 use pyo3::prelude::*;
 
