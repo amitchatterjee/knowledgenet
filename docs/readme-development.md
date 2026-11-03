@@ -19,6 +19,21 @@ or:
 pip install --user uv
 ```
 
+### Install a Rust toolchain:
+`knowledgenet` ships an optional native-accelerated backend (`knowledgenet._native`, built with
+[PyO3](https://pyo3.rs)/[maturin](https://www.maturin.rs); see `.plans/004`). Building this package
+from source — which is what `uv sync` does for this repo, and what `autoins`'s local path
+dependency triggers too — now requires a C linker and a Rust toolchain on `PATH`:
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+Confirm with `cargo --version`. There is no build-time fallback: if the native extension fails to
+compile, `uv sync` fails outright, the same tradeoff every PyO3/maturin package on PyPI accepts.
+"Pure Python is always available" (.plans/004) is a *runtime* property — `backend='pure'` is always
+selectable even when the native extension is built and importable, and prebuilt PyPI wheels (once
+published) let end users on supported platforms install with no Rust toolchain at all — not an
+escape hatch from needing Rust to build the package from source yourself.
+
 ### Create a virtual environment:
 ```bash
 uv venv --python 3.14
@@ -36,7 +51,10 @@ You can add the above to $HOME/.bashrc to automatically activate the venv when e
 ```bash
 uv sync --group dev
 ```
-This installs the base runtime dependencies plus dev tools (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder, mypy) into `.venv`, and creates/updates `uv.lock`.
+This installs the base runtime dependencies plus dev tools (pytest, pytest-cov, build, debugpy, twine, sphinx, sphinx-markdown-builder, mypy, maturin) into `.venv`, and creates/updates `uv.lock` — including building `knowledgenet._native` via maturin (see "Install a Rust toolchain" above). Editing `rust/**` and re-running `uv sync` rebuilds the extension automatically, the same as editing `src/**/*.py` does.
+
+When iterating on the Rust side specifically, `uv run maturin develop --release` rebuilds just the
+extension in place and is faster than a full `uv sync` for that inner loop.
 
 ## Install runtime dependencies:
 Only needed if you want the base runtime dependencies without the dev tools above (e.g. to run the library without testing/building it):

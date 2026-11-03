@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any, Literal, cast
 from collections.abc import Callable, Hashable
 
 from knowledgenet.ftypes import EventFact, Wrapper
@@ -17,8 +17,32 @@ from knowledgenet.util import of_type
 # logging.debug()'s extra handlers-check/basicConfig layer on every call.
 logger = logging.getLogger(__name__)
 
+Backend = Literal['auto', 'native', 'pure']
+
+try:
+    from knowledgenet import _native
+    _NATIVE_AVAILABLE = True
+except ImportError:
+    _native = None  # type: ignore[assignment]
+    _NATIVE_AVAILABLE = False
+
+def _resolve_backend(backend: Backend) -> Literal['native', 'pure']:
+    """Resolve 'auto'/'native'/'pure' against what's actually importable.
+
+    No ported logic consults this yet (.plans/004 Phase 1 is scaffolding
+    only) - it exists so the auto-detection path and the explicit-override
+    error path can be tested before anything depends on them.
+    """
+    if backend == 'pure':
+        return 'pure'
+    if backend == 'native':
+        if not _NATIVE_AVAILABLE:
+            raise RuntimeError("backend='native' requested but knowledgenet._native is not installed")
+        return 'native'
+    return 'native' if _NATIVE_AVAILABLE else 'pure'
+
 class Session:
-    def __init__(self, ruleset:Ruleset, facts: set|list, id: str, global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None) -> None:
+    def __init__(self, ruleset:Ruleset, facts: set|list, id: str, global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None, backend: Backend = 'auto') -> None:
         if global_ctx is None:
             global_ctx = {}
         self.id = id
@@ -32,6 +56,7 @@ class Session:
         self.global_ctx = global_ctx
         self.input_facts = facts
         self.node_sorter = node_sorter
+        self.backend: Literal['native', 'pure'] = _resolve_backend(backend)
 
     def __str__(self) -> str:
         return f"Session({self.id})"
@@ -41,6 +66,7 @@ class Session:
 
     @trace()
     def execute(self) -> set:
+        logger.debug("%s: Resolved backend: %s", self, self.backend)
         self.output_facts = Factset()
         self.graph = Graph(id=self.id, comparator=cast(Callable[[Hashable, Hashable], int] | None, self.node_sorter))
         # Reverse index: fact -> the graph Elements whose node.when_objs

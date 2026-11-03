@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "knowledgenet"
@@ -42,7 +42,12 @@ Repository = "https://github.com/amitchatterjee/knowledgenet.git"
 Documentation = "https://github.com/amitchatterjee/knowledgenet/tree/develop/docs"
 
 [dependency-groups]
-dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-markdown-builder", "mypy"]
+dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-markdown-builder", "mypy", "maturin>=1.7,<2.0"]
+
+[tool.maturin]
+manifest-path = "rust/Cargo.toml"
+python-source = "src"
+module-name = "knowledgenet._native"
 
 [tool.uv]
 # Lets local path-dependents (e.g. knowledgenet-examples/autoins) detect source
@@ -51,6 +56,8 @@ dev = ["pytest", "pytest-cov", "build", "debugpy", "twine", "sphinx", "sphinx-ma
 cache-keys = [
   { file = "pyproject.toml" },
   { file = "src/**/*.py" },
+  { file = "rust/**/*.rs" },
+  { file = "rust/Cargo.toml" },
 ]
 
 [[tool.uv.index]]

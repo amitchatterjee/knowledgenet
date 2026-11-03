@@ -1,0 +1,13 @@
+[package]
+name = "knowledgenet-native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# Final importable name is knowledgenet._native - see [tool.maturin] in the
+# top-level pyproject.toml.
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.24", features = ["extension-module", "abi3-py313"] }

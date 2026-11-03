@@ -10,7 +10,7 @@ import logging
 from contextvars import ContextVar
 from collections.abc import Callable
 
-from knowledgenet.core.session import Session
+from knowledgenet.core.session import Backend, Session
 from knowledgenet.ftypes import Switch
 from knowledgenet.node import Node
 from knowledgenet.repository import Repository
@@ -31,13 +31,14 @@ class Service:
     transaction and returns the final fact set produced by chained rulesets.
     """
 
-    def __init__(self, repository: Repository, id: str = "knowledgenet", global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None) -> None:
+    def __init__(self, repository: Repository, id: str = "knowledgenet", global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None, backend: Backend = 'auto') -> None:
         if global_ctx is None:
             global_ctx = {}
         self.id = id
         self.repository = repository
         self.global_ctx = global_ctx
         self.node_sorter = node_sorter
+        self.backend = backend
 
     def __str__(self) -> str:
         return f"Service({self.repository.id})"
@@ -86,8 +87,8 @@ class Service:
             if start_from and ruleset.id != start_from:
                 continue
             logger.debug("Creating session with service Id: %s, ruleset:%s, facts:%s", service_id, ruleset, resulting_facts)
-            session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}", 
-                              self.global_ctx, self.node_sorter)
+            session = Session(ruleset, resulting_facts, f"{service_id}:{ruleset.id}",
+                              self.global_ctx, self.node_sorter, self.backend)
             resulting_facts = session.execute()
             logger.debug("Executed session: %s", session)
             if switch_to := self._find_switch(resulting_facts):

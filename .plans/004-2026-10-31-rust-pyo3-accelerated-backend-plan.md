@@ -1,6 +1,6 @@
 # Rust/PyO3-accelerated backend for Graph, Factset indexes, and perm.py
 
-Status: **NOT STARTED (2026-10-31)** — plan only, no code/build/CI changes made yet.
+Status: **Phase 1 DONE (2026-11-02)** — scaffolding in place on `feature/rustify` (both repos); Phases 2-6 not started. See "Phase 1 results" below.
 
 ## Context
 
@@ -31,7 +31,8 @@ plan was written:
   scope land.
 
 Toolchain check at plan-writing time: `cargo`/`rustc` 1.99.1 already present on this machine (system
-packages); `maturin` is **not yet installed** — needed before Phase 1 starts.
+packages); `maturin` was not yet installed — installed as part of Phase 1 (`uv tool install maturin`,
+plus added to `dependency-groups.dev`; `maturin==1.16.0`).
 
 ## What's being ported, and what stays pure Python always
 
@@ -110,13 +111,53 @@ matrix to platform×arch, not platform×arch×python-version.
 
 ### Phasing (mirrors plan 002/003's own "measure before and after every step" discipline)
 
-#### Phase 1 — Scaffolding, no real logic — NOT STARTED
+#### Phase 1 — Scaffolding, no real logic — DONE (2026-11-02)
 
-Install `maturin`; stand up the `rust/` crate, maturin build, CI Rust-toolchain step, and the
-`auto`/`native`/`pure` selection plumbing with a stub native module (e.g. a trivial always-returns-
-pure fallback). Prove install/build/CI/fallback-detection work end-to-end before porting anything.
-Verify: `uv run mypy src/knowledgenet` clean, `uv run pytest -q` unchanged pass count, `autoins`'s
-`uv sync --reinstall-package knowledgenet` + its own test suite still green.
+Installed `maturin` (as a `uv` tool, and added to `dependency-groups.dev`). Stood up `rust/Cargo.toml`
++ `rust/src/lib.rs` (a stub `knowledgenet._native` module exposing one trivial `backend_name()`
+function - no ported logic). Switched `pyproject.toml`'s `[build-system]` to `maturin`, added
+`[tool.maturin]` (`manifest-path`, `python-source = "src"`, `module-name = "knowledgenet._native"`),
+and extended `[tool.uv] cache-keys` with `rust/**/*.rs`/`Cargo.toml` (confirmed: a plain `uv sync`,
+no `--reinstall-package` needed, now picks up Rust-only source edits the same way it already did for
+Python edits). Added `backend: Literal['auto','native','pure'] = 'auto'` threaded through
+`Service.__init__` → `Session.__init__` → stored as `self.backend` (resolved via a new
+`core/session.py:_resolve_backend()`, gated behind a top-level `try/except ImportError` on
+`from knowledgenet import _native`). Added `src/knowledgenet/_native.pyi` (hand-written stub, per the
+plan's mypy note). Added CI Rust-toolchain step (`dtolnay/rust-toolchain@stable`) to `ci.yml`, before
+`uv sync --group dev`. Extended `docs/readme-development.md` with the one-time Rust/`rustup` setup
+and the `uv run maturin develop --release` fast inner-loop note. Added `test/unit/test_backend_selection.py`
+(9 cases: `_resolve_backend`'s three branches including the native-unavailable error path via
+monkeypatch, plus end-to-end `Service(...).execute()` under each backend value).
+
+**Two corrections to this plan's assumptions, found while actually building it:**
+
+1. **PyO3 0.24's abi3-py313 feature still rejects a 3.14 interpreter at build time**, even though
+   3.14 is ABI-compatible with the stable 3.13 ABI we're targeting - PyO3 caps the *interpreter*
+   version it will build against per release, independent of the abi3 target version, and that cap
+   lags new CPython releases. Confirmed this is PyO3's own build-time guard, not a real
+   incompatibility, by building successfully once `PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1` is set.
+   Rather than requiring every caller (local dev, CI, publish) to remember to set that env var,
+   added `rust/.cargo/config.toml` with an `[env]` table - cargo picks this up automatically for any
+   invocation rooted at or under `rust/` (confirmed via a standalone `--manifest-path` test from an
+   unrelated cwd), so `uv sync`/`maturin develop`/CI all get it for free with no caller-side setup.
+2. **"Pure Python is always available" is a *runtime* property, not a build-time one.** Verified by
+   stripping Rust/a C linker from `PATH` and running `uv sync --reinstall-package knowledgenet`:
+   maturin fails outright ("💥 maturin failed... Error: command ['maturin', 'pep517', ...] returned
+   non-zero exit status 1") - there is no silent fallback to a pure-Python install. This matches
+   every other PyO3/maturin package's tradeoff (same as `pydantic-core`/`orjson`/`cryptography`): a
+   Rust toolchain is required to build `knowledgenet` **from source** (this repo's own `uv sync`,
+   and `autoins`'s local path dependency), full stop. The "always available" guarantee holds at two
+   other levels instead - `backend='pure'` is always selectable even when the native extension is
+   built (for debugging/parity), and once Phase 5/the publish workflow ships a wheel matrix, end
+   users on a supported platform install a prebuilt wheel and need no Rust toolchain at all. Updated
+   `docs/readme-development.md` to state this plainly rather than imply a graceful degradation that
+   doesn't exist.
+
+Verify (all re-run after the corrections above, all green): `uv run mypy src/knowledgenet` clean (21
+source files); `uv run pytest -q` - 136 passed (129 prior + 7 new `test_backend_selection.py` cases);
+`cd knowledgenet-examples/autoins && uv sync --reinstall-package knowledgenet` rebuilds cleanly
+through the maturin-backed path dependency with no change needed on `autoins`'s side, and its 5-test
+checksum suite stays green (`uv run pytest -rPX -q`).
 
 #### Phase 2 — Port `core/perm.py` — NOT STARTED
 
