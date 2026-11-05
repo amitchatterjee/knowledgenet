@@ -6,17 +6,38 @@ and for propagating inserts, updates, and deletes through dependent artifacts.
 """
 
 import logging
+from typing import Literal
 from collections.abc import Callable
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import EventFact
 from knowledgenet.core.tracer import trace
 from knowledgenet.util import of_type
 
+Backend = Literal['auto', 'native', 'pure']
+
+try:
+    from knowledgenet import _native
+    _NATIVE_AVAILABLE = True
+except ImportError:
+    _native = None  # type: ignore[assignment]
+    _NATIVE_AVAILABLE = False
+
+def _resolve_backend(backend: Backend) -> Literal['native', 'pure']:
+    """Resolve 'auto'/'native'/'pure' against what's actually importable."""
+    if backend == 'pure':
+        return 'pure'
+    if backend == 'native':
+        if not _NATIVE_AVAILABLE:
+            raise RuntimeError("backend='native' requested but knowledgenet._native is not installed")
+        return 'native'
+    return 'native' if _NATIVE_AVAILABLE else 'pure'
+
 class Factset:
     """Stores runtime facts and helper indexes for matching and projection."""
 
-    def __init__(self) -> None:
+    def __init__(self, backend: Backend = 'auto') -> None:
         self.facts: set[object] = set()
+        self.backend: Literal['native', 'pure'] = _resolve_backend(backend)
         self._init_dictionaries()
 
     def _init_dictionaries(self) -> None:
@@ -181,12 +202,18 @@ class Factset:
         return updated_facts
 
     def _add_to_type_facts_dict(self, fact: object) -> None:
+        if self.backend == 'native':
+            _native.add_to_dict_of_sets(self._type_to_facts, of_type(fact), fact)
+            return
         facts_list = self._type_to_facts[of_type(fact)] \
             if of_type(fact) in self._type_to_facts else set()
         facts_list.add(fact)
         self._type_to_facts[of_type(fact)] = facts_list
 
     def _add_to_type_collectors_dict(self, collector: Collector) -> None:
+        if self.backend == 'native':
+            _native.add_to_dict_of_sets(self._type_to_collectors, collector.of_type, collector)
+            return
         collectors_list = self._type_to_collectors[collector.of_type] \
             if collector.of_type in self._type_to_collectors else set()
         collectors_list.add(collector)
@@ -194,11 +221,17 @@ class Factset:
 
     def add_to_group_collectors_dict(self, fact: Collector) -> None:
         """Register a collector in the group-to-collector index."""
+        if self.backend == 'native':
+            _native.add_to_dict_of_sets(self._group_to_collectors, fact.group, fact)
+            return
         cset = self._group_to_collectors[fact.group] if fact.group in self._group_to_collectors else set()
         cset.add(fact)
         self._group_to_collectors[fact.group] = cset
 
     def _add_to_group_events_dict(self, event: EventFact) -> None:
+        if self.backend == 'native':
+            _native.add_to_dict_of_sets(self._group_to_events, event.group, event)
+            return
         events_list = self._group_to_events[event.group] \
             if event.group in self._group_to_events else set()
         events_list.add(event)
@@ -206,6 +239,9 @@ class Factset:
 
     def _add_to_type_events_dict(self, event_fact: EventFact) -> None:
         for typ in event_fact.on_types:
+            if self.backend == 'native':
+                _native.add_to_dict_of_sets(self._type_to_events, typ, event_fact)
+                continue
             events_list = self._type_to_events[typ] \
                 if typ in self._type_to_events else set()
             events_list.add(event_fact)
@@ -221,9 +257,15 @@ class Factset:
         which always returns a safe-to-mutate copy.
         """
         if of_type == Collector:
+            if self.backend == 'native':
+                return _native.population(self._group_to_collectors, group)
             return self._group_to_collectors[group] if group in self._group_to_collectors else set()
         if of_type == EventFact:
+            if self.backend == 'native':
+                return _native.population(self._group_to_events, group)
             return self._group_to_events[group] if group in self._group_to_events else set()
+        if self.backend == 'native':
+            return _native.population(self._type_to_facts, of_type)
         return self._type_to_facts[of_type] if of_type in self._type_to_facts else set()
 
     @trace(level=12)

@@ -62,8 +62,8 @@ class Session:
     @trace()
     def execute(self) -> set:
         logger.debug("%s: Resolved backend: %s", self, self.backend)
-        self.output_facts = Factset()
-        self.graph = Graph(id=self.id, comparator=cast(Callable[[Hashable, Hashable], int] | None, self.node_sorter))
+        self.output_facts = Factset(backend=self.backend)
+        self.graph = Graph(id=self.id, comparator=cast(Callable[[Hashable, Hashable], int] | None, self.node_sorter), backend=self.backend)
         # Reverse index: fact -> the graph Elements whose node.when_objs
         # references it. Lets _update_facts/_delete_facts find only the nodes
         # a changed fact could actually affect, instead of scanning every
@@ -285,7 +285,7 @@ class Session:
             when_objs = self._get_matching_objs(rule)
             if when_objs:
                 # Get all the permutations associated with the objects
-                perms = combinations(when_objs, new_facts)
+                perms = combinations(when_objs, new_facts, backend=self.backend)
                 logger.debug("%s: %s, permutations: %s", self, rule, perms)
                 # insert to the graph
                 for each in perms:

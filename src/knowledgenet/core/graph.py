@@ -1,8 +1,28 @@
 import bisect
 from decimal import Decimal
+from typing import Literal, cast
 from collections.abc import Hashable, Callable
 
 from knowledgenet.core.tracer import trace
+
+Backend = Literal['auto', 'native', 'pure']
+
+try:
+    from knowledgenet import _native
+    _NATIVE_AVAILABLE = True
+except ImportError:
+    _native = None  # type: ignore[assignment]
+    _NATIVE_AVAILABLE = False
+
+def _resolve_backend(backend: Backend) -> Literal['native', 'pure']:
+    """Resolve 'auto'/'native'/'pure' against what's actually importable."""
+    if backend == 'pure':
+        return 'pure'
+    if backend == 'native':
+        if not _NATIVE_AVAILABLE:
+            raise RuntimeError("backend='native' requested but knowledgenet._native is not installed")
+        return 'native'
+    return 'native' if _NATIVE_AVAILABLE else 'pure'
 
 class Element:
     def __init__(self, prev: Element | None, next: Element | None, obj: Hashable, ordinal: int, weight: Decimal):
@@ -13,19 +33,19 @@ class Element:
         self.weight = weight
 
     def __str__(self) -> str:
-        #return f"Element:({self.obj}, prev:{self.prev.obj if self.prev else None}, next:{self.next.obj if self.next else None} weight:{self.ord})"
         return f"Element:({self.obj}, weight:{self.weight})"
 
     def __repr__(self) -> str:
         return self.__str__()
 
 class Graph:
-    def __init__(self, id: str, comparator: Callable[[Hashable, Hashable], int] | None = None) -> None:
+    def __init__(self, id: str, comparator: Callable[[Hashable, Hashable], int] | None = None, backend: Backend = 'auto') -> None:
         self.first: Element | None = None
         self.last: Element | None = None
         self.cursors: dict[str, Element | None] = {}
         self.id = id
         self.comparator = comparator
+        self.backend: Literal['native', 'pure'] = _resolve_backend(backend)
         # Ordinal-based fast path (comparator is None): for each distinct
         # ordinal currently present, the last element of its contiguous run
         # (same-ordinal elements always stay contiguous by construction), and
@@ -34,6 +54,7 @@ class Graph:
         # ordinal belongs. Unused (and left empty) when a comparator is set -
         # that path keeps the original O(graph size) scan, since an arbitrary
         # comparator can't be indexed this way and nothing shows it's hot.
+        self._native_ordinal_index = _native.OrdinalIndex() if (self.backend == 'native' and comparator is None) else None
         self._ordinal_tail: dict[int, Element] = {}
         self._sorted_ordinals: list[int] = []
 
@@ -94,6 +115,9 @@ class Graph:
         return added_element
 
     def _add_by_ordinal(self, obj: Hashable, ordinal: int) -> Element:
+        if self._native_ordinal_index is not None:
+            added_element, self.first = self._native_ordinal_index.add(self.first, obj, ordinal)
+            return cast(Element, added_element)
         tail = self._ordinal_tail.get(ordinal)
         if tail is not None:
             added_element = self._insert_after(obj, ordinal, tail)
@@ -167,18 +191,21 @@ class Graph:
         if self.last is element:
             self.last = prev
 
-        if self.comparator is None and self._ordinal_tail.get(element.ordinal) is element:
-            # This element was the tail of its ordinal's contiguous run -
-            # the index needs to follow the run's new tail, or be dropped
-            # entirely if this was the run's only element.
-            ordinal = element.ordinal
-            if prev is not None and prev.ordinal == ordinal:
-                self._ordinal_tail[ordinal] = prev
-            else:
-                del self._ordinal_tail[ordinal]
-                idx = bisect.bisect_left(self._sorted_ordinals, ordinal)
-                if idx < len(self._sorted_ordinals) and self._sorted_ordinals[idx] == ordinal:
-                    self._sorted_ordinals.pop(idx)
+        if self.comparator is None:
+            if self._native_ordinal_index is not None:
+                self._native_ordinal_index.on_delete(element, prev)
+            elif self._ordinal_tail.get(element.ordinal) is element:
+                # This element was the tail of its ordinal's contiguous run -
+                # the index needs to follow the run's new tail, or be dropped
+                # entirely if this was the run's only element.
+                ordinal = element.ordinal
+                if prev is not None and prev.ordinal == ordinal:
+                    self._ordinal_tail[ordinal] = prev
+                else:
+                    del self._ordinal_tail[ordinal]
+                    idx = bisect.bisect_left(self._sorted_ordinals, ordinal)
+                    if idx < len(self._sorted_ordinals) and self._sorted_ordinals[idx] == ordinal:
+                        self._sorted_ordinals.pop(idx)
 
         for name,cursor in self.cursors.items():
             if element == cursor:
@@ -205,6 +232,11 @@ class Graph:
     # dominant remaining @trace() cost after node.py/container.py were
     # de-instrumented. Uncomment to restore.
     def next_element(self, cursor_name: str = 'default') -> Element | None:
+        # Deliberately pure Python always, even under backend='native': this
+        # 3-line body is already C-fast in CPython (dict subscript and
+        # attribute load are both inline-cached by the specializing
+        # interpreter), and at this call's volume (~3M/execute() call at 300
+        # claims) a PyO3 FFI crossing measurably costs more than that.
         cursor = self.cursors[cursor_name]
         if not cursor:
             return None

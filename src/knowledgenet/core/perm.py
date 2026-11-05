@@ -1,4 +1,17 @@
-def combinations(ll: list, include_only: list | None = None) -> list[list]:
+from typing import Literal
+
+try:
+    from knowledgenet import _native
+    _NATIVE_AVAILABLE = True
+except ImportError:
+    _native = None  # type: ignore[assignment]
+    _NATIVE_AVAILABLE = False
+
+def combinations(ll: list, include_only: list | None = None, backend: Literal['native', 'pure'] = 'pure') -> list[list]:
+    if backend == 'native':
+        if not _NATIVE_AVAILABLE:
+            raise RuntimeError("backend='native' requested but knowledgenet._native is not installed")
+        return _native.combinations(ll, include_only)
     if not include_only:
         return cartesian(ll)
     # Equivalent to [c for c in cartesian(ll) if any(x in include_only for x in c)],

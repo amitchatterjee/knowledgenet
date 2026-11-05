@@ -1,8 +1,19 @@
 import uuid
+
+import pytest
+
+import knowledgenet.core.graph as graph_mod
 from knowledgenet.core.graph import Graph
 
-def test_insert():
-    g = Graph(str(uuid.uuid4()))
+BACKENDS = [
+    'pure',
+    pytest.param('native', marks=pytest.mark.skipif(
+        not graph_mod._NATIVE_AVAILABLE, reason="knowledgenet._native not built in this environment")),
+]
+
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_insert(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     # Add first element to an empty
     g.add(1,1)
     # Append at the end of the list
@@ -14,9 +25,10 @@ def test_insert():
     result = g.to_list()
     assert len(result) == 4
     assert result == [0,1,5,10]
-    
-def test_delete():
-    g = Graph(str(uuid.uuid4()))
+
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_delete(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     for i in range(0,10):
         g.add(i,i)
 
@@ -36,8 +48,9 @@ def test_delete():
     result = g.to_list()
     assert len(result) == 0
 
-def test_delete_with_next():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_delete_with_next(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     for i in range(0,10):
         g.add(i,i)
     result = []
@@ -65,8 +78,9 @@ def test_delete_with_next():
     # Verify size and content
     assert g.to_list() == [0,1,2,3,4]
 
-def test_return_and_start():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_return_and_start(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     saved_node = None
     for i in range(0,10):
         # Reverse the insertion order, but it should still get ordered correctly
@@ -89,8 +103,9 @@ def test_return_and_start():
     assert deleted
     assert saved_node is None
 
-def test_ordinal():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_ordinal(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     for i in range(0,10):
         node = g.add(i,i)
 
@@ -103,13 +118,13 @@ def test_ordinal():
     # Delete an object left of the cursor
     deleted, node = g.delete(2)
     assert deleted
-    # Verify that cursor is right of the deleted node 
+    # Verify that cursor is right of the deleted node
     assert g.cursor_is_right_of(node)
 
     # Delete the node where the cursor is set and verify that the cursor is moved to the next position
     deleted, node = g.delete(5)
     assert g.cursor_is_on(node)
-    
+
     # insert an element right of the cursor
     node = g.add(10, 10)
     assert g.cursor_is_left_of(node)
@@ -118,8 +133,9 @@ def test_ordinal():
     node = g.add(-1,-1)
     assert g.cursor_is_right_of(node)
 
-def test_non_default_cursor():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_non_default_cursor(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     for i in range(0,10):
         g.add(i,i)
     # Get a default cursor and iterate through 5 items
@@ -142,11 +158,12 @@ def test_non_default_cursor():
     assert g.next() == 8
     assert g.next('x') == 8
 
-def test_many_inserts_in_between():
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_many_inserts_in_between(backend):
     '''
     The primary purpose of this test is to make sure that the precision of the graph._ordinal function is good enough for handling high number of facts between two facts
     '''
-    g = Graph(str(uuid.uuid4()))
+    g = Graph(str(uuid.uuid4()), backend=backend)
     # Increasing this number slows down the tests. But, I ran with 10000
     high = 100
     g.add(0,0)
@@ -158,15 +175,16 @@ def test_many_inserts_in_between():
     for i,j in enumerate(result):
         assert j == i
 
-def test_next_elements():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_next_elements(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     g.new_cursor()
     assert len(g.next_elements()) == 0
 
     for i in range(0, 10):
         g.add(i, i)
         g.add(i, i)
-    
+
     g.new_cursor()
     for i in range(0, 10):
         result = g.next_elements()
@@ -181,8 +199,9 @@ class C:
     def __repr__(self):
         return str(self)
         
-def test_comparator_based_insert():
-    g = Graph(str(uuid.uuid4()), comparator=lambda obj,other: obj.val - other.val)
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_comparator_based_insert(backend):
+    g = Graph(str(uuid.uuid4()), comparator=lambda obj,other: obj.val - other.val, backend=backend)
     g.add(C(1))
     g.add(C(3))
     g.add(C(0))
@@ -194,9 +213,10 @@ def test_comparator_based_insert():
     for i in range(0, len(result)):
         assert i-1 == result[i].val
 
-def test_comparator_disregard_ordinal():
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_comparator_disregard_ordinal(backend):
     '''Verify that even if we supply an ordinal, it is not used when a comparator is specified'''
-    g = Graph(str(uuid.uuid4()), comparator=lambda obj,other: obj.val - other.val)
+    g = Graph(str(uuid.uuid4()), comparator=lambda obj,other: obj.val - other.val, backend=backend)
     g.add(C(1), 9)
     g.add(C(3), 8)
     g.add(C(0), 7)
@@ -208,10 +228,11 @@ def test_comparator_disregard_ordinal():
     for i in range(0, len(result)):
         assert i-1 == result[i].val
 
-def test_same_ordinal_ties_preserve_insertion_order():
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_same_ordinal_ties_preserve_insertion_order(backend):
     # Distinct objects (unlike test_next_elements' identical int placeholders)
     # so insertion order is actually distinguishable in the result.
-    g = Graph(str(uuid.uuid4()))
+    g = Graph(str(uuid.uuid4()), backend=backend)
     g.add('a', 5)
     g.add('b', 5)
     g.add('c', 5)
@@ -221,8 +242,9 @@ def test_same_ordinal_ties_preserve_insertion_order():
     g.add('e', 10)
     assert g.to_list() == ['a', 'b', 'c', 'd', 'e']
 
-def test_same_ordinal_ties_interleaved_with_other_ordinals():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_same_ordinal_ties_interleaved_with_other_ordinals(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     g.add('a', 1)
     g.add('b', 3)
     g.add('c', 1)   # ties with 'a' at ordinal 1, must land after 'a', before 'b'
@@ -230,16 +252,18 @@ def test_same_ordinal_ties_interleaved_with_other_ordinals():
     g.add('e', 3)   # ties with 'b' at ordinal 3, must land after 'b'
     assert g.to_list() == ['a', 'c', 'd', 'b', 'e']
 
-def test_delete_tail_of_ordinal_bucket_then_reinsert():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_delete_tail_of_ordinal_bucket_then_reinsert(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     g.add('a', 5)
     node_b = g.add('b', 5)
     g.delete_element(node_b)  # 'b' was the ordinal-5 bucket's tail
     g.add('c', 5)             # must land after 'a', the new tail
     assert g.to_list() == ['a', 'c']
 
-def test_delete_only_element_of_ordinal_then_insert_neighbor():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_delete_only_element_of_ordinal_then_insert_neighbor(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     g.add('a', 1)
     node_b = g.add('b', 5)   # ordinal 5's only element
     g.add('c', 10)
@@ -247,8 +271,9 @@ def test_delete_only_element_of_ordinal_then_insert_neighbor():
     g.add('d', 5)             # re-introducing ordinal 5 must slot between 'a' and 'c' again
     assert g.to_list() == ['a', 'd', 'c']
 
-def test_last_pointer_tracks_tail_through_adds_and_deletes():
-    g = Graph(str(uuid.uuid4()))
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_last_pointer_tracks_tail_through_adds_and_deletes(backend):
+    g = Graph(str(uuid.uuid4()), backend=backend)
     assert g.last is None
     node_a = g.add('a', 1)
     assert g.last is node_a

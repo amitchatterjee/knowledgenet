@@ -1,6 +1,6 @@
 # Rust/PyO3-accelerated backend for Graph, Factset indexes, and perm.py
 
-Status: **Phase 1 DONE (2026-11-02)** — scaffolding in place on `feature/rustify` (both repos); Phases 2-6 not started. See "Phase 1 results" below.
+Status: **Phase 4 DONE (2026-11-05)** — `Graph`'s ordinal path and `Factset`'s index dicts ported; Phases 5-6 not started. See "Phase 1/2/3/4 results" below.
 
 ## Context
 
@@ -159,27 +159,95 @@ source files); `uv run pytest -q` - 136 passed (129 prior + 7 new `test_backend_
 through the maturin-backed path dependency with no change needed on `autoins`'s side, and its 5-test
 checksum suite stays green (`uv run pytest -rPX -q`).
 
-#### Phase 2 — Port `core/perm.py` — NOT STARTED
+#### Phase 2 — Port `core/perm.py` — DONE (2026-11-05)
 
-Cleanest target — zero callbacks, no persistent state, single call site (`session.py:297`). Add
-`test/unit/test_perm.py` parametrization (or a new `test_perm_native_parity.py`) asserting native
-and pure-Python `combinations()` produce identical output on the existing test cases. Measure in
-isolation via `profile_engine.py`.
+`rust/src/perm.rs` ports `combinations()` (both the plain-cartesian and `include_only`-filtered
+paths; `_append_matching`/`_append_all`/`cartesian()` collapse into one Rust function since there's
+no callback boundary to preserve between them). Each when-clause's population is consumed via
+Python's iterator protocol rather than required to be a `Sequence`, since `ll[i]` can be a `set`
+(e.g. `Collector`/`EventFact` populations) as well as a `list` — this was the one surprise versus
+the plan's original signature assumption, caught by the existing test suite (`TypeError: argument
+'ll': 'set' object cannot be converted to 'Sequence'`) rather than by design review.
 
-#### Phase 3 — Port `Graph`'s ordinal fast path — NOT STARTED
+`core/perm.py`'s `combinations()` gained a `backend: Literal['native', 'pure'] = 'pure'` parameter
+(own top-level `try/except ImportError` block, same shape as `core/session.py`'s) and
+`Session._add_facts`'s one call site now passes `backend=self.backend`. `cartesian()` itself stays
+pure-Python-only — it's not on the backend-selectable path (callers of `combinations()` are the only
+ones whose backend matters), and its own direct tests don't need native parity.
 
-Hybrid class: ordinal operations delegate to Rust, the `comparator`-supplied path stays Python
-untouched. Extend `test/unit/test_graph.py` with a native/pure parity check for every existing
-ordinal-path test case. Measure in isolation.
+`test/unit/test_perm.py`'s existing `test_combinations_*` tests gained a `backend` parametrization
+(`'pure'`/`'native'`, the latter skipped if `knowledgenet._native` isn't built) rather than a
+separate parity file — same assertions, same naive-reference comparisons, now run against both
+backends.
 
-#### Phase 4 — Port `Factset`'s index dicts — NOT STARTED
+**Isolated measurement** (`profile_engine.py --mode profile --count 300`, single `execute()` call,
+604 input facts / 904 result facts): `core/perm.py`'s `combinations()` cumtime dropped from 0.056s
+(pure) to 0.012s (native) — about 4.5x faster for this function alone — but it's <1% of total
+`execute()` time either way (engine bucket alone is ~8.2s), so end-to-end wall-clock
+(`--mode time --count 300 --repeats 3`) shows no measurable difference (native 3115.6ms avg vs. pure
+3146.3ms avg — within run-to-run noise). This is the expected, plan-anticipated result, not a
+regression: Phase 5's 2x+ target is about the three ports' *compounded* effect once Graph (Phase 3)
+and Factset (Phase 4) land, not any single phase in isolation. `profile_engine.py` gained a
+`--backend {auto,native,pure}` flag (threaded through `rule_runner.init_rules`) to make this
+comparison repeatable for Phases 3-5 as well.
 
-`_population()` and the internal `_add_to_*_dict` mutations move to a Rust-backed structure;
-`add_facts`/`update_facts`/`del_facts` keep their existing Python-level Collector/EventFact
-orchestration, just reading/writing through the new index. Extend `test/unit/test_factset.py`
-(including the existing aliasing test, `test_population_returns_the_live_index_set`, which must
-keep passing against whichever backend is active) with a native/pure parity check. Measure in
-isolation.
+#### Phase 3 — Port `Graph`'s ordinal fast path — DONE (2026-11-05)
+
+**Scope ceiling found before starting:** profiling `execute()` at 300 claims showed `graph.py` +
+`factset.py` combined are only ~5-6% of total time (`node.py`'s rule-callback dispatch and
+tracer/logging overhead dominate, both out of scope here). Raised with the user before
+implementing - decision: proceed anyway. Rationale given: the infrastructure (native `Element`
+type, PyO3 patterns, backend-selection plumbing) is worth building even if this phase's own
+speedup is capped, since it's reusable for porting heavier logic later.
+
+**Design, revised from the original plan text during implementation:** rather than keep `Element`
+a pure-Python class and have Rust hold only an auxiliary index, `rust/src/graph.rs` defines
+`Element` itself as a PyO3 class (same attribute shape: `prev`/`next`/`obj`/`ordinal`/`weight`),
+used uniformly by both Graph paths - so the comparator-scan path's own algorithm is genuinely
+unchanged Python, just constructing a differently-backed object. `OrdinalIndex` (also native) owns
+only `_ordinal_tail`/`_sorted_ordinals`; `Graph.first`/`.last`/`.cursors` stay Python-owned
+attributes that `_add_by_ordinal`/`delete_element` update from the native calls' return values -
+one place still owns "what the graph looks like." `decimal.Decimal` weights are computed via
+callbacks into Python's own `decimal` module from Rust (not reimplemented), since the
+order-maintenance scheme's correctness depends on exact (not floating-point) halving.
+
+**A second port was tried and reverted:** `next_element` (plain cursor advancement, comparator-
+agnostic) was ported too, since it's callback-free and, per `.plans/004`'s original design table,
+listed alongside the others. Measured regression: at this call's volume (~3M times per `execute()`
+at 300 claims), the native version's tottime was *2.6x worse* than pure Python's (0.92s vs 0.35s) -
+PyO3's FFI-crossing cost exceeds what CPython 3.14's specializing interpreter already does for a
+3-line dict-subscript-plus-attribute-load body. `next_element` stays pure Python unconditionally
+regardless of backend; no native equivalent exists. This is the clearest evidence in this plan so
+far that "callback-free" is necessary but not sufficient for a Rust port to pay off - call
+frequency and body triviality matter just as much.
+
+`test/unit/test_graph.py`'s existing tests gained a `backend` parametrization (`'pure'`/`'native'`),
+same pattern as Phase 2's `test_perm.py` - all 15 existing cases now run under both.
+
+#### Phase 4 — Port `Factset`'s index dicts — DONE (2026-11-05)
+
+`rust/src/factset.rs` provides two generic helpers - `add_to_dict_of_sets` (the "get-or-create the
+set at `key`, add `value`" pattern shared by `_add_to_type_facts_dict`/`_add_to_type_collectors_dict`/
+`add_to_group_collectors_dict`/`_add_to_group_events_dict`/`_add_to_type_events_dict`) and
+`population` (the `_population()` lookup) - operating directly on the existing Python `dict`/`set`
+objects (no Rust-side hash map; same reasoning as Phase 2's `combinations()`: reimplementing
+hashing/equality for arbitrary fact objects would mean calling back into Python's `__hash__`/`__eq__`
+anyway). `add_facts`/`update_facts`/`del_facts` are unchanged, as scoped - they keep orchestrating
+`Collector`/`EventFact` objects in Python, just calling through the native helpers for the index
+mutation itself. `test/unit/test_factset.py` gained the same `backend` parametrization, including
+`test_population_returns_the_live_index_set` - its identity assertion (`_population(...) is
+_type_to_facts[...]`) holds under native too, since `population()` returns the same stored `PySet`
+object rather than a copy.
+
+**Isolated measurement** (`profile_engine.py --mode profile --count 300`): `graph.py`+`factset.py`
+combined tottime dropped from 0.633s (pure) to 0.583s (native) - about 8% off that bucket, consistent
+with Phase 3's insertion-path-only win (`_add_by_ordinal`+`add`: 0.146s native vs 0.186s pure, ~21%
+faster) since `next_element` (the bucket's single largest line item, ~0.34s either way) stays
+identical pure Python under both backends now. End-to-end wall-clock (`--mode time --count 300
+--repeats 5`) shows native modestly ahead of pure (3182ms vs 3374ms avg, ~6%) - small, but real and
+no longer masked by the `next_element` regression that an earlier (reverted) version of this phase
+introduced. Still nowhere near 2x alone, as expected from the scope-ceiling finding above - Phase 5
+is where the compounded picture against all four phases gets measured.
 
 #### Phase 5 — End-to-end measurement — NOT STARTED
 

@@ -1,10 +1,20 @@
+import pytest
+
+import knowledgenet.factset as factset_mod
 from knowledgenet.factset import Factset
 from knowledgenet.container import Collector
 from knowledgenet.ftypes import Wrapper
 from test_helpers.unit_facts import C1
 
-def test_add_to_factset_with_duplicate_collectors():
-    factset = Factset()
+BACKENDS = [
+    'pure',
+    pytest.param('native', marks=pytest.mark.skipif(
+        not factset_mod._NATIVE_AVAILABLE, reason="knowledgenet._native not built in this environment")),
+]
+
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_add_to_factset_with_duplicate_collectors(backend):
+    factset = Factset(backend=backend)
 
     # Two facts with exact same params
     collector1 = Collector(of_type=str, group="group1", name='x')
@@ -26,8 +36,9 @@ def test_add_to_factset_with_duplicate_collectors():
     assert len(updated_facts) == 0
     assert len(factset.facts) == 2
 
-def test_add_to_factset_with_duplicate_wrapper():
-    factset = Factset()
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_add_to_factset_with_duplicate_wrapper(backend):
+    factset = Factset(backend=backend)
 
     # Two facts with exact same params
     props = {'id': 'abcd', 'a': 0, 'b': 'b'}
@@ -50,8 +61,9 @@ def test_add_to_factset_with_duplicate_wrapper():
     assert len(updated_facts) == 0
     assert len(factset.facts) == 2
 
-def test_collector_updates():
-    factset = Factset()
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_collector_updates(backend):
+    factset = Factset(backend=backend)
 
     c1 = C1(10)
     c2 = C1(20)
@@ -81,8 +93,9 @@ def test_collector_updates():
     assert c2 in collector1.collection
     assert c3 in collector1.collection
 
-def test_find_returns_a_copy_safe_to_mutate():
-    factset = Factset()
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_find_returns_a_copy_safe_to_mutate(backend):
+    factset = Factset(backend=backend)
     c1 = C1(10)
     factset.add_facts([c1])
 
@@ -91,10 +104,11 @@ def test_find_returns_a_copy_safe_to_mutate():
     result.add(C1(20))  # mutating the result must not affect the factset
     assert factset.find(of_type=C1) == {c1}
 
-def test_population_returns_the_live_index_set():
+@pytest.mark.parametrize('backend', BACKENDS)
+def test_population_returns_the_live_index_set(backend):
     # _population() is the internal fast path Session's hot loop uses instead
     # of find() - it must skip find()'s copy, returning the actual index set.
-    factset = Factset()
+    factset = Factset(backend=backend)
     c1 = C1(10)
     factset.add_facts([c1])
 
