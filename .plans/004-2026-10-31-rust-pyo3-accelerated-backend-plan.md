@@ -249,6 +249,36 @@ no longer masked by the `next_element` regression that an earlier (reverted) ver
 introduced. Still nowhere near 2x alone, as expected from the scope-ceiling finding above - Phase 5
 is where the compounded picture against all four phases gets measured.
 
+#### Post-Phase-4 addendum — `KNOWLEDGENET_BACKEND` env var, default flipped to `pure` (2026-11-07)
+
+Two changes made after Phase 4 landed, before starting Phase 5:
+
+1. **`KNOWLEDGENET_BACKEND` env var.** `_resolve_backend()` (duplicated in `core/session.py`,
+   `core/graph.py`, `factset.py` — see "Backend selection" above for why) now checks this env var
+   when the caller passes `'auto'`. An explicit `'native'`/`'pure'` argument always wins over the
+   environment — it's the caller's deliberate choice, e.g. a parity test pinning a backend, not
+   something a deployment-level setting should override. An unrecognized env var value raises
+   `ValueError` rather than being silently ignored. This reverses the "no env var" call made in the
+   original "Backend selection" design above — the ops need flagged there as the condition for
+   adding one actually surfaced (see point 2).
+
+2. **Default flipped from `'auto'` to `'pure'`** across `Service`, `Session`, `Graph`, `Factset`
+   (and `autoins`'s `rule_runner.py::init_rules`). Reasoning: the intended consumer raised that the
+   rules engine runs inside PySpark executors — separate processes on worker nodes whose OS/glibc/
+   Python ABI must match a prebuilt wheel, or else need a Rust toolchain baked into the executor
+   image/init script. Neither is true yet (the CI wheel-matrix/publish step is designed, not
+   shipped), so defaulting to `'auto'` meant silently attempting native wherever the extension
+   happened to be importable, including on an executor where it only builds by accident. `'pure'` as
+   the hard default removes that surprise; `'auto'`/`'native'` remain fully available, just no longer
+   the default path. Combined with point 1: since `'pure'` is now a literal default rather than
+   `'auto'`, the env var only takes effect for a caller that explicitly opts into `backend='auto'` —
+   it does not make native fire by itself when nothing passes `'auto'`.
+
+Verification: `uv run mypy src/knowledgenet` clean; `uv run pytest -q` (172 passed, +7 new tests in
+`test/unit/test_backend_selection.py` covering the env var across all three independent
+`_resolve_backend` copies); `autoins`'s `uv sync --reinstall-package knowledgenet` + checksum suite
+(5 passed) confirming the default flip changes no observable output.
+
 #### Phase 5 — End-to-end measurement — NOT STARTED
 
 Run `test/perf/profile_engine.py` at the same scales used in 002/003 (100-500 claims) with

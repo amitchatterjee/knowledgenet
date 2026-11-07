@@ -31,7 +31,7 @@ class Service:
     transaction and returns the final fact set produced by chained rulesets.
     """
 
-    def __init__(self, repository: Repository, id: str = "knowledgenet", global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None, backend: Backend = 'auto') -> None:
+    def __init__(self, repository: Repository, id: str = "knowledgenet", global_ctx: dict[str, object] | None = None, node_sorter: Callable[[Node, Node], int] | None = None, backend: Backend = 'pure') -> None:
         if global_ctx is None:
             global_ctx = {}
         self.id = id

@@ -1,6 +1,8 @@
 import pytest
 
 import knowledgenet.core.session as session_mod
+import knowledgenet.core.graph as graph_mod
+import knowledgenet.factset as factset_mod
 from knowledgenet.core.session import _resolve_backend
 from knowledgenet.rule import Rule, Fact
 from knowledgenet.ruleset import Ruleset
@@ -31,6 +33,47 @@ def test_resolve_backend_auto_falls_back_when_native_unavailable(monkeypatch):
 def test_resolve_backend_auto_prefers_native_when_available(monkeypatch):
     monkeypatch.setattr(session_mod, '_NATIVE_AVAILABLE', True)
     assert _resolve_backend('auto') == 'native'
+
+
+def test_resolve_backend_env_var_overrides_auto_to_pure(monkeypatch):
+    monkeypatch.setattr(session_mod, '_NATIVE_AVAILABLE', True)
+    monkeypatch.setenv('KNOWLEDGENET_BACKEND', 'pure')
+    assert _resolve_backend('auto') == 'pure'
+
+
+def test_resolve_backend_env_var_overrides_auto_to_native(monkeypatch):
+    monkeypatch.setattr(session_mod, '_NATIVE_AVAILABLE', True)
+    monkeypatch.setenv('KNOWLEDGENET_BACKEND', 'native')
+    assert _resolve_backend('auto') == 'native'
+
+
+def test_resolve_backend_env_var_native_still_requires_availability(monkeypatch):
+    monkeypatch.setattr(session_mod, '_NATIVE_AVAILABLE', False)
+    monkeypatch.setenv('KNOWLEDGENET_BACKEND', 'native')
+    with pytest.raises(RuntimeError):
+        _resolve_backend('auto')
+
+
+def test_resolve_backend_env_var_rejects_invalid_value(monkeypatch):
+    monkeypatch.setenv('KNOWLEDGENET_BACKEND', 'bogus')
+    with pytest.raises(ValueError):
+        _resolve_backend('auto')
+
+
+def test_resolve_backend_explicit_choice_ignores_env_var(monkeypatch):
+    monkeypatch.setattr(session_mod, '_NATIVE_AVAILABLE', True)
+    monkeypatch.setenv('KNOWLEDGENET_BACKEND', 'pure')
+    assert _resolve_backend('native') == 'native'
+
+
+# core/graph.py and factset.py each carry their own independent copy of
+# _resolve_backend (see its docstring for why). These confirm the env var
+# support landed in those copies too, not just session.py's.
+@pytest.mark.parametrize('mod', [graph_mod, factset_mod])
+def test_resolve_backend_env_var_honored_by_every_module_copy(monkeypatch, mod):
+    monkeypatch.setattr(mod, '_NATIVE_AVAILABLE', True)
+    monkeypatch.setenv('KNOWLEDGENET_BACKEND', 'pure')
+    assert mod._resolve_backend('auto') == 'pure'
 
 
 def _run_one_rule(backend):

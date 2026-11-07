@@ -34,6 +34,11 @@ selectable even when the native extension is built and importable, and prebuilt 
 published) let end users on supported platforms install with no Rust toolchain at all — not an
 escape hatch from needing Rust to build the package from source yourself.
 
+The backend is normally chosen in code (`Service(repo, backend=...)`, `Graph(..., backend=...)`,
+etc.), but `auto` (the default) also honors the `KNOWLEDGENET_BACKEND` env var (`native` or `pure`)
+for deployments that need to force a backend without touching that code — a passed-in `native`/
+`pure` still overrides the environment. Invalid values raise `ValueError`.
+
 ### Create a virtual environment:
 ```bash
 uv venv --python 3.14

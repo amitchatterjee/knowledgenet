@@ -1,4 +1,5 @@
 import bisect
+import os
 from decimal import Decimal
 from typing import Literal, cast
 from collections.abc import Hashable, Callable
@@ -6,6 +7,7 @@ from collections.abc import Hashable, Callable
 from knowledgenet.core.tracer import trace
 
 Backend = Literal['auto', 'native', 'pure']
+_BACKEND_ENV_VAR = 'KNOWLEDGENET_BACKEND'
 
 try:
     from knowledgenet import _native
@@ -15,13 +17,28 @@ except ImportError:
     _NATIVE_AVAILABLE = False
 
 def _resolve_backend(backend: Backend) -> Literal['native', 'pure']:
-    """Resolve 'auto'/'native'/'pure' against what's actually importable."""
+    """Resolve 'auto'/'native'/'pure' against what's actually importable.
+
+    An explicit 'native'/'pure' argument always wins over the environment -
+    it's the caller's deliberate choice (e.g. a parity test pinning a
+    backend), not something a deployment-level env var should override.
+    'auto' defers to KNOWLEDGENET_BACKEND when set, then to availability.
+    """
     if backend == 'pure':
         return 'pure'
     if backend == 'native':
         if not _NATIVE_AVAILABLE:
             raise RuntimeError("backend='native' requested but knowledgenet._native is not installed")
         return 'native'
+    env_backend = os.environ.get(_BACKEND_ENV_VAR)
+    if env_backend == 'native':
+        if not _NATIVE_AVAILABLE:
+            raise RuntimeError(f"{_BACKEND_ENV_VAR}=native but knowledgenet._native is not installed")
+        return 'native'
+    if env_backend == 'pure':
+        return 'pure'
+    if env_backend:
+        raise ValueError(f"{_BACKEND_ENV_VAR}={env_backend!r} is invalid; must be 'native' or 'pure'")
     return 'native' if _NATIVE_AVAILABLE else 'pure'
 
 class Element:
@@ -39,7 +56,7 @@ class Element:
         return self.__str__()
 
 class Graph:
-    def __init__(self, id: str, comparator: Callable[[Hashable, Hashable], int] | None = None, backend: Backend = 'auto') -> None:
+    def __init__(self, id: str, comparator: Callable[[Hashable, Hashable], int] | None = None, backend: Backend = 'pure') -> None:
         self.first: Element | None = None
         self.last: Element | None = None
         self.cursors: dict[str, Element | None] = {}
