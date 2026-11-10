@@ -15,7 +15,12 @@ structural fix (see its section below for the two sketched directions) when read
 resumed 2026-10-30 after a pause to work `002-2026-10-10-precompilation-options-exploratory-plan.md`'s
 precompilation spikes (now DONE); that resumption's re-profiling surfaced Phase 7 - a bigger,
 unrelated cost (bare `logging.debug()` overhead) - fixed before returning to Phase 5's harder
-design question.
+design question. Phase 9 added (2026-11-10, candidate, not started) - `004`'s Phase 5 profiling
+re-surfaced the residual `logging.debug()`/`isEnabledFor()` cost Phase 7 anticipated but didn't
+eliminate, plus confirmed Phase 8's `wrapper()` design still holds against a "use inline OTEL spans
+instead of the decorator" question. Doesn't change the pause - still awaiting a decision on Phase
+9's remove-vs-guard choice, and Phase 5's structural question remains the reason this plan stays
+paused overall.
 
 ## Context
 
@@ -497,6 +502,53 @@ output: `leaf_results` contains entries like `("...", True, 2.46e-06)` and `then
 3.21s, 500 claims 12.69s - within run-to-run noise of the previous refinement's 3.18s/12.68s,
 confirming the gated timing costs nothing when tracing is off (the `tracing_enabled()` check plus
 two cheap ternaries per leaf, no `perf_counter()` calls at all on the disabled path).
+
+### Phase 9 — residual `logging.debug()`/`isEnabledFor()` cost; OTEL-spans-instead-of-decorator question — CANDIDATE, NOT STARTED
+
+**Found (2026-11-10), re-surfaced via `004-2026-10-31-rust-pyo3-accelerated-backend-plan.md`'s
+Phase 5 profiling** (`profile_engine.py --mode profile --count 300 --backend pure`): `logging/
+__init__.py:1503 debug` (0.95s) + `:1774 isEnabledFor` (0.41s), ~1.36s combined across ~5.7-5.8M
+calls - the single biggest line item in the "other" bucket (22.6% of total `execute()` time).
+This is *not* a new regression - it's exactly the residual cost Phase 7 above anticipated and
+explicitly left unfixed ("The only thing removed is the bare `debug()` function's own
+`len(root.handlers)==0`-check..., never the `isEnabledFor()` check that actually decides whether a
+record is emitted"). Located via `grep -rn "\.debug(\|logging\.debug(" src/knowledgenet/`: the hot
+sites are `node.py:140,150,155` (inside the per-leaf/per-node execution loop, called up to
+~2.8-5.7M times at 300 claims); `core/session.py`/`service.py` also call `logger.debug(...)` but at
+call counts bounded by claim/ruleset count (hundreds, not millions) - not meaningfully costly. All
+sites already use lazy `%s`-style formatting, so the cost isn't string interpolation - it's the
+call + `isEnabledFor` overhead itself, paid 5+ million times regardless of the answer.
+
+**User's stated usage: these were useful while debugging but are rarely used now.** Two options,
+not yet chosen between:
+- **Remove the `node.py` call sites.** Simplest, matches current usage, recovers the full ~1.36s.
+  Risk: this plan's own Phase 8 already lived through the consequence of removing instrumentation
+  outright to cut cost (Phase 6 deleted `node.py`'s `@trace()` decorators, silently breaking
+  when/then trace visibility until the user noticed it missing from real output) - removing these
+  debug statements the same way is a real, permanent feature removal, not a reversible config
+  change, and should be a deliberate choice, not incidental cleanup.
+- **Make the disabled path cheap instead**, mirroring Phase 8's fix to `tracer.py`'s `wrapper()`:
+  guard the hot `node.py` sites with `if logger.isEnabledFor(logging.DEBUG):` before calling
+  `.debug(...)`. Keeps the capability (`--log debug` still works) while collapsing the disabled-path
+  cost toward one `isEnabledFor()` check instead of today's call-plus-internal-check. Smaller win
+  than removal, but nothing is lost.
+
+Not yet implemented - needs a decision between the two, then a small, surgical change to
+`node.py:140,150,155` only (the other call sites aren't hot enough to matter).
+
+**Separately asked and answered: would dropping `@trace()` for inline OTEL spans help the Phase
+6/8 `wrapper`/`tracing_enabled` cost (~1.5s/~2.8-2.9M calls, same profiling run)?** No. `wrapper()`'s
+disabled path (post-Phase-8) already does the minimum possible work - one `ContextVar.get()`, one
+comparison, straight through to the real function - *before* touching the OTEL API at all.
+Replacing it with inline `otel_tracer.start_as_current_span(...)` calls either (a) keeps an
+equivalent per-call gate, just duplicated at every call site instead of declared once via the
+decorator - marginal savings (one stack frame) for worse maintainability, or (b) drops the gate and
+always constructs a real span for a sampler to maybe discard - very likely *slower*, since real span
+construction (context propagation, attribute dict setup) costs more than this custom path's
+~0.35µs/call floor, and at 2.9M calls even 1µs of added per-call cost is +3s. If this cost ever
+needs to shrink further, the lever is calling it less often (coarser instrumentation granularity via
+`summary_attr`, already used for exactly this in Phase 8's refinement), not changing the mechanism.
+No action taken - the existing Phase 8 design already holds up.
 
 ## Overall measured result (Phases 1-4 combined, clean re-measurement, same harness/seed)
 

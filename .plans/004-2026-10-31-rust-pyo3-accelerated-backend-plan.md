@@ -1,6 +1,9 @@
 # Rust/PyO3-accelerated backend for Graph, Factset indexes, and perm.py
 
-Status: **Phase 4 DONE (2026-11-05)** — `Graph`'s ordinal path and `Factset`'s index dicts ported; Phases 5-6 not started. See "Phase 1/2/3/4 results" below.
+Status: **DONE (2026-11-10)** — Phases 1-5 complete; Phase 6 not planned (see Phase 5/6). The 2x+
+end-to-end target was not reached and, per Phase 5, isn't reachable within this plan's scope -
+`backend='pure'` is the default (PySpark-portability reasoning, see addendum); `native`/`auto`
+remain available as proven, correct infrastructure for future heavier ports.
 
 ## Context
 
@@ -279,20 +282,78 @@ Verification: `uv run mypy src/knowledgenet` clean; `uv run pytest -q` (172 pass
 `_resolve_backend` copies); `autoins`'s `uv sync --reinstall-package knowledgenet` + checksum suite
 (5 passed) confirming the default flip changes no observable output.
 
-#### Phase 5 — End-to-end measurement — NOT STARTED
+#### Phase 5 — End-to-end measurement — DONE (2026-11-10)
 
-Run `test/perf/profile_engine.py` at the same scales used in 002/003 (100-500 claims) with
-`backend='native'` vs `backend='pure'`, confirm `autoins`'s checksum-based test suite passes
-identically under both, and document the real compounded speedup against the 2x+ target —
-including whether it's reached, and if not, by how much and why (e.g., residual Python↔Rust
-crossing frequency between the three ported pieces inside one `_add_facts` call).
+**Correctness**: `autoins`'s checksum suite (5 tests) passes identically under
+`KNOWLEDGENET_BACKEND=native` and `=pure` (temporarily switching `test/unit/util.py`'s fixture to
+`init_rules("rules", backend='auto')` to exercise the env var, then reverted - not a permanent test
+change).
 
-#### Phase 6 — Possible follow-on (not committed) — NOT STARTED
+**Performance - 2x+ target not reached, and native shows no measurable win at all once the
+measurement itself is done correctly.** First pass (`profile_engine.py --mode time`, run all
+native repeats, then all pure repeats) gave inconsistent, scale-dependent results: at 300 claims
+native looked ~20% *slower* (3550-3690ms vs 2900-3060ms over two repeat sets each); at 500 claims
+native looked ~2.4% *faster* (13854ms vs 14190ms). Rebuilding the extension from a clean
+`rust/target` ruled out a stale-build artifact. The inconsistency itself was the signal: running
+every repeat of one backend back-to-back before switching to the other conflates backend choice
+with session-level drift (thermal throttling, background load trending one direction over the
+run). An interleaved harness (alternate native/pure every single run, alternate which goes first
+each round) resolved it at both scales:
 
-If Phase 5 falls short of 2x and the gap is crossing-frequency-bound (not per-operation cost), the
-next lever would be batching the combinations→graph-insertion sequence into fewer, larger Rust
-calls per `_add_facts` invocation instead of one crossing per element — a deeper redesign, not a
-continuation of this plan's per-module port shape.
+| Claims | native avg | pure avg | gap |
+|---|---|---|---|
+| 300 | 3233.1ms (8 runs) | 3270.1ms (8 runs) | ~1%, ranges overlap heavily |
+| 500 | 14175.1ms (8 runs) | 13960.1ms (8 runs) | ~1.5%, ranges overlap heavily |
+
+Native and pure are statistically indistinguishable at both scales once drift is controlled for.
+This also puts Phase 4's own documented ~6% end-to-end win (3182ms vs 3374ms, sequential
+measurement) in doubt - it was very likely the same drift artifact, not a real effect, though it
+was never re-measured with interleaving to confirm either way.
+
+This isn't a surprise given the scope-ceiling finding raised before Phase 3: Graph+Factset+perm.py
+together are a small enough slice of `execute()` time that even a real per-operation win in them
+(Phase 3/4's isolated ~8-21% numbers on individual functions, which interleaved measurement did not
+retest but has no reason to doubt - those were single-function `cProfile` tottime deltas within one
+profiled run, not sequential multi-run averages, so they aren't subject to the same drift artifact)
+cannot move end-to-end wall-clock time by a measurable amount against this harness's run-to-run
+noise floor (roughly ±5-10% of total time per run, judging by the spread within a single backend's
+own repeats).
+
+**Conclusion against the plan's original 2x+ target: not reached, and not approachable by this
+plan's scope** - the ported pieces are real, measured wins in isolation, but too small a fraction
+of total `execute()` time to show up end-to-end. Phase 6 (below) would not change this conclusion,
+since it addresses crossing *frequency*, not the more fundamental problem that the ported code
+isn't where the time goes (`node.py`'s rule-callback dispatch and tracer/logging overhead - see the
+`other` bucket's `logging.debug`/`isEnabledFor` cost in any `--mode profile` run - dominate
+`execute()`, and both are out of this plan's scope: one is rule-author callback dispatch, the other
+is `../003`'s territory). Combined with the PySpark-portability reasoning that already made `pure`
+the default (see addendum above), this plan's remaining value is the infrastructure itself - a
+working native/pure backend seam, proven correct and now measured honestly - for the user's stated
+longer-term interest in porting heavier logic later, not a performance win on what's been ported so
+far.
+
+#### Phase 6 — Possible follow-on — NOT PLANNED
+
+Originally scoped as "if Phase 5 falls short of 2x and the gap is crossing-frequency-bound, batch
+the combinations→graph-insertion sequence into fewer, larger Rust calls." Phase 5 found the gap is
+not crossing-frequency-bound - it's that the ported code is too small a share of total runtime for
+any reduction in its own cost (crossing overhead or otherwise) to register end-to-end. Batching
+would not address that. No further phase is proposed under this plan; a future Rust port aimed at
+an actual performance target would need to target where `execute()`'s time actually goes
+(`node.py`/tracer), which is explicitly out of this plan's scope and distinct work.
+
+## Note: node.py/tracer.py overhead seen during Phase 5 profiling belongs to `003`, not here
+
+Phase 5's profiling re-surfaced the same `node.py` execute-loop overhead `003-2026-10-17-rete-
+engine-performance-fixes-PAUSED.md` already covers in depth (Phases 6-8: `@trace()`'s disabled-path
+cost on `node.py`'s innermost loop, including a prior incident in that exact history where
+outright-deleting decorators to cut cost silently broke when/then trace visibility and had to be
+restored). The specific residual findings - stdlib `logging.debug()`/`isEnabledFor()` still costing
+~1.36s/5.7-5.8M calls at 300 claims even after `003`'s Phase 7 fix (located at `node.py:140,150,155`
+via `grep -rn "\.debug(\|logging\.debug(" src/knowledgenet/`), plus a "would dropping `@trace()` for
+inline OTEL spans help?" question (answered no - see below) - are written up as a new candidate
+phase there instead of here, since they're squarely that plan's subject matter, not this one's.
+`node.py`/tracer.py-level work stays out of scope for this plan either way.
 
 ## Verification
 
