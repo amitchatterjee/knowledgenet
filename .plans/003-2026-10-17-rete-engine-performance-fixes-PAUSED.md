@@ -505,7 +505,7 @@ two cheap ternaries per leaf, no `perf_counter()` calls at all on the disabled p
 
 ### Phase 9 — residual `logging.debug()`/`isEnabledFor()` cost; OTEL-spans-instead-of-decorator question — CANDIDATE, NOT STARTED
 
-**Found (2026-11-10), re-surfaced via `004-2026-10-31-rust-pyo3-accelerated-backend-plan.md`'s
+**Found (2026-11-10), re-surfaced via `004-2026-10-31-rust-pyo3-accelerated-backend-plan-PAUSED.md`'s
 Phase 5 profiling** (`profile_engine.py --mode profile --count 300 --backend pure`): `logging/
 __init__.py:1503 debug` (0.95s) + `:1774 isEnabledFor` (0.41s), ~1.36s combined across ~5.7-5.8M
 calls - the single biggest line item in the "other" bucket (22.6% of total `execute()` time).

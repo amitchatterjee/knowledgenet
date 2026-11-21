@@ -1,9 +1,12 @@
 # Rust/PyO3-accelerated backend for Graph, Factset indexes, and perm.py
 
-Status: **DONE (2026-11-10)** — Phases 1-5 complete; Phase 6 not planned (see Phase 5/6). The 2x+
+Status: **PAUSED (2026-11-10)** — Phases 1-5 complete; Phase 6 not planned (see Phase 5/6). The 2x+
 end-to-end target was not reached and, per Phase 5, isn't reachable within this plan's scope -
 `backend='pure'` is the default (PySpark-portability reasoning, see addendum); `native`/`auto`
-remain available as proven, correct infrastructure for future heavier ports.
+remain available as proven, correct infrastructure for future heavier ports. All scoped phases
+are finished - "paused" here means no further Rust/PyO3 work or exploration (CI wheel-matrix
+publishing, porting more engine logic to Rust, revisiting the default, etc.) should be proposed or
+started under this plan until the user explicitly asks to resume it.
 
 ## Context
 
