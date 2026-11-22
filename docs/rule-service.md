@@ -205,6 +205,33 @@ facts = [request, validation_ctx, collector, event]
 
 Rule authors match these in their when-clauses: `Fact(named='validation-ruleset', var='ruleset_context')`.
 
+### Tables
+A `Table` wraps two-dimensional, tabular input data (for example, rows loaded from a spreadsheet, CSV, or query) into a sequence of `Row` facts that rule authors can match directly. Each `Row` carries a positional `columns` tuple plus a back-reference to its `table`.
+
+A `Table` operates in one of two modes:
+- **`run_sequentially`** (the default, `run_all=False`): only the first row is inserted up front. Rules advance through the remaining rows one at a time by calling `table.next(ctx)`.
+- **`run_all`** (`run_all=True`): every row is inserted up front and matched independently, with no ordering guarantee. `next()` raises if called on a `run_all` table.
+
+Platform engineers build the `Table` and call `kickoff()` to seed the input facts **before** calling `service.execute()`:
+
+```python
+from knowledgenet.ftypes import Table
+
+# Two-dimensional row data, e.g. loaded from a spreadsheet or query
+pricing_table = Table('pricing', rows=(
+    ('US', 'basic', 9.99),
+    ('US', 'pro', 19.99),
+    ('EU', 'basic', 10.99),
+))
+
+facts = [request]
+pricing_table.kickoff(facts)  # seeds the first Row (or all Rows, if run_all=True)
+
+result_facts = service.execute(facts)
+```
+
+Rule authors match `Row` facts and, for sequential tables, drive iteration themselves with `table.next(ctx)`. See [Tabular Data with Tables](rules-authoring.md#tabular-data-with-tables) in the Rules Authoring Guide for detailed usage.
+
 ## Providing Helper Functions for Rule Authors
 
 Platform engineers should provide utility functions that simplify common operations for rule authors. These functions encapsulate logic that rule authors shouldn't need to reimplement, such as action creation, configuration lookup, and bypass handling.

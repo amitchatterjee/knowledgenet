@@ -716,6 +716,64 @@ rule = Rule(
 )
 ```
 
+## Tabular Data with Tables
+`Table` and `Row` (see [Tables](rule-service.md#tables) in the Rule Service documentation) let rule authors process two-dimensional, tabular input data row by row. The platform team builds the `Table` and calls `kickoff()` before `service.execute()`; rule authors match the resulting `Row` facts.
+
+### The Row Fact
+Each row of a `Table` becomes a `Row` fact with:
+
+| Attribute | Description |
+|-----------|--------------|
+| `columns` | The row's data, as a positional tuple |
+| `table`   | Back-reference to the owning `Table` |
+| `index`   | The row's position within the table |
+
+```python
+rule = Rule(
+    id='apply_pricing',
+    when=Fact(of_type=Row, var='row',
+              matches=lambda ctx, this: this.table.name == 'pricing'),
+    then=lambda ctx: insert(ctx, Price(*ctx.row.columns))
+)
+```
+
+### run_all vs run_sequentially
+A `Table` created with `run_all=True` inserts every row up front; each `Row` is matched independently, like any other fact, with no ordering between rows. This is the simplest mode and needs no special handling in rules.
+
+A `Table` created with `run_all=False` (the default) inserts only the first row. Rule authors must call `table.next(ctx)` to advance to each subsequent row — the table does not advance on its own. `next()` queues an `insert()` of the next row, if any remain, and is a safe no-op once rows are exhausted. Calling `next()` on a `run_all` table raises an exception.
+
+### Driving Sequential Processing with next()
+`next(ctx)` is a normal control function — like `insert`/`update`/`delete` — and can be called from either the `then` clause or from a `when` clause's match expression (the same pattern `assign()` uses to fold side effects into a match expression).
+
+Calling it from `then`, after the row has been processed, is the more cautious choice:
+
+```python
+def process_row(ctx):
+    insert(ctx, PricedItem(ctx.row.columns))
+    ctx.row.table.next(ctx)
+
+rule = Rule(
+    id='process_row',
+    when=Fact(of_type=Row, var='row',
+              matches=lambda ctx, this: this.table.name == 'pricing'),
+    then=process_row
+)
+```
+
+It can also be folded into the `when` clause's match expression, since `next()` always returns `True`:
+
+```python
+rule = Rule(
+    id='process_row',
+    when=Fact(of_type=Row, var='row',
+              matches=lambda ctx, this:
+                  this.table.name == 'pricing' and this.table.next(ctx)),
+    then=lambda ctx: insert(ctx, PricedItem(ctx.row.columns))
+)
+```
+
+> **Note:** When calling `next()` from a `when` clause, keep it in a rule with a single `Fact` condition, or in the last condition evaluated. If an earlier when-clause leaf calls `next()` but a later leaf on the same rule fails to match, the queued insert is discarded while the table's position has already advanced — silently skipping a row. Calling `next()` from `then` avoids this, since `then` only runs once every when-clause has matched.
+
 ## Declarative Rules with @ruledef
 The `@ruledef` decorator is the recommended way to define rules. It provides a clean way to define rules in separate Python modules that are automatically discovered and registered by the platform's scanner.
 
@@ -1189,7 +1247,7 @@ from knowledgenet.helper import assign, factset, node, session, global_ctx
 
 # Fact types (when creating facts in rules)
 from knowledgenet.container import Collector
-from knowledgenet.ftypes import EventFact, Wrapper
+from knowledgenet.ftypes import EventFact, Wrapper, Table, Row
 ```
 
 ### Rule Skeleton

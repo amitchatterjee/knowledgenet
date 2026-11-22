@@ -1,6 +1,7 @@
 """Infrastructure fact types used by the runtime and rule DSL."""
 
 import hashlib
+from types import SimpleNamespace
 
 from knowledgenet.container import Collector
 from knowledgenet.util import to_tuple
@@ -114,3 +115,61 @@ class Wrapper:
         if isinstance(other, Wrapper):
             return self.__hash__() == other.__hash__()
         return False
+
+
+class Row:
+    def __init__(self, table:Table, columns:tuple=(), index:int=0)->None:
+        self.index = index
+        self.table = table
+        self.columns = columns
+
+    def __str__(self) -> str:
+        return f"Row({self.table.name}, {self.index})"
+    def __repr__(self) -> str:
+        return self.__str__()
+    def __hash__(self) -> int:
+        return hash(self.__str__())
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Row):
+            return self.__hash__() == other.__hash__()
+        return False
+
+class Table:
+    def __init__(self, name:str, run_all:bool = False, rows:tuple[tuple, ...] = ())->None:
+        self.name = name
+        self.run_all = run_all
+        self.next_index = 0
+        self.rows: list[Row] = []
+        for row in rows:
+            self.add_row(row)
+
+    def add_row(self, columns: tuple)->None:
+        self.rows.append(Row(self, columns, len(self.rows)))
+        
+    def kickoff(self, facts:set | list)->None:
+        for row in self.rows:
+            if isinstance(facts, list):
+                facts.append(row)
+            else:
+                facts.add(row)
+            self.next_index += 1
+            if not self.run_all:
+                # Insert only the first one, the rest will inserted during execution when next() is called from the rules
+                break
+
+    def next(self, ctx:SimpleNamespace)->bool:
+        from knowledgenet.controls import insert
+        if self.run_all:
+            raise Exception('Cannot run next on run_all tables')
+        if self.next_index < len(self.rows):
+            insert(ctx, self.rows[self.next_index])
+            self.next_index += 1
+            
+        # This makes it easier to call from when expressions
+        return True
+
+    def __str__(self) -> str:
+        return f"Table({self.name})"
+    def __repr__(self) -> str:
+        return self.__str__()
+        
